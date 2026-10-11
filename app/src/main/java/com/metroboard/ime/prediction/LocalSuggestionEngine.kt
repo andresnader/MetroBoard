@@ -118,6 +118,22 @@ class LocalSuggestionEngine(
         return dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY)
     }
 
+    override fun suggestReplacements(word: String): List<String> {
+        val typed = word.lowercase(Locale.ROOT)
+        val dict = dictionaryFor(activeLanguage)
+        val out = LinkedHashSet<String>()
+        // 1. A typo fix or a missing accent ("tecldao" -> "teclado", "comodo" -> "cómodo").
+        dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY)?.let { out.add(it) }
+        // 2. Close words, most frequent first.
+        if (typed.length >= 3) {
+            for (w in dict.searchFuzzy(typed, 6)) {
+                if (dict.getFrequency(w) >= FUZZY_SUGGESTION_MIN_FREQUENCY) out.add(w)
+            }
+        }
+        out.removeAll { it.equals(word, ignoreCase = true) }
+        return out.take(MAX_CANDIDATES)
+    }
+
     override fun learn(word: String, explicit: Boolean) {
         val typed = word.trim()
         if (typed.length < 2 || typed.any { !it.isLetter() && it != '\'' && it != '\u2019' }) return

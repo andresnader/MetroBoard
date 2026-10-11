@@ -37,7 +37,6 @@ class TouchInputScenarioTest {
         override fun onSwipeCancelled() { swipeCancels++ }
         override fun onSpacebarCursorMoved(step: Int) {}
         override fun onSpacebarLongPressed() {}
-        override fun onDoubleTapWordDetected() {}
     }
 
     // Same units as the production view would use after dp->px conversion (~3 px/dp):
@@ -112,6 +111,17 @@ class TouchInputScenarioTest {
         assertEquals(1, swipeStarts)
         assertEquals(1, swipeEnds)
         assertTrue(taps.isEmpty())
+    }
+
+    @Test
+    fun fastDoubleLettersAreTwoPlainTaps() {
+        // "ww", "ll", "ss": the same key twice within the old 300 ms "double tap" window.
+        for (k in listOf(a, l, s)) {
+            sm.onDown(0, 100f, 100f, 1000L, k); sm.onUp(0, 100f, 100f, 1040L, k)
+            sm.onDown(0, 100f, 100f, 1100L, k); sm.onUp(0, 100f, 100f, 1140L, k)
+        }
+        assertEquals(listOf("a", "a", "l", "l", "s", "s"), taps)
+        assertEquals(0, swipeStarts)
     }
 
     // ---- two thumbs ----------------------------------------------------

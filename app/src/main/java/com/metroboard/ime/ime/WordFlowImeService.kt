@@ -242,24 +242,6 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         Toast.makeText(this, newLang.uppercase(), Toast.LENGTH_SHORT).show()
     }
 
-    override fun onDoubleTapWordDetected() {
-        val ic = currentInputConnection ?: return
-        val before = ic.getTextBeforeCursor(50, 0)?.toString() ?: ""
-        val after = ic.getTextAfterCursor(50, 0)?.toString() ?: ""
-
-        val wordBefore = before.takeLastWhile { it.isLetterOrDigit() }
-        val wordAfter = after.takeWhile { it.isLetterOrDigit() }
-        val totalWord = wordBefore + wordAfter
-
-        if (totalWord.isNotEmpty()) {
-            // Select whole word
-            val startDelta = -wordBefore.length
-            val endDelta = wordAfter.length
-            // Move cursor / selection
-            ic.setSelection(before.length - wordBefore.length, before.length + wordAfter.length)
-        }
-    }
-
     override fun onClipboardPasteRequested() {
         val clip = getSystemService(ClipboardManager::class.java)?.primaryClip
         if (clip != null && clip.itemCount > 0) {

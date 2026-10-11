@@ -210,6 +210,12 @@ class EditorController(
 
     fun suggestions(): List<String> {
         if (!policy.suggestions) return emptyList()
+        // A word the editor has selected (the user double-tapped it in the host app): offer replacements.
+        // An IME cannot see taps inside another app's text field, but it does see the resulting selection.
+        if (editor.hasSelection()) {
+            val selected = editor.selectedText()?.takeIf(::isSingleWord) ?: return emptyList()
+            return engine.suggestReplacements(selected).take(3).map { formatCandidate(it, selected.first().isUpperCase()) }
+        }
         val prefix = prefix()
         if (prefix == null) {
             val twoWords = previousTwoWords()
@@ -234,6 +240,12 @@ class EditorController(
     /** Re-read/revalidate the prefix on tap; do not replace stale or partial words. */
     fun chooseSuggestion(candidate: String) {
         if (!policy.suggestions || candidate !in suggestions()) return
+        if (editor.hasSelection()) {
+            // Replace exactly the selection: no trailing space, nothing else is touched.
+            cancelSequence()
+            if (editor.commit(candidate)) shift.onLetterCommitted()
+            return
+        }
         val prefix = prefix()
         cancelSequence()
         editor.beginBatch()
@@ -307,6 +319,10 @@ class EditorController(
         val word = lastWordOf(editor.beforeCursor(49))
         return word.takeIf { it.isNotEmpty() && it.length <= 48 }
     }
+
+    private fun isSingleWord(text: String): Boolean =
+        text.isNotEmpty() && text.length <= 48 && text.any(Char::isLetter) &&
+            text.all { it.isLetter() || it == '\'' || it == '\u2019' }
 
     private fun previousWord(): String? {
         if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null

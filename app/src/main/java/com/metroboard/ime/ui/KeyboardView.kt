@@ -49,7 +49,6 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         fun onLanguageToggled()
         fun onSpacebarCursorMoved(step: Int)
         fun onSpacebarLongPressed()
-        fun onDoubleTapWordDetected()
         fun onClipboardPasteRequested()
         fun onSwipeToDelete(wordsCount: Int) = Unit
         fun onOneHandedToggled(newMode: String) = Unit
@@ -131,10 +130,6 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
 
         override fun onSpacebarLongPressed() {
             listener.onSpacebarLongPressed()
-        }
-
-        override fun onDoubleTapWordDetected() {
-            listener.onDoubleTapWordDetected()
         }
 
         override fun onSwipeToDelete(wordsCount: Int) {

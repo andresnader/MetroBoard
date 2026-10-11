@@ -23,7 +23,6 @@ class TouchInputStateMachineTest {
     private var swipeCancelled = false
     private var spacebarLongPressed = false
     private var cursorMoveSteps = 0
-    private var doubleTapDetected = false
     private var swipeDeletedWords = 0
 
     private val testListener = object : TouchInputListener {
@@ -57,10 +56,6 @@ class TouchInputStateMachineTest {
             spacebarLongPressed = true
         }
 
-        override fun onDoubleTapWordDetected() {
-            doubleTapDetected = true
-        }
-
         override fun onSwipeToDelete(wordsCount: Int) {
             swipeDeletedWords += wordsCount
         }
@@ -77,7 +72,6 @@ class TouchInputStateMachineTest {
         swipeCancelled = false
         spacebarLongPressed = false
         cursorMoveSteps = 0
-        doubleTapDetected = false
 
         sm = TouchInputStateMachine(
             listener = testListener,

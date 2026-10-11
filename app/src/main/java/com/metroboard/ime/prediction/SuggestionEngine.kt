@@ -21,6 +21,9 @@ fun interface SuggestionEngine {
      */
     fun learn(word: String, explicit: Boolean = false) = Unit
 
+    /** Alternatives for a word the user selected (typo fixes, accent variants, close words), never the word itself. */
+    fun suggestReplacements(word: String): List<String> = emptyList()
+
     /** True when an apostrophe ends the previous word in the active language (French elision). */
     val elidesApostrophe: Boolean get() = false
 

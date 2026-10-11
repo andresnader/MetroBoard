@@ -55,7 +55,6 @@ class KeyboardViewTouchTest {
         override fun onLanguageToggled() {}
         override fun onSpacebarCursorMoved(step: Int) {}
         override fun onSpacebarLongPressed() {}
-        override fun onDoubleTapWordDetected() {}
         override fun onClipboardPasteRequested() {}
     }
 
@@ -156,6 +155,13 @@ class KeyboardViewTouchTest {
     }
 
     @Test
+    fun doubledLettersTypedFastAreBothTyped() {
+        // "ww", "ll", "ee": a second press of the same key within 300 ms used to select the whole word.
+        for (k in listOf("w", "l", "e")) { down(0, k); up(0, 40); clock += 60; down(0, k); up(0, 40); clock += 60 }
+        assertEquals(listOf("w", "w", "l", "l", "e", "e"), typed)
+    }
+
+    @Test
     fun alternatingTwoThumbsWithOverlapNeverTriggersWordFlow() {
         // left thumb: a s d f, right thumb: l k j h, overlapping presses
         val left = listOf("a", "s", "d", "f")
@@ -206,9 +212,14 @@ class KeyboardViewTouchTest {
 
     @Test
     fun aClearSingleFingerGestureStillShapeWrites() {
-        down(0, "h")
-        for (k in listOf("j", "k", "l", "o", "i", "u")) moveTo(0, k, 25)
+        // Decoding is asynchronous and never loads a dictionary on the UI thread: have it ready.
+        com.metroboard.ime.dictionary.LanguageDictionaryRegistry.get("es", inst.targetContext)
+        // "mensaje" is far outside the 500 most frequent words, so this also covers the full lexicon.
+        val word = listOf("m", "e", "n", "s", "a", "j", "e")
+        down(0, word.first())
+        for (k in word.drop(1)) moveTo(0, k, 25)
         up(0, 25)
+        repeat(40) { if (wordFlowCommits == 0) { inst.waitForIdleSync(); Thread.sleep(100) } }
         assertEquals("a deliberate swipe over several keys must commit once", 1, wordFlowCommits)
         assertTrue("a swipe must not also type letters", typed.isEmpty())
     }

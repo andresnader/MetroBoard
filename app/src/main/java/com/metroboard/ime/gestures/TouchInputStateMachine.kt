@@ -34,7 +34,6 @@ interface TouchInputListener {
     fun onSwipeCancelled()
     fun onSpacebarCursorMoved(step: Int)
     fun onSpacebarLongPressed()
-    fun onDoubleTapWordDetected()
     fun onSwipeToDelete(wordsCount: Int) = Unit
 }
 
@@ -63,7 +62,6 @@ class TouchInputStateMachine(
     var swipeStartDistance: Float = 48f,       // in pixels
     var swipeStartTimeMinMs: Long = 40L,
     var longPressTimeoutMs: Long = 350L,
-    var doubleTapTimeoutMs: Long = 300L,
     var spaceCursorThreshold: Float = 32f,     // in pixels per cursor move step
     var touchSlop: Float = 24f,                // in pixels
     var wordFlowEnabled: Boolean = true,
@@ -82,8 +80,6 @@ class TouchInputStateMachine(
     private val activePointers = mutableMapOf<Int, PointerRecord>()
     private var primaryPointerId: Int = -1
     private var lastCursorStepX: Float = 0f
-    private var lastTapTime: Long = 0L
-    private var lastTapKey: KeySpec? = null
     private var nextDownSeq = 0L
 
     /** Taps already released but waiting for an earlier-pressed key, to keep press order. */
@@ -117,14 +113,6 @@ class TouchInputStateMachine(
             key?.let { visitedKeys.add(it) }
         }
         activePointers[pointerId] = record
-
-        // Check if double tap on same key or area
-        if (lastTapKey != null && lastTapKey == key && (time - lastTapTime) <= doubleTapTimeoutMs) {
-            // Potential double tap
-            if (key?.action == KeyAction.TEXT) {
-                listener.onDoubleTapWordDetected()
-            }
-        }
 
         if (key?.action == KeyAction.SPACE) {
             state = TouchInteractionState.TAP_CANDIDATE
@@ -419,7 +407,5 @@ class TouchInputStateMachine(
     private fun emitTap(record: PointerRecord, time: Long) {
         val key = record.initialKey ?: return
         listener.onKeyTapped(key)
-        lastTapTime = time
-        lastTapKey = key
     }
 }

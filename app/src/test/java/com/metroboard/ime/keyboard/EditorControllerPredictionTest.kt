@@ -18,14 +18,20 @@ class EditorControllerPredictionTest {
     private class MemoryEditor(initial: String = "") : EditorPort {
         var value = initial
         var start = initial.length
-        override fun beforeCursor(maxChars: Int) = value.substring(0, start).takeLast(maxChars)
-        override fun afterCursor(maxChars: Int) = value.substring(start).take(maxChars)
-        override fun hasSelection() = false
+        override fun beforeCursor(maxChars: Int) = value.substring(0, minOf(start, end)).takeLast(maxChars)
+        override fun afterCursor(maxChars: Int) = value.substring(maxOf(start, end)).take(maxChars)
+        var end = initial.length
+        override fun hasSelection() = start != end
+        override fun selectedText(): String? = if (hasSelection()) value.substring(minOf(start, end), maxOf(start, end)) else null
         override fun shouldCapitalize() = start == 0 || value.take(start).trimEnd(' ').let { it.isEmpty() || it.last() in ".!?" }
-        override fun commit(text: String): Boolean { value = value.substring(0, start) + text + value.substring(start); start += text.length; return true }
+        override fun commit(text: String): Boolean {
+            val from = minOf(start, end)
+            value = value.substring(0, from) + text + value.substring(maxOf(start, end))
+            start = from + text.length; end = start; return true
+        }
         override fun deleteBeforeCursor(codePoints: Int): Boolean {
             val from = value.offsetByCodePoints(start, -codePoints)
-            value = value.removeRange(from, start); start = from; return true
+            value = value.removeRange(from, start); start = from; end = from; return true
         }
         override fun enter() = commit("\n")
         override fun beginBatch() {}
@@ -37,7 +43,9 @@ class EditorControllerPredictionTest {
         val suggestions: Map<String, List<String>> = emptyMap(),
         val next: Map<String, List<String>> = emptyMap(),
         override val elidesApostrophe: Boolean = false,
+        val replacements: Map<String, List<String>> = emptyMap(),
     ) : SuggestionEngine {
+        override fun suggestReplacements(word: String) = replacements[word.lowercase()] ?: emptyList()
         val autoCorrectCalls = mutableListOf<String>()
         val learned = mutableListOf<String>()
         val kept = mutableListOf<String>()
@@ -137,7 +145,7 @@ class EditorControllerPredictionTest {
 
     @Test fun choosingASuggestionNeverDuplicatesAnExistingSpace() {
         val editor = MemoryEditor("hol adiós")
-        editor.start = 3
+        editor.start = 3; editor.end = 3
         val c = controller(editor, StubEngine(suggestions = mapOf("hol" to listOf("hola"))))
         c.chooseSuggestion("hola")
         assertEquals("hola adiós", editor.value)
@@ -174,5 +182,34 @@ class EditorControllerPredictionTest {
         assertTrue("the typo must not be learned", engine.learned.isEmpty())
         c.backspace() // the user explicitly insists on what they typed
         assertEquals(listOf("tecldao"), engine.kept)
+    }
+
+    // ---- replacing a word the editor has selected ------------------------
+
+    @Test fun aSelectedWordGetsReplacementCandidates() {
+        val editor = MemoryEditor("dije hola ayer"); editor.start = 5; editor.end = 9
+        val c = controller(editor, StubEngine(replacements = mapOf("hola" to listOf("hala", "hola"))))
+        assertEquals(listOf("hala", "hola"), c.suggestions())
+    }
+
+    @Test fun choosingAReplacementSwapsOnlyTheSelectionAndKeepsCase() {
+        val editor = MemoryEditor("dije Hola ayer"); editor.start = 5; editor.end = 9
+        val c = controller(editor, StubEngine(replacements = mapOf("hola" to listOf("hala"))))
+        c.chooseSuggestion("Hala")
+        assertEquals("dije Hala ayer", editor.value)
+        assertEquals("no extra space is added inside the sentence", false, editor.hasSelection())
+    }
+
+    @Test fun aSelectionThatIsNotASingleWordGetsNoReplacements() {
+        val editor = MemoryEditor("dos palabras aqui"); editor.start = 0; editor.end = 12
+        val c = controller(editor, StubEngine(replacements = mapOf("dos palabras" to listOf("x"))))
+        assertTrue(c.suggestions().isEmpty())
+    }
+
+    @Test fun nothingIsReadFromASelectionWhenSuggestionsAreOff() {
+        val editor = MemoryEditor("dije hola ayer"); editor.start = 5; editor.end = 9
+        val c = EditorController(editor, StubEngine(replacements = mapOf("hola" to listOf("hala"))))
+            .also { it.start(EditingPolicy(suggestions = false)) }
+        assertTrue(c.suggestions().isEmpty())
     }
 }
