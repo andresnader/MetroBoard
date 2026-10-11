@@ -150,4 +150,24 @@ class DictionaryAndPersonalDictTest {
         val triEn = enDict.getTrigramSuggestions("thank", "you")
         assertTrue(triEn.contains("very") || triEn.contains("so"))
     }
+
+    @Test
+    fun savingIsAtomicAndLeavesNoTemporaryFile() {
+        val dir = tempFolder.newFolder("atomic")
+        val dict = LocalPersonalDictionary(dir)
+        repeat(3) { dict.learn("Ameizin", "es") }
+        assertEquals(listOf("personal_dictionary.json"), dir.list()!!.sorted())
+        assertEquals(listOf("Ameizin"), LocalPersonalDictionary(dir).wordsWithPrefix("ame", "es"))
+    }
+
+    @Test
+    fun aCorruptFileDoesNotCrashAndIsRepairedByTheNextSave() {
+        val dir = tempFolder.newFolder("corrupt")
+        java.io.File(dir, "personal_dictionary.json").writeText("{ this is not json")
+        val dict = LocalPersonalDictionary(dir)
+        assertTrue(dict.getAllWords("es").isEmpty())
+        repeat(2) { dict.learn("Quimeraz", "es") }
+        org.json.JSONObject(java.io.File(dir, "personal_dictionary.json").readText()) // parses again
+        assertEquals(listOf("Quimeraz"), LocalPersonalDictionary(dir).wordsWithPrefix("quim", "es"))
+    }
 }

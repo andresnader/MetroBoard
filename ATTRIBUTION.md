@@ -22,45 +22,32 @@ A lo largo de su concepción, desarrollo y recopilación léxica, MetroBoard se 
 - **Agradecimiento**: Nuestro reconocimiento al equipo original de diseño e ingeniería de Windows Phone y Word Flow por establecer un hito histórico de elegancia tipográfica y velocidad de escritura en dispositivos móviles.
 
 ### 2. ChiBoard (ChiApps — `chiboard.chiapps`)
-- **Aporte / Inspiración**: Proyecto comunitario pionero de teclado para Android inspirado en Windows 10 Mobile. Proporcionó una valiosa referencia de arquitectura práctica para teclados estilo Metro sobre Android, y aportó el corpus base de frecuencias relativas para el idioma español (`es.txt`, 20.780 palabras con rangos 1..1000).
-- **Agradecimiento**: Agradecemos profundamente a **ChiApps** por su dedicación al mantener vivo el espíritu del diseño Windows Phone en Android y por compartir sus datos y recursos con la comunidad de software libre.
+- **Aporte / Inspiración**: Proyecto comunitario pionero de teclado para Android inspirado en Windows 10 Mobile. Referencia de arquitectura práctica para teclados estilo Metro sobre Android y de organización de la pantalla de ajustes.
+- **Nota (0.3)**: desde MetroBoard 0.3 **no se distribuye ningún dato derivado de ChiBoard**. Las versiones anteriores usaban sus rangos de frecuencia del español, extraídos de un APK propietario; esos datos fueron sustituidos por frecuencias de OpenSubtitles (ver 5 y 6).
+- **Agradecimiento**: A **ChiApps** por mantener vivo el espíritu del diseño Windows Phone en Android.
 
 ### 3. Microsoft Hub Keyboard (Microsoft Garage, 2016)
 - **Aporte / Inspiración**: Referencia arquitectónica histórica de teclado Android desarrollada bajo el programa experimental Microsoft Garage, analizada con fines de estudio de integración de portapapeles y herramientas de edición de texto.
 - **Agradecimiento**: Al equipo de Microsoft Garage por sus experimentos públicos en la plataforma Android.
 
-### 4. Spanish Wordlist (`xavier-hernandez/spanish-wordlist`)
-- **Autor**: Xavier Hernández
-- **Repositorio**: [https://github.com/xavier-hernandez/spanish-wordlist](https://github.com/xavier-hernandez/spanish-wordlist)
-- **Licencia**: GNU Affero General Public License v3 (AGPL-3.0)
-- **Aporte**: Lista léxica de 76.440 palabras en español, que se usa como vocabulario base del diccionario offline `app/src/main/assets/dictionaries/es.dict`. El archivo original viene en ISO-8859-1 con CRLF y sin frecuencias; el pipeline `tools/fetch_spanish_wordlist.py` lo transcodifica a UTF-8, normaliza los saltos de línea, filtra duplicados y le asigna frecuencias.
-- **Agradecimiento**: Gracias a Xavier Hernández por compilar y publicar este listado bajo una licencia libre que garantiza el acceso abierto al conocimiento.
+### 4. Diccionarios Hunspell de LibreOffice (validez de las palabras)
+Repositorio: [LibreOffice/dictionaries](https://github.com/LibreOffice/dictionaries). Se consultan solo en desarrollo
+(`tools/build_dictionaries.py`); el APK lleva únicamente las listas de palabras resultantes.
+- **Español — RLA-ES / `es_EC`** (Santiago Bosio y colaboradores, [sbosio/rla-es](https://github.com/sbosio/rla-es)). Licencia: tri-licencia GPLv3+ / LGPLv3+ / MPL-1.1+; se elige **GPL-3.0-or-later**.
+- **Inglés — `en_US`** (SCOWL, Kevin Atkinson). Licencia permisiva tipo MIT/BSD (ver `README_en_US.txt`).
+- **Francés — «Dictionnaires orthographiques français» 7.7** (Olivier R. y colaboradores, [Grammalecte](https://grammalecte.net/)). Licencia **MPL-2.0**.
+- **Alemán — `de_DE_frami`** (igerman98 de Björn Jacke; ampliación de Franz Michael Baumann). Licencia GPL v2 o v3; se elige **GPL-3.0-or-later**.
+- **Agradecimiento**: a todas las personas que mantienen estos recursos lingüísticos libres.
 
-### 5. RLA-ES — Recursos Lingüísticos Abiertos para el Español (`sbosio/rla-es`)
-- **Autor / Mantenedor**: Santiago Bosio y colaboradores
-- **Repositorio**: [https://github.com/sbosio/rla-es](https://github.com/sbosio/rla-es)
-- **Licencia**: GNU GPL / LGPL / MPL
-- **Aporte**: El proyecto madre del que se derivaron los diccionarios ortográficos abiertos del español para LibreOffice, OpenOffice y Hunspell, y fuente original del catálogo de palabras del idioma español.
-- **Agradecimiento**: Expresamos nuestra más profunda gratitud a **Santiago Bosio** y a todos los colaboradores de RLA-ES por décadas de trabajo voluntario defendiendo y construyendo herramientas lingüísticas libres para el idioma español.
+### 5. FrequencyWords (hermitdave) sobre OpenSubtitles 2018 (frecuencias)
+- **Autor**: Hermit Dave, con datos de [OpenSubtitles 2018](https://opus.nlpl.eu/OpenSubtitles2018.php) (OPUS).
+- **Repositorio**: [hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords)
+- **Licencia**: código MIT; **contenido CC-BY-SA-4.0**. Los pesos de frecuencia de los cuatro `*.dict` derivan de esta fuente y por tanto conservan la atribución y la obligación ShareAlike (compatible en un solo sentido con GPLv3 según Creative Commons; pendiente de revisión legal antes de una tienda).
+- **Agradecimiento**: a Hermit Dave y a los voluntarios de OpenSubtitles/OPUS.
 
-### 6. SCOWL & Kevin's Word List / Peter Norvig Corpus
-- **Autores**: Kevin Atkinson y Peter Norvig
-- **Licencia**: Dominio Público / MIT
-- **Aporte**: Listados de frecuencia y vocabulario en idioma inglés utilizados para el diccionario `en.dict`.
-- **Agradecimiento**: A Kevin Atkinson por SCOWL y a Peter Norvig por su investigación pedagógica y abierta sobre frecuencias del lenguaje natural.
-
-### 7. Lexique 3 & Wiktionary French
-- **Autores**: Boris New, Christophe Pallier, Ludovic Ferrand, Rafael Matos
-- **Sitio web**: [http://www.lexique.org/](http://www.lexique.org/)
-- **Licencia**: Open Database License (ODbL) / CC BY-SA
-- **Aporte**: Base de frecuencias y lemas para el diccionario en francés `fr.dict`.
-- **Agradecimiento**: A los investigadores de Lexique 3 por poner a disposición de la comunidad científica datos psicocientíficos abiertos.
-
-### 8. Leipzig Wortschatz Corpora & Wiktionary German
-- **Institución**: Universität Leipzig (Abteilung Automatische Sprachverarbeitung)
-- **Licencia**: Creative Commons Attribution 4.0 International (CC BY 4.0) / Public Domain
-- **Aporte**: Frecuencias léxicas para el diccionario en alemán `de.dict`.
-- **Agradecimiento**: A la Universidad de Leipzig por su labor en corpus multilingües de acceso abierto.
+### 6. Listas de las que MetroBoard 0.2 y anteriores dependían (ya no se usan)
+- `xavier-hernandez/spanish-wordlist` (AGPL-3.0) y las frecuencias extraídas de Chi+Flow. Retiradas en 0.3; la sección de licencias del `NOTICE` explica el efecto.
+- Esta versión **no usa** Lexique 3, Leipzig Wortschatz, Wiktionary ni el corpus de Norvig, aunque versiones anteriores de este documento los mencionaban: nunca llegaron a incorporarse.
 
 ### 9. Android Open Source Project (AOSP)
 - **Licencia**: Apache License 2.0
@@ -73,13 +60,13 @@ A lo largo de su concepción, desarrollo y recopilación léxica, MetroBoard se 
 
 | Componente | Origen / Autor | Licencia | Ubicación en el Proyecto |
 |---|---|---|---|
-| **MetroBoard App** | MetroBoard Contributors | GNU AGPL-3.0 | `app/src/main/` |
-| **Spanish Wordlist** | Xavier Hernández / Santiago Bosio | GNU AGPL-3.0 | `vendor/spanish-wordlist/`, `assets/dictionaries/es.dict` |
-| **Frecuencias ChiBoard** | ChiApps | **Sin verificar** — ver `NOTICE` | `decompiled/chiboard/.../es.txt` |
-| **SCOWL / Norvig (EN)** | Kevin Atkinson / Peter Norvig | Public Domain / MIT | `assets/dictionaries/en.dict` |
-| **Lexique 3 (FR)** | B. New, C. Pallier et al. | ODbL / CC BY-SA | `assets/dictionaries/fr.dict` |
-| **Leipzig Wortschatz (DE)**| Uni Leipzig | CC BY 4.0 | `assets/dictionaries/de.dict` |
-| **Android Framework APIs**| AOSP (Google) | Apache 2.0 | `app/build.gradle.kts` |
+| **MetroBoard App** | MetroBoard Contributors | GNU AGPL-3.0-or-later | `app/src/main/` |
+| **Validez ES** | RLA-ES / `es_EC` | GPL-3.0+ (de GPLv3+/LGPLv3+/MPL-1.1+) | `assets/dictionaries/es.dict` (derivado) |
+| **Validez EN** | SCOWL / `en_US` | permisiva tipo MIT/BSD | `assets/dictionaries/en.dict` (derivado) |
+| **Validez FR** | Grammalecte, Olivier R. | MPL-2.0 | `assets/dictionaries/fr.dict` (derivado) |
+| **Validez DE** | igerman98 / `de_DE_frami` | GPL v2 o v3 → v3 | `assets/dictionaries/de.dict` (derivado) |
+| **Frecuencias (4 idiomas)** | FrequencyWords / OpenSubtitles 2018 | CC-BY-SA-4.0 | pesos de los 4 `*.dict` |
+| **Android Framework APIs** | AOSP (Google) | Apache 2.0 | `app/build.gradle.kts` |
 
 ---
 

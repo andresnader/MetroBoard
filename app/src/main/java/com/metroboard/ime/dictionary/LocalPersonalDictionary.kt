@@ -226,7 +226,14 @@ class LocalPersonalDictionary(
                 langObj.put(lang, array)
             }
             root.put("languages", langObj)
-            file.writeText(root.toString(), Charsets.UTF_8)
+            // Write next to the file and move it into place: a crash mid-write can no longer
+            // leave a truncated dictionary that silently loses every learned word.
+            val temp = java.io.File(file.parentFile, file.name + ".tmp")
+            temp.writeText(root.toString(), Charsets.UTF_8)
+            java.nio.file.Files.move(
+                temp.toPath(), file.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+            )
         } catch (_: Exception) {}
     }
 

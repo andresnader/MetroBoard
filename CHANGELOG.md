@@ -6,9 +6,68 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 > **Aviso de Inspiración y Código Abierto**:
 > MetroBoard es un proyecto independiente de **software libre y código abierto (Open Source)** licenciado bajo la **GNU Affero General Public License v3 (AGPL-3.0)**.
-> Este proyecto está inspirado en múltiples proyectos y trabajos pioneros, en particular el diseño visual Metro y la ergonomía del teclado Word Flow de Windows Phone 8.1, el teclado comunitario ChiBoard (ChiApps), los corpus lingüísticos de Santiago Bosio ([sbosio/rla-es](https://github.com/sbosio/rla-es)) y Xavier Hernández ([xavier-hernandez/spanish-wordlist](https://github.com/xavier-hernandez/spanish-wordlist)), las listas léxicas de SCOWL/Norvig, Lexique 3 y Leipzig Wortschatz, y el Android Open Source Project (AOSP).
+> Este proyecto está inspirado en múltiples proyectos y trabajos pioneros, en particular el diseño visual Metro y la ergonomía del teclado Word Flow de Windows Phone 8.1, el teclado comunitario ChiBoard (ChiApps), los diccionarios Hunspell de LibreOffice (RLA-ES, SCOWL, Grammalecte, igerman98), las frecuencias de FrequencyWords/OpenSubtitles y el Android Open Source Project (AOSP).
 > Expresamos nuestro sincero agradecimiento a cada uno de sus autores y comunidades por mantener vivos recursos libres e inspiradores.
 > Para más detalles, consulta [ATTRIBUTION.md](ATTRIBUTION.md) y [LICENSE](LICENSE).
+
+---
+
+## [0.3.0] - 2026-10-11 — Quality & Experience
+
+Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además el commit local no publicado `3d4de42`
+(el que contenía la app probada en el video). Cifras y método en [`docs/0.3/`](docs/0.3/README.md).
+
+### Fixed (verificado con prueba y, donde se indica, en el emulador)
+- **Dobles letras seleccionaban la palabra.** Pulsar la misma tecla dos veces en < 300 ms (`ww`, `oo`, `ll`, `ss`…) disparaba
+  la «selección de palabra por doble toque» y la siguiente letra la reemplazaba (`www.google.com` → `w.ogle.Com`). Eliminado.
+  Alternativa legítima: si el editor tiene una palabra seleccionada, la barra ofrece reemplazos.
+- **Pulsaciones perdidas y desordenadas con dos pulgares.** Una pulsación con deriva intermedia no era tap ni swipe y se
+  perdía; los taps salían en orden de *liberación*; el swipe arrancaba solo por distancia. Ahora hay cola ordenada por
+  orden de pulsación (ventana acotada), evidencia mínima de intención (≥ 3 teclas distintas) y el estado se vacía al cancelar.
+- **Idiomas mezclados.** El motor sugería/autocorregía/predecía con es y en sin importar el idioma activo y `setLanguage`
+  no hacía nada. Cada idioma usa solo su diccionario.
+- **Palabras válidas «corregidas» o rodeadas de basura** (`vamos → gamos, vanos`; `demoro → decoro, memoro`). La palabra
+  válida frecuente se conserva como primer candidato; la corrección difusa exige un ganador claro y una palabra frecuente.
+- **Barra de sugerencias:** el candidato principal estaba en la ranura *secundaria*; ahora va al centro, en negrita.
+- **Autocorrección** reversible con Retroceso (sin volver a imponerse), sin tocar nombres propios, siglas, URL ni correos;
+  contracciones (`don't`) y elisiones francesas (`c'est`) bien segmentadas; un espacio tras elegir una sugerencia.
+- **Mayúsculas:** ya no se capitaliza justo después de `.` (`www.Google.com`); Shift sobre texto seleccionado alterna
+  Palabra → PALABRA → palabra (corpus B002).
+- **Backspace** borra un carácter percibido (emoji con tono de piel, banderas, familias ZWJ, tilde descompuesta).
+- **Word Flow** solo alcanzaba las 500 palabras más frecuentes: `teclado`, `mensaje`, `keyboard`, `clavier`… no se
+  podían deslizar. Ahora usa todo el léxico, la geometría real de las teclas, rechaza garabatos y decodifica fuera del
+  hilo de interfaz.
+- **Rendimiento/memoria:** el diccionario se cargaba en el hilo principal (0,5–7 s en el emulador) y nunca se descargaba
+  (hasta 165 MB con 4 idiomas). Carga asíncrona, 2 idiomas en memoria y el motor calla mientras solo existe la muestra mínima.
+- **Ajustes sin efecto:** *cursor en espacio*, *pulsación larga en espacio* y *popups de teclas* ahora funcionan; se quita
+  *borde a borde*, que no hacía nada.
+- **Tema claro:** el icono de cambio de teclado del sistema era blanco sobre blanco.
+- **Pantalla «Acerca de»** mostraba una versión fija y licencias de fuentes que nunca se usaron.
+
+### Added
+- **Diccionarios reales de 60.000 palabras** para es/en/fr/de generados de forma reproducible
+  (`tools/build_dictionaries.py`; Hunspell + FrequencyWords). Antes en/fr/de tenían ~200 palabras escritas a mano.
+- `LanguagePack` (configuración por idioma: locale y regla de elisión).
+- Ajuste **«Aprender palabras nuevas»**; el aprendizaje ya solo guarda palabras que no están en el diccionario, por idioma,
+  y las sugiere a partir del segundo uso.
+- **Copia de seguridad v2** por el Selector de archivos de Android, validada y acotada (sin portapapeles).
+- Banco de métricas reproducible (autocorrección, predicción, Word Flow) y pruebas multitáctiles sobre la vista real.
+
+### Changed
+- Versión `0.3.0` (versionCode 3). `LocalSuggestionEngine`, `TouchInputStateMachine` y `WordFlowShapeDecoder` reescritos
+  en partes; `TouchGestureArbiter` y el primer `LanguagePack` (PR #1) se retiraron por duplicar piezas de la rama integrada.
+
+### Removed
+- Frecuencias derivadas del APK propietario de Chi+Flow y la lista española AGPL de terceros; `tools/fetch_spanish_wordlist.py`.
+- La exportación de ajustes y palabras al portapapeles.
+
+### Corrections to earlier notes
+- La nota de 0.2.0 sobre decodificación Word Flow «en sub-milisegundo» no se sostiene: con el léxico completo se midió
+  una media de 6–12 ms en la JVM (peor caso 35–95 ms), por eso ahora corre fuera del hilo de interfaz.
+
+### Known limitations
+Ver [`docs/0.3/qa-report.md`](docs/0.3/qa-report.md#limitaciones): sin validación en hardware real, sin pruebas de TalkBack,
+orientación horizontal, otras versiones de Android ni navegación de tres botones.
 
 ---
 

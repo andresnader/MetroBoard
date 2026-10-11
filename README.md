@@ -21,16 +21,14 @@ MetroBoard es un proyecto de **software libre y de código abierto (Open Source)
 
 Este proyecto está inspirado en múltiples proyectos y trabajos de la comunidad:
 - **Microsoft Word Flow / Windows Phone 8.1**: Inspiración del diseño ergonómico Metro UI y dinámica de escritura.
-- **ChiBoard (ChiApps)**: Teclado comunitario Metro en Android y base de frecuencias relativas en español.
-- **Santiago Bosio (sbosio/rla-es) y Xavier Hernández**: Wordlist libre en español de 76.440 palabras (`es.dict`).
-- **SCOWL / Kevin Atkinson & Peter Norvig**: Diccionario y frecuencias en inglés.
-- **Lexique 3 & Wiktionary**: Diccionario y frecuencias en francés.
-- **Leipzig Wortschatz & Wiktionary**: Diccionario y frecuencias en alemán.
+- **ChiBoard (ChiApps)**: Teclado comunitario Metro en Android (referencia de arquitectura; desde 0.3 no se distribuye ningún dato suyo).
+- **Diccionarios Hunspell de LibreOffice** (RLA-ES de Santiago Bosio, SCOWL de Kevin Atkinson, Grammalecte de Olivier R., igerman98 de Björn Jacke): validez de las palabras en es/en/fr/de.
+- **FrequencyWords (Hermit Dave) sobre OpenSubtitles 2018**: frecuencias de las cuatro listas (CC-BY-SA-4.0).
 - **Android Open Source Project (AOSP)**: Arquitectura base de `InputMethodService`.
 
 Agradecemos formalmente a cada autor y comunidad. Consulta [ATTRIBUTION.md](ATTRIBUTION.md) para los agradecimientos y licencias completas, y [CHANGELOG.md](CHANGELOG.md) para el historial de versiones.
 
-## Funcionalidades v0.1
+## Funcionalidades (v0.3)
 
 - Servicio `InputMethodService` registrado con `BIND_INPUT_METHOD`, metadatos XML,
   subtipo QWERTY y pantalla de habilitación, selección y preferencias.
@@ -40,8 +38,10 @@ Agradecemos formalmente a cada autor y comunidad. Consulta [ATTRIBUTION.md](ATTR
   Etiquetas cambian entre mayúsculas y minúsculas. Shift activo tiene fondo blanco;
   automático añade un punto azul; Caps Lock añade una barra bajo la flecha.
 - Mayúscula inicial y de oración con `InputConnection.getCursorCapsMode`, flags de
-  `EditorInfo` y respaldo contextual `TextUtils.getCapsMode`. `.`, `!`, `?` activan
-  AUTO_SHIFT en texto normal. No modifica automáticamente contraseñas/email/URL.
+  `EditorInfo` y respaldo contextual `TextUtils.getCapsMode`. Tras `. `, `! ` o `? `
+  (punto y **espacio**) y tras un salto de línea se activa AUTO_SHIFT; `www.sitio.com` o
+  `3.14` no se alteran. Shift sobre texto seleccionado alterna Palabra → PALABRA → palabra.
+  No modifica automáticamente contraseñas/email/URL.
 - Dos espacios consecutivos tras letra o dígito, hasta **400 ms**, producen `. `.
   La siguiente letra queda en mayúscula. Cursor, selección, otras teclas y cambio
   de campo cancelan la secuencia. Constante `DoubleSpaceHandler.DOUBLE_SPACE_TIMEOUT_MS`.
@@ -51,16 +51,17 @@ Agradecemos formalmente a cada autor y comunidad. Consulta [ATTRIBUTION.md](ATTR
 - Mantener `.` abre `, ? ! : ;`. Levanta el dedo y toca una alternativa. El popup
   es reutilizable; también hay vocales acentuadas y `ñ` mediante pulsación larga.
 - `&123` muestra números y símbolos; `=\<` muestra más; `abc` regresa a letras.
-- El botón de cara sonriente ofrece cuatro **emoticonos de texto** como placeholder.
-  No es un catálogo emoji. Mantener espacio abre el selector Android de teclados.
+- El botón de cara sonriente abre un panel de emoji con categorías, recientes y tonos de piel (unos 800 emoji; sin
+  búsqueda ni catálogo Unicode completo). Mantener espacio abre el selector de idioma y de teclados.
 - Enter usa la acción del editor (buscar, enviar, siguiente, listo…) o salto de
   línea, respetando `IME_FLAG_NO_ENTER_ACTION` y acciones personalizadas.
-- Borrado de selecciones y de puntos de código Unicode, sin cortar pares sustitutos.
+- Borrado de selecciones y de **caracteres percibidos** (emoji con tono de piel, banderas,
+  familias ZWJ y letras con marca combinante se borran de un toque); en contraseñas, de un punto de código.
 - Layouts Android para teléfono, fecha y números; respeta flags decimal/signo.
-- Hasta tres sugerencias por prefijo, con un diccionario español real de
-  **76.440 palabras** en assets y frecuencias de corpus reales para las más
-  comunes. Tocar una sustituye el prefijo; no añade espacio ni autocorrige.
-  Se revalida al tocar.
+- Hasta tres sugerencias (la mejor en el centro, en negrita) con diccionarios offline reales de **60.000 palabras** para
+  es/en/fr/de, ordenadas por frecuencia. Una palabra válida no se cambia; la autocorrección es conservadora, reversible
+  con Retroceso y no toca nombres propios, siglas, URL ni correos. Elegir una sugerencia añade un espacio. Con una
+  palabra seleccionada en el editor se ofrecen reemplazos. Ver [docs/dictionaries.md](docs/dictionaries.md).
 - Vibración y sonido Android opcionales, **apagados por defecto**, con ajustes
   persistentes. Respetan las restricciones del sistema y el modo de sonido.
 
@@ -192,53 +193,41 @@ los ajustes de teclado físico del dispositivo si el IME no aparece.
 
 ## Privacidad
 
-Sin permiso `INTERNET`, analytics, logs de pulsaciones, contactos, micrófono ni
-almacenamiento externo. No se guarda texto ni contraseñas. Solo persisten tres
-booleanos de preferencias; los backups de la app están desactivados. No hay
-aprendizaje en ningún campo en v0.1. En contraseñas se desactivan sugerencias,
-capitalización automática y doble espacio; Shift manual sigue disponible.
-Se respeta `IME_FLAG_NO_PERSONALIZED_LEARNING` desactivando también sugerencias.
-Consulta [la política técnica completa](docs/privacy.md).
+Sin permiso `INTERNET`, sin dependencias de terceros, sin analytics ni logs de pulsaciones; backups de la app
+desactivados. Solo persisten las preferencias y un **diccionario personal local** con las palabras nuevas que tú escribes
+(desactivable en Ajustes › typing; se puede ver, borrar, exportar e importar). Nada se lee ni se aprende en campos de
+contraseña, correo o URL, ni cuando el editor declara `IME_FLAG_NO_PERSONALIZED_LEARNING`. La copia de seguridad usa el
+Selector de archivos de Android, no el portapapeles. Detalle completo y límites: [docs/privacy.md](docs/privacy.md).
 
 ## Limitaciones conocidas
 
-- Inspiración histórica; geometría, color exacto y timings propios. No se afirma
-  fidelidad exacta del Shift histórico, que el corpus marca Probable.
-- Hay cuatro subtipos de idioma (`es`/`en`/`fr`/`de`) con layout, autocorrección y
-  siguiente palabra. Pero **solo `es` tiene vocabulario real**: los otros tres
-  siguen con listas de demostración de ~200 palabras escritas a mano.
-  `docs/dictionaries.md` detalla el desfase de atribución de cada uno.
-- El Popup de sugerencias requiere levantar y elegir; no implementa el gesto
-  deslizante &123 ni retorno automático desde emoji. Los layouts de campos son
-  adaptaciones Android.
-- No se transforma la capitalización de una palabra seleccionada con Shift (B002),
-  ni se implementan caret propio, contactos ni nube. El shape writing sí está
-  implementado, pero su pool de candidatos son las 500 palabras más frecuentes
-  más las aprendidas por el usuario.
-- Los datos de frecuencia del diccionario español provienen de un corpus
-  extraído de un APK propietario cuyo estado legal no está verificado. Está
-  documentado en [`NOTICE`](NOTICE) y debe sustituirse por una fuente de
-  licencia clara antes de publicar en una tienda de apps.
-- Los diccionarios viajan en `assets/` sin `noCompress`, así que se descomprimen
-  en cada carga. Aceptable con el español actual (904 KiB); a revisar si se
-  multiplican los idiomas.
-- Backspace borra puntos de código, no clústeres de grafemas completos: un emoji
-  compuesto o una letra con marca combinante puede requerir varios toques.
-- Selección y capitalización dependen de que el editor anfitrión implemente las
-  APIs Android y notifique movimientos de cursor. Editors especiales pueden variar.
-- El botón de Enter con una etiqueta personalizada muy larga puede truncarse.
-- Ajuste de tamaño, landscape, TalkBack y ergonomía en dispositivos reales deben
-  seguir ampliándose según la [lista de aceptación](docs/validation.md).
+Lista completa y contexto en [docs/0.3/qa-report.md](docs/0.3/qa-report.md). Las principales:
+
+- **Sin validación en hardware real.** Todo lo medido sale de pruebas unitarias/instrumentadas y de un emulador
+  (Android 17, API 37). Los swipes de las pruebas son sintéticos, no pulgares reales.
+- No probados: TalkBack, orientación horizontal, navegación de tres botones, otras versiones de Android (8–16),
+  pantallas pequeñas/grandes, tamaño de fuente aumentado.
+- Predicción de **siguiente palabra** limitada: solo 15–30 pares de bigramas/trigramas curados por idioma.
+- Los diccionarios usan frecuencias de subtítulos (sesgo coloquial) y un trie de 35–50 MB por idioma (máximo 2 en memoria).
+  La primera carga tras instalar puede tardar varios segundos en el emulador; mientras tanto no hay sugerencias.
+- Licencias: los datos de frecuencia son CC-BY-SA-4.0 y los diccionarios es/de son GPL; encajan con la AGPL del proyecto
+  según sus autores, pero **falta una revisión legal** antes de publicar en una tienda (ver [`NOTICE`](NOTICE)).
+- El doble toque sobre una palabra pertenece a la app anfitriona: un IME no lo recibe. MetroBoard solo reacciona a la
+  selección que el editor le comunica.
+- Sonidos: efectos del sistema con volumen ajustable; no hay sonidos propios estilo Windows Phone. Háptica: intensidades
+  según el hardware.
+- Sin diccionario de contactos, sin historial de portapapeles, sin búsqueda de emoji, sin variantes regionales.
+- Fidelidad histórica: geometría, color exacto y tiempos propios; el Shift del corpus se marca «Probable».
 
 ## Roadmap
 
 | Versión | Alcance |
 |---|---|
 | v0.1 | IME + layout + Shift + puntuación; sugerencias locales de demostración |
-| v0.2 | SuggestionEngine ampliado + diccionario personal local y opt-in |
-| v0.3 | Autocorrección y contexto, con reversión y controles de privacidad |
-| v0.4 | Shape writing sobre las interfaces de gestos y decodificación |
-| v0.5 | Ajuste fino de UX basado en corpus histórico y mediciones verificadas |
+| v0.2 | Prototipo ampliado (rama principal local): 4 idiomas en la UI, Word Flow, emoji, diccionario personal |
+| v0.3 | **Calidad de escritura**: multitáctil, idiomas aislados, diccionarios reales, autocorrección conservadora y reversible, Word Flow sobre todo el léxico, copia de seguridad validada |
+| v0.4 | Predicción contextual (corpus de n-gramas), índice de diccionario compacto, validación en hardware y accesibilidad |
+| v0.5 | Ajuste fino de UX con mediciones en dispositivos reales |
 
 Las fuentes y decisiones están en [corpus-analysis.md](docs/corpus-analysis.md).
 La integración IME sigue la [guía oficial Android](https://developer.android.com/develop/ui/views/touch-and-input/creating-input-method)
