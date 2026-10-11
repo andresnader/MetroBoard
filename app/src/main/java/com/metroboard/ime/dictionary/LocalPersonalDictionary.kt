@@ -129,31 +129,32 @@ class LocalPersonalDictionary(
         return root.toString(2)
     }
 
+    /** Every learned word of every language, for a backup. */
     @Synchronized
-    fun importJson(jsonStr: String): Int {
-        val root = JSONObject(jsonStr)
-        val lang = root.optString("language", "es").lowercase(Locale.ROOT)
+    fun allWords(): Map<String, List<LearnedWord>> =
+        wordMap.mapValues { (_, words) -> words.values.sortedByDescending { it.frequency } }.filterValues { it.isNotEmpty() }
+
+    /** Merges already validated words (see [BackupFormat]); an existing word keeps its higher count. */
+    @Synchronized
+    fun importWords(words: Map<String, List<LearnedWord>>): Int {
         var count = 0
-        if (root.has("words")) {
-            val array = root.getJSONArray("words")
-            val langMap = wordMap.getOrPut(lang) { HashMap() }
-            for (i in 0 until array.length()) {
-                val item = array.getJSONObject(i)
-                val word = item.getString("word")
-                val freq = item.optInt("frequency", 1)
-                val key = word.lowercase(Locale.ROOT)
+        for ((lang, list) in words) {
+            val langMap = wordMap.getOrPut(lang.lowercase(Locale.ROOT)) { HashMap() }
+            for (w in list) {
+                val key = w.word.lowercase(Locale.ROOT)
                 val existing = langMap[key]
-                if (existing != null) {
-                    existing.frequency = maxOf(existing.frequency, freq)
-                } else {
-                    langMap[key] = LearnedWord(word, frequency = freq, language = lang)
-                }
+                if (existing != null) existing.frequency = maxOf(existing.frequency, w.frequency)
+                else langMap[key] = LearnedWord(w.word, w.frequency, lang)
                 count++
             }
-            saveToFile()
         }
+        if (count > 0) saveToFile()
         return count
     }
+
+    /** Validated import of a backup's words. Throws [BackupFormat.InvalidBackup]. */
+    @Synchronized
+    fun importJson(jsonStr: String): Int = importWords(BackupFormat.parse(jsonStr).words)
 
     @Synchronized
     fun importFromSystemUserDictionary(context: Context): Int {

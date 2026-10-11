@@ -212,4 +212,27 @@ class EditorControllerPredictionTest {
             .also { it.start(EditingPolicy(suggestions = false)) }
         assertTrue(c.suggestions().isEmpty())
     }
+
+    // ---- URLs and e-mail addresses ---------------------------------------
+
+    @Test fun urlsAndEmailAddressesAreNeitherCorrectedNorLearned() {
+        for (token in listOf("www.googel.com", "ana@gmial.com", "http://exmple.org/abc", "nombre_usuarioo", "a.b")) {
+            val engine = StubEngine(corrections = mapOf("com" to "con", "googel" to "google", "gmial" to "gmail", "org" to "ore",
+                "abc" to "abd", "usuarioo" to "usuario", "b" to "bb", "nombre_usuarioo" to "x"))
+            val editor = MemoryEditor()
+            val c = controller(editor, engine, learn = true)
+            c.type(token); c.space(1000)
+            assertEquals("'$token' must be left exactly as typed", "$token ", editor.value)
+            assertTrue("'$token' must not be learned: ${engine.learned}", engine.learned.isEmpty())
+            assertTrue("'$token' must not be sent to autocorrect: ${engine.autoCorrectCalls}", engine.autoCorrectCalls.isEmpty())
+        }
+    }
+
+    @Test fun anOrdinaryWordAfterAUrlIsStillHandledNormally() {
+        val engine = StubEngine(corrections = mapOf("tecldao" to "teclado"))
+        val editor = MemoryEditor()
+        val c = controller(editor, engine, learn = true)
+        c.type("www.google.com "); c.type("tecldao"); c.space(2000)
+        assertEquals("www.google.com teclado ", editor.value)
+    }
 }

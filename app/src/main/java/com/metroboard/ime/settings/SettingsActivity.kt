@@ -12,8 +12,6 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -30,11 +28,17 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import com.metroboard.ime.R
+import com.metroboard.ime.dictionary.BackupFormat
 import com.metroboard.ime.dictionary.LocalPersonalDictionary
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.dp
 
 class SettingsActivity : Activity() {
+    private companion object {
+        const val REQUEST_EXPORT = 4101
+        const val REQUEST_IMPORT = 4102
+    }
+
     private lateinit var preferences: KeyboardPreferences
     private lateinit var personalDict: LocalPersonalDictionary
     private val colorTileViews = mutableListOf<Pair<Int, View>>()
@@ -649,39 +653,61 @@ class SettingsActivity : Activity() {
             .show()
     }
 
+    // Backup goes through the Storage Access Framework: the user picks the file, the app needs no
+    // storage permission and nothing is placed on the system clipboard.
     private fun exportSettings() {
-        val words = personalDict.getAllWords(preferences.language).map { it.word }
-        val json = preferences.exportJson(words)
-        val clipboard = getSystemService(ClipboardManager::class.java)
-        clipboard?.setPrimaryClip(ClipData.newPlainText("MetroBoard Settings", json))
-        Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "metroboard-backup.json")
+        }
+        startActivityForResult(intent, REQUEST_EXPORT)
     }
 
     private fun showImportDialog() {
-        val input = EditText(this).apply {
-            hint = "Pega aquí el JSON"
-            setTextColor(Color.WHITE)
-            setBackgroundColor(Color.parseColor("#222222"))
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/plain"))
         }
-        AlertDialog.Builder(this)
-            .setTitle(R.string.import_settings)
-            .setView(input)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val text = input.text.toString().trim()
-                if (text.isNotEmpty()) {
-                    try {
-                        val (words, settings) = preferences.importJson(text)
-                        personalDict.importJson(text)
-                        Toast.makeText(this, "$settings ajustes y $words palabras importadas", Toast.LENGTH_SHORT).show()
-                        recreate()
-                    } catch (_: Exception) {
-                        Toast.makeText(this, R.string.invalid_json, Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        startActivityForResult(intent, REQUEST_IMPORT)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) return
+        when (requestCode) {
+            REQUEST_EXPORT -> writeBackup(uri)
+            REQUEST_IMPORT -> readBackup(uri)
+        }
+    }
+
+    private fun writeBackup(uri: android.net.Uri) {
+        try {
+            val json = BackupFormat.write(preferences.exportSettingsMap(), personalDict.allWords())
+            contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                ?: throw java.io.IOException("no output stream")
+            Toast.makeText(this, R.string.backup_saved, Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.backup_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun readBackup(uri: android.net.Uri) {
+        try {
+            val text = contentResolver.openInputStream(uri)?.use { BackupFormat.readBounded(it) }
+                ?: throw java.io.IOException("no input stream")
+            val backup = BackupFormat.parse(text)
+            val settings = preferences.applySettings(backup.settings)
+            val words = personalDict.importWords(backup.words)
+            Toast.makeText(this, getString(R.string.backup_imported, settings, words), Toast.LENGTH_SHORT).show()
+            recreate()
+        } catch (_: Exception) {
+            // Deliberately generic: nothing from a rejected file is echoed back or logged.
+            Toast.makeText(this, R.string.invalid_json, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showResetDialog() {

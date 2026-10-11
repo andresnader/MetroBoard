@@ -113,7 +113,8 @@ class EditorController(
         shift.breakTapSequence()
         lastCorrection = null
         // Sensitive / no-learning fields must never have their text read.
-        val lastWord = if (policy.suggestions || policy.learnWords) prefix() else null
+        val lastWord = (if (policy.suggestions || policy.learnWords) prefix() else null)
+            ?.takeUnless { inUrlOrEmailToken() }
         val correction = if (lastWord != null && policy.suggestions && policy.autoCorrect && mayAutoCorrect(lastWord)) {
             engine.autoCorrect(lastWord)
         } else null
@@ -167,6 +168,17 @@ class EditorController(
         return last in ".!?\u2026\u00bf\u00a1\n"
     }
 
+    /**
+     * True when the whitespace-delimited token ending at the cursor is a URL, an e-mail address or an
+     * identifier ("www.site.com", "ana@mail.com", "snake_case", "http://x"). Its pieces are not
+     * words: they are neither auto-corrected nor learned.
+     */
+    private fun inUrlOrEmailToken(): Boolean {
+        val token = editor.beforeCursor(80).takeLastWhile { !it.isWhitespace() }
+        return token.any { it == '@' || it == '/' || it == ':' || it == '_' || it == '\\' } ||
+            Regex("\\p{L}\\.\\p{L}").containsMatchIn(token)
+    }
+
     private fun learnIfAllowed(word: String, explicit: Boolean = false) {
         if (policy.learnWords && word.any(Char::isLetter)) engine.learn(word, explicit)
     }
@@ -202,7 +214,7 @@ class EditorController(
     }
 
     fun enter() {
-        if (policy.learnWords) prefix()?.let { learnIfAllowed(it) }
+        if (policy.learnWords) prefix()?.takeUnless { inUrlOrEmailToken() }?.let { learnIfAllowed(it) }
         cancelSequence()
         editor.enter()
         shift.updateAutomatic(autoCaps())

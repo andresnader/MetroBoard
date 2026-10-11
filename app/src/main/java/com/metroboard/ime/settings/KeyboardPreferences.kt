@@ -11,6 +11,8 @@ package com.metroboard.ime.settings
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
+import com.metroboard.ime.dictionary.BackupFormat
+import com.metroboard.ime.dictionary.LearnedWord
 import com.metroboard.ime.dictionary.LocalPersonalDictionary
 import org.json.JSONArray
 import org.json.JSONObject
@@ -138,172 +140,59 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         get() = preferences.getString(KEY_ONE_HANDED_MODE, "OFF") ?: "OFF"
         set(value) { preferences.edit().putString(KEY_ONE_HANDED_MODE, value).apply() }
 
-    fun exportJson(customWords: List<String> = emptyList()): String {
-        val root = JSONObject()
-        root.put("version", 1)
-        root.put("app", "MetroBoard")
-        root.put("language", language)
-        root.put("timestamp", System.currentTimeMillis())
+    /** Current value of every setting that a backup carries (see BackupFormat's whitelist). */
+    fun exportSettingsMap(): Map<String, Any> = linkedMapOf(
+        KEY_SOUND to sound, KEY_SOUND_VOLUME to soundVolume.toDouble(), KEY_HAPTIC to vibration,
+        KEY_HAPTIC_STRENGTH_LEVEL to hapticStrength, KEY_SUGGESTIONS to suggestions, KEY_AUTOCORRECT to autoCorrect,
+        KEY_AUTOCAP to autoCapitalization, KEY_DOUBLE_SPACE_PERIOD to doubleSpacePeriod,
+        KEY_SHIFT_WORD_CASING to shiftWordCasing, KEY_SHOW_NUMBER_ROW to numberRow, KEY_ACCENT_COLOR to accentColor,
+        KEY_TINT_KEYS to tintKeys, KEY_HEIGHT_MODE to heightMode, KEY_HEIGHT_SCALE to heightScale.toDouble(),
+        KEY_WORDFLOW to wordFlow, KEY_SPACEBAR_CURSOR to spacebarCursor, KEY_LONG_PRESS_SPACE to longPressSpace,
+        KEY_SHOW_KEY_POPUP to keyPopup, KEY_LANGUAGE to language, KEY_LAYOUT_OVERRIDE to layoutOverride,
+        KEY_THEME to theme, KEY_ONE_HANDED_MODE to oneHandedMode,
+    )
 
-        val wordsArray = JSONArray()
-        for (w in customWords) {
-            val obj = JSONObject()
-            obj.put("word", w)
-            obj.put("frequency", 10)
-            wordsArray.put(obj)
-        }
-        root.put("words", wordsArray)
-
-        val settings = JSONObject()
-        settings.put(KEY_SOUND, sound)
-        settings.put(KEY_SOUND_VOLUME, soundVolume.toDouble())
-        settings.put(KEY_HAPTIC, vibration)
-        settings.put(KEY_HAPTIC_STRENGTH_LEVEL, hapticStrength)
-        settings.put(KEY_SUGGESTIONS, suggestions)
-        settings.put(KEY_AUTOCORRECT, autoCorrect)
-        settings.put(KEY_AUTOCAP, autoCapitalization)
-        settings.put(KEY_DOUBLE_SPACE_PERIOD, doubleSpacePeriod)
-        settings.put(KEY_SHIFT_WORD_CASING, shiftWordCasing)
-        settings.put(KEY_SHOW_NUMBER_ROW, numberRow)
-        settings.put(KEY_ACCENT_COLOR, accentColor)
-        settings.put(KEY_TINT_KEYS, tintKeys)
-        settings.put(KEY_HEIGHT_SCALE, heightScale.toDouble())
-        settings.put(KEY_HEIGHT_MODE, heightMode)
-        settings.put(KEY_WORDFLOW, wordFlow)
-        settings.put(KEY_SPACEBAR_CURSOR, spacebarCursor)
-        settings.put(KEY_LONG_PRESS_SPACE, longPressSpace)
-        settings.put(KEY_SHOW_KEY_POPUP, keyPopup)
-        settings.put(KEY_LANGUAGE, language)
-        settings.put(KEY_LAYOUT_OVERRIDE, layoutOverride)
-        settings.put(KEY_THEME, theme)
-        settings.put(KEY_ONE_HANDED_MODE, oneHandedMode)
-
-        root.put("settings", settings)
-        return root.toString(2)
+    /**
+     * Applies settings that BackupFormat has already validated (type, range, enumeration).
+     * Height mode is applied before height scale because choosing a mode also sets the scale.
+     * Returns how many settings were applied.
+     */
+    fun applySettings(settings: Map<String, Any>): Int {
+        var applied = 0
+        fun bool(key: String, set: (Boolean) -> Unit) { (settings[key] as? Boolean)?.let { set(it); applied++ } }
+        fun text(key: String, set: (String) -> Unit) { (settings[key] as? String)?.let { set(it); applied++ } }
+        bool(KEY_SOUND) { sound = it }
+        bool(KEY_HAPTIC) { vibration = it }
+        bool(KEY_SUGGESTIONS) { suggestions = it }
+        bool(KEY_AUTOCORRECT) { autoCorrect = it }
+        bool(KEY_AUTOCAP) { autoCapitalization = it }
+        bool(KEY_DOUBLE_SPACE_PERIOD) { doubleSpacePeriod = it }
+        bool(KEY_SHIFT_WORD_CASING) { shiftWordCasing = it }
+        bool(KEY_SHOW_NUMBER_ROW) { numberRow = it }
+        bool(KEY_TINT_KEYS) { tintKeys = it }
+        bool(KEY_WORDFLOW) { wordFlow = it }
+        bool(KEY_SPACEBAR_CURSOR) { spacebarCursor = it }
+        bool(KEY_LONG_PRESS_SPACE) { longPressSpace = it }
+        bool(KEY_SHOW_KEY_POPUP) { keyPopup = it }
+        text(KEY_HAPTIC_STRENGTH_LEVEL) { hapticStrength = it }
+        text(KEY_HEIGHT_MODE) { heightMode = it }
+        text(KEY_LANGUAGE) { language = it }
+        text(KEY_LAYOUT_OVERRIDE) { layoutOverride = it }
+        text(KEY_THEME) { theme = it }
+        text(KEY_ONE_HANDED_MODE) { oneHandedMode = it }
+        (settings[KEY_SOUND_VOLUME] as? Number)?.let { soundVolume = it.toFloat(); applied++ }
+        (settings[KEY_ACCENT_COLOR] as? Number)?.let { accentColor = it.toInt(); applied++ }
+        (settings[KEY_HEIGHT_SCALE] as? Number)?.let { heightScale = it.toFloat(); applied++ }
+        return applied
     }
 
+    fun exportJson(customWords: List<String> = emptyList()): String =
+        BackupFormat.write(exportSettingsMap(), mapOf(language to customWords.map { LearnedWord(it, 10, language) }))
+
+    /** Imports the settings of a backup; returns (words found, settings applied). Throws [BackupFormat.InvalidBackup]. */
     fun importJson(jsonStr: String): Pair<Int, Int> {
-        val root = JSONObject(jsonStr)
-        var wordsImported = 0
-        var settingsImported = 0
-
-        if (root.has("words")) {
-            val wordsArray = root.getJSONArray("words")
-            wordsImported = wordsArray.length()
-        } else if (root.has("custom_words")) {
-            val wordsArray = root.getJSONArray("custom_words")
-            wordsImported = wordsArray.length()
-        }
-
-        if (root.has("settings")) {
-            val settings = root.getJSONObject("settings")
-            val editor = preferences.edit()
-
-            if (settings.has(KEY_SOUND)) {
-                val value = settings.getBoolean(KEY_SOUND)
-                editor.putBoolean(KEY_SOUND, value)
-                editor.putBoolean(KEY_LEGACY_SOUND, value)
-                settingsImported++
-            }
-            if (settings.has(KEY_HAPTIC)) {
-                val value = settings.getBoolean(KEY_HAPTIC)
-                editor.putBoolean(KEY_HAPTIC, value)
-                editor.putBoolean(KEY_LEGACY_VIBRATION, value)
-                settingsImported++
-            }
-            if (settings.has(KEY_HAPTIC_STRENGTH_LEVEL)) {
-                editor.putString(KEY_HAPTIC_STRENGTH_LEVEL, settings.getString(KEY_HAPTIC_STRENGTH_LEVEL))
-                settingsImported++
-            }
-            if (settings.has(KEY_SOUND_VOLUME)) {
-                editor.putFloat(KEY_SOUND_VOLUME, settings.getDouble(KEY_SOUND_VOLUME).toFloat())
-                settingsImported++
-            }
-            if (settings.has(KEY_SUGGESTIONS)) {
-                val value = settings.getBoolean(KEY_SUGGESTIONS)
-                editor.putBoolean(KEY_SUGGESTIONS, value)
-                editor.putBoolean(KEY_LEGACY_SUGGESTIONS, value)
-                settingsImported++
-            }
-            if (settings.has(KEY_AUTOCORRECT)) {
-                editor.putBoolean(KEY_AUTOCORRECT, settings.getBoolean(KEY_AUTOCORRECT))
-                settingsImported++
-            }
-            if (settings.has(KEY_AUTOCAP)) {
-                editor.putBoolean(KEY_AUTOCAP, settings.getBoolean(KEY_AUTOCAP))
-                settingsImported++
-            }
-            if (settings.has(KEY_DOUBLE_SPACE_PERIOD)) {
-                editor.putBoolean(KEY_DOUBLE_SPACE_PERIOD, settings.getBoolean(KEY_DOUBLE_SPACE_PERIOD))
-                settingsImported++
-            }
-            if (settings.has(KEY_SHIFT_WORD_CASING)) {
-                editor.putBoolean(KEY_SHIFT_WORD_CASING, settings.getBoolean(KEY_SHIFT_WORD_CASING))
-                settingsImported++
-            }
-            if (settings.has(KEY_SHOW_NUMBER_ROW)) {
-                editor.putBoolean(KEY_SHOW_NUMBER_ROW, settings.getBoolean(KEY_SHOW_NUMBER_ROW))
-                settingsImported++
-            }
-            if (settings.has(KEY_ACCENT_COLOR)) {
-                val rawColor = settings.get(KEY_ACCENT_COLOR)
-                val colorInt = when (rawColor) {
-                    is Number -> rawColor.toInt()
-                    is String -> Color.parseColor(rawColor)
-                    else -> DEFAULT_ACCENT_COLOR
-                }
-                editor.putInt(KEY_ACCENT_COLOR, colorInt)
-                settingsImported++
-            }
-            if (settings.has(KEY_TINT_KEYS)) {
-                editor.putBoolean(KEY_TINT_KEYS, settings.getBoolean(KEY_TINT_KEYS))
-                settingsImported++
-            }
-            if (settings.has(KEY_HEIGHT_SCALE)) {
-                editor.putFloat(KEY_HEIGHT_SCALE, settings.getDouble(KEY_HEIGHT_SCALE).toFloat())
-                settingsImported++
-            }
-            if (settings.has(KEY_HEIGHT_MODE)) {
-                editor.putString(KEY_HEIGHT_MODE, settings.getString(KEY_HEIGHT_MODE))
-                settingsImported++
-            }
-            if (settings.has(KEY_WORDFLOW)) {
-                editor.putBoolean(KEY_WORDFLOW, settings.getBoolean(KEY_WORDFLOW))
-                settingsImported++
-            }
-            if (settings.has(KEY_SPACEBAR_CURSOR)) {
-                editor.putBoolean(KEY_SPACEBAR_CURSOR, settings.getBoolean(KEY_SPACEBAR_CURSOR))
-                settingsImported++
-            }
-            if (settings.has(KEY_LONG_PRESS_SPACE)) {
-                editor.putBoolean(KEY_LONG_PRESS_SPACE, settings.getBoolean(KEY_LONG_PRESS_SPACE))
-                settingsImported++
-            }
-            if (settings.has(KEY_SHOW_KEY_POPUP)) {
-                editor.putBoolean(KEY_SHOW_KEY_POPUP, settings.getBoolean(KEY_SHOW_KEY_POPUP))
-                settingsImported++
-            }
-            if (settings.has(KEY_LANGUAGE)) {
-                editor.putString(KEY_LANGUAGE, settings.getString(KEY_LANGUAGE))
-                settingsImported++
-            }
-            if (settings.has(KEY_LAYOUT_OVERRIDE)) {
-                editor.putString(KEY_LAYOUT_OVERRIDE, settings.getString(KEY_LAYOUT_OVERRIDE))
-                settingsImported++
-            }
-            if (settings.has(KEY_THEME)) {
-                editor.putString(KEY_THEME, settings.getString(KEY_THEME))
-                settingsImported++
-            }
-            if (settings.has(KEY_ONE_HANDED_MODE)) {
-                editor.putString(KEY_ONE_HANDED_MODE, settings.getString(KEY_ONE_HANDED_MODE))
-                settingsImported++
-            }
-
-            editor.apply()
-        }
-
-        return Pair(wordsImported, settingsImported)
+        val backup = BackupFormat.parse(jsonStr)
+        return backup.words.values.sumOf { it.size } to applySettings(backup.settings)
     }
 
     fun resetToDefaults() {
