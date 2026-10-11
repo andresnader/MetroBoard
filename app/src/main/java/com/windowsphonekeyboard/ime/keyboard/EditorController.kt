@@ -1,0 +1,192 @@
+package com.windowsphonekeyboard.ime.keyboard
+
+import com.windowsphonekeyboard.ime.prediction.SuggestionEngine
+import java.util.Locale
+
+class EditorController(
+    private val editor: EditorPort,
+    private val engine: SuggestionEngine,
+    val shift: ShiftStateManager = ShiftStateManager(),
+    private val spaces: DoubleSpaceHandler = DoubleSpaceHandler(),
+) {
+    var policy = EditingPolicy()
+        private set
+
+    fun start(policy: EditingPolicy) {
+        this.policy = policy
+        spaces.reset()
+        shift.reset(autoCaps())
+    }
+
+    fun finish() {
+        spaces.reset()
+        shift.reset(false)
+    }
+
+    fun tapShift(now: Long) {
+        if (shift.state == ShiftState.CAPS_LOCK) {
+            spaces.reset()
+            shift.tap(now)
+            return
+        }
+        val word = if (policy.shiftWordCasing) prefix() else null
+        if (word != null && word.any(Char::isLetter)) {
+            cycleWordCasing(word)
+            return
+        }
+        spaces.reset()
+        shift.tap(now)
+    }
+
+    private fun cycleWordCasing(word: String) {
+        val next = when {
+            word.all { it.isLowerCase() || !it.isLetter() } -> word.replaceFirstChar { it.uppercaseChar() }
+            word.drop(1).all { it.isLowerCase() || !it.isLetter() } && word.first().isUpperCase() -> word.uppercase(Locale.ROOT)
+            else -> word.lowercase(Locale.ROOT)
+        }
+        editor.beginBatch()
+        try {
+            editor.deleteBeforeCursor(word.codePointCount(0, word.length))
+            editor.commit(next)
+        } finally {
+            editor.endBatch()
+        }
+    }
+
+    fun cancelSequence() {
+        spaces.reset()
+        shift.breakTapSequence()
+    }
+
+    fun cursorMoved() {
+        spaces.reset()
+        shift.onCursorMoved(autoCaps())
+    }
+
+    fun text(value: String) {
+        cancelSequence()
+        val letter = value.any(Char::isLetter)
+        val output = if (letter && (shift.isUppercase || policy.forceUppercase))
+            value.uppercase(Locale.ROOT) else value
+        if (!editor.commit(output)) return
+        if (letter) shift.onLetterCommitted()
+        else if (policy.automaticCapitalization && value.lastOrNull() in listOf('.', '!', '?', '\n')) {
+            shift.onSentenceBoundary()
+        } else shift.updateAutomatic(autoCaps())
+    }
+
+    fun space(now: Long) {
+        shift.breakTapSequence()
+        val lastWord = if (policy.suggestions && policy.autoCorrect) prefix() else null
+        val correction = if (lastWord != null) engine.autoCorrect(lastWord) else null
+        if (correction != null && lastWord != null && correction != lastWord) {
+            val formattedCorrection = formatCandidate(correction, lastWord.first().isUpperCase())
+            editor.beginBatch()
+            try {
+                if (editor.deleteBeforeCursor(lastWord.codePointCount(0, lastWord.length)) && editor.commit(formattedCorrection)) {
+                    shift.onLetterCommitted()
+                }
+            } finally {
+                editor.endBatch()
+            }
+        }
+        if (!policy.doubleSpace) {
+            spaces.reset()
+            editor.commit(" ")
+            return
+        }
+        val replace = spaces.shouldReplace(now, editor.beforeCursor(3), editor.hasSelection())
+        if (replace) {
+            editor.beginBatch()
+            try {
+                if (editor.deleteBeforeCursor(1) && editor.commit(". ")) shift.onSentenceBoundary()
+                else spaces.reset()
+            } finally { editor.endBatch() }
+        } else {
+            if (!editor.commit(" ")) spaces.reset()
+            shift.updateAutomatic(autoCaps())
+        }
+    }
+
+    fun backspace() {
+        cancelSequence()
+        if (editor.hasSelection()) editor.commit("") else editor.deleteBeforeCursor(1)
+        shift.onCursorMoved(autoCaps())
+    }
+
+    fun enter() {
+        cancelSequence()
+        editor.enter()
+        shift.updateAutomatic(autoCaps())
+    }
+
+    fun suggestions(): List<String> {
+        if (!policy.suggestions) return emptyList()
+        val prefix = prefix()
+        if (prefix == null) {
+            val prev = previousWord() ?: return emptyList()
+            return engine.suggestNext(prev).take(3).map { formatCandidate(it, false) }
+        }
+        return engine.suggest(prefix).take(3).map { formatCandidate(it, prefix.first().isUpperCase()) }
+    }
+
+    private fun formatCandidate(candidate: String, capitalizeFirst: Boolean): String = when {
+        policy.forceUppercase || shift.state == ShiftState.CAPS_LOCK -> candidate.uppercase(Locale.ROOT)
+        capitalizeFirst -> candidate.replaceFirstChar { it.uppercaseChar() }
+        else -> candidate
+    }
+
+    /** Re-read/revalidate the prefix on tap; do not replace stale or partial words. */
+    fun chooseSuggestion(candidate: String) {
+        if (!policy.suggestions || candidate !in suggestions()) return
+        val prefix = prefix()
+        cancelSequence()
+        editor.beginBatch()
+        try {
+            if (prefix != null) {
+                if (editor.deleteBeforeCursor(prefix.codePointCount(0, prefix.length)) && editor.commit(candidate)) {
+                    shift.onLetterCommitted()
+                }
+            } else {
+                if (editor.commit(candidate)) {
+                    shift.onLetterCommitted()
+                }
+            }
+        } finally { editor.endBatch() }
+    }
+
+    fun commitWordFlow(candidate: String) {
+        val word = formatCandidate(candidate, shift.isUppercase)
+        val prefix = prefix()
+        cancelSequence()
+        editor.beginBatch()
+        try {
+            if (prefix != null) {
+                editor.deleteBeforeCursor(prefix.codePointCount(0, prefix.length))
+            }
+            if (editor.commit("$word ")) {
+                shift.onLetterCommitted()
+            }
+        } finally {
+            editor.endBatch()
+        }
+    }
+
+    private fun prefix(): String? {
+        if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
+        val context = editor.beforeCursor(49)
+        val word = context.takeLastWhile(Char::isLetter)
+        return word.takeIf { it.isNotEmpty() && it.length <= 48 }
+    }
+
+    private fun previousWord(): String? {
+        if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
+        val context = editor.beforeCursor(49)
+        if (context.isEmpty() || !context.last().isWhitespace()) return null
+        val trimmed = context.trimEnd()
+        val word = trimmed.takeLastWhile(Char::isLetter)
+        return word.takeIf { it.isNotEmpty() && it.length <= 48 }
+    }
+
+    private fun autoCaps() = policy.automaticCapitalization && editor.shouldCapitalize()
+}
