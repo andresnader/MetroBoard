@@ -86,7 +86,9 @@ class LanguageDictionary(
         return trigrams[key] ?: emptyList()
     }
 
-    override fun autoCorrect(word: String): String? {
+    override fun autoCorrect(word: String): String? = autoCorrect(word, 0)
+
+    override fun autoCorrect(word: String, minFrequency: Int): String? {
         if (word.isBlank()) return null
         val norm = normalize(word)
 
@@ -102,7 +104,7 @@ class LanguageDictionary(
             if (fuzzy.isNotEmpty()) {
                 val candidate = fuzzy.first()
                 val dist = proximityDamerauLevenshtein(norm, normalize(candidate))
-                if (dist <= AUTOCORRECT_MAX_DISTANCE) {
+                if (dist <= AUTOCORRECT_MAX_DISTANCE && trie.getFrequency(candidate) >= minFrequency) {
                     return candidate
                 }
             }

@@ -56,82 +56,56 @@ object LanguageDictionaryRegistry {
     }
 
     private fun load(lang: String, context: Context?): DictionaryProvider {
+        if (context == null) return createFallbackDictionary(lang)
+        return loadFromAssets(lang) { path -> context.assets.open(path) }
+    }
+
+    /**
+     * Builds a dictionary from `dictionaries/<lang>.{dict,typos,bigrams,trigrams}` read through
+     * [open]. Android passes `AssetManager.open`; JVM unit tests pass a file reader so they can
+     * exercise the real shipped dictionaries instead of the tiny fallback lists.
+     */
+    internal fun loadFromAssets(lang: String, open: (String) -> java.io.InputStream): DictionaryProvider {
         val words = ArrayList<Pair<String, Int>>()
         val typos = HashMap<String, String>()
         val bigrams = HashMap<String, MutableList<String>>()
         val trigrams = HashMap<String, MutableList<String>>()
 
-        var loadedFromAssets = false
-        if (context != null) {
-            try {
-                val assetManager = context.assets
-                // 1. Read dict
-                val dictPath = "dictionaries/$lang.dict"
-                assetManager.open(dictPath).use { stream ->
-                    BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).forEachLine { line ->
-                        val parts = line.split("\t")
-                        if (parts.size >= 2) {
-                            val word = parts[0].trim()
-                            val freq = parts[1].trim().toIntOrNull() ?: 100
-                            if (word.isNotEmpty()) words.add(word to freq)
-                        }
-                    }
+        // Mandatory file: without a word list the language falls back to the built-in sample.
+        val loadedWords = try {
+            readTsv(open, "dictionaries/$lang.dict") { parts ->
+                if (parts.size >= 2) {
+                    val word = parts[0].trim()
+                    val freq = parts[1].trim().toIntOrNull() ?: 100
+                    if (word.isNotEmpty()) words.add(word to freq)
                 }
+            }
+            words.isNotEmpty()
+        } catch (_: Exception) {
+            false
+        }
+        if (!loadedWords) return createFallbackDictionary(lang)
 
-                // 2. Read typos
-                try {
-                    val typosPath = "dictionaries/$lang.typos"
-                    assetManager.open(typosPath).use { stream ->
-                        BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).forEachLine { line ->
-                            val parts = line.split("\t")
-                            if (parts.size >= 2) {
-                                typos[CompactWordTrie.normalize(parts[0].trim())] = parts[1].trim()
-                            }
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                // 3. Read bigrams
-                try {
-                    val bigramsPath = "dictionaries/$lang.bigrams"
-                    assetManager.open(bigramsPath).use { stream ->
-                        BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).forEachLine { line ->
-                            val parts = line.split("\t")
-                            if (parts.size >= 2) {
-                                val w1 = parts[0].trim()
-                                val w2 = parts[1].trim()
-                                bigrams.getOrPut(CompactWordTrie.normalize(w1)) { ArrayList() }.add(w2)
-                            }
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                // 4. Read trigrams
-                try {
-                    val trigramsPath = "dictionaries/$lang.trigrams"
-                    assetManager.open(trigramsPath).use { stream ->
-                        BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).forEachLine { line ->
-                            val parts = line.split("\t")
-                            if (parts.size >= 3) {
-                                val w1 = parts[0].trim()
-                                val w2 = parts[1].trim()
-                                val w3 = parts[2].trim()
-                                val key = "${CompactWordTrie.normalize(w1)} ${CompactWordTrie.normalize(w2)}"
-                                trigrams.getOrPut(key) { ArrayList() }.add(w3)
-                            }
-                        }
-                    }
-                } catch (_: Exception) {}
-
-                loadedFromAssets = words.isNotEmpty()
-            } catch (_: Exception) {
-                loadedFromAssets = false
+        // Optional files: a missing one only disables that feature for the language.
+        runCatching {
+            readTsv(open, "dictionaries/$lang.typos") { parts ->
+                if (parts.size >= 2) typos[CompactWordTrie.normalize(parts[0].trim())] = parts[1].trim()
             }
         }
-
-        if (!loadedFromAssets) {
-            // Fallback for tests or missing assets
-            return createFallbackDictionary(lang)
+        runCatching {
+            readTsv(open, "dictionaries/$lang.bigrams") { parts ->
+                if (parts.size >= 2) {
+                    bigrams.getOrPut(CompactWordTrie.normalize(parts[0].trim())) { ArrayList() }.add(parts[1].trim())
+                }
+            }
+        }
+        runCatching {
+            readTsv(open, "dictionaries/$lang.trigrams") { parts ->
+                if (parts.size >= 3) {
+                    val key = "${CompactWordTrie.normalize(parts[0].trim())} ${CompactWordTrie.normalize(parts[1].trim())}"
+                    trigrams.getOrPut(key) { ArrayList() }.add(parts[2].trim())
+                }
+            }
         }
 
         val defaultLayout = when (lang) {
@@ -148,6 +122,12 @@ object LanguageDictionaryRegistry {
             trigrams = trigrams,
             defaultLayout = defaultLayout
         )
+    }
+
+    private fun readTsv(open: (String) -> java.io.InputStream, path: String, onRow: (List<String>) -> Unit) {
+        open(path).use { stream ->
+            BufferedReader(InputStreamReader(stream, Charsets.UTF_8)).forEachLine { onRow(it.split("\t")) }
+        }
     }
 
     private fun createFallbackDictionary(lang: String): DictionaryProvider {

@@ -28,6 +28,12 @@ interface DictionaryProvider {
     fun getBigramSuggestions(previousWord: String): List<String>
     fun getTrigramSuggestions(word1: String, word2: String): List<String> = emptyList()
     fun autoCorrect(word: String): String?
+
+    /**
+     * Like [autoCorrect], but a fuzzy (non-curated) replacement must be at least this frequent.
+     * Curated typo-map entries are always accepted. Used to never "correct" into rare words.
+     */
+    fun autoCorrect(word: String, minFrequency: Int): String? = autoCorrect(word)
     fun normalize(word: String): String
 }
 

@@ -28,8 +28,9 @@ class LocalSuggestionEngineTest {
         assertTrue(LocalSuggestionEngine().suggest("").isEmpty())
     }
 
-    @Test fun exactWordIsNotSuggestedAgain() {
-        assertFalse(LocalSuggestionEngine(activeLanguage = "es").suggest("hola").contains("hola"))
+    @Test fun aValidTypedWordIsKeptAsTheTopCandidate() {
+        // Policy change (0.3): a correctly typed common word is preserved, not hidden.
+        assertEquals("hola", LocalSuggestionEngine(activeLanguage = "es").suggest("hola").first())
     }
 
     @Test fun personalDictionaryStoresNothing() {

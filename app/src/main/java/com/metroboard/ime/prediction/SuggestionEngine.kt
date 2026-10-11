@@ -14,4 +14,10 @@ fun interface SuggestionEngine {
     fun suggestNext(previousWord: String): List<String> = emptyList()
     fun suggestNextTrigram(word1: String, word2: String): List<String> = emptyList()
     fun autoCorrect(word: String): String? = null
+
+    /** The user finished typing [word] and kept it; engines may remember it (never in sensitive fields). */
+    fun learn(word: String) = Unit
+
+    /** True when [word] is a valid word of the active language or was kept by the user. */
+    fun isKnownWord(word: String): Boolean = false
 }

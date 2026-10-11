@@ -54,6 +54,7 @@ class DictionaryAndPersonalDictTest {
 
         // Learn words in English
         dict.learn("Supercalifragilistic", "en")
+        dict.learn("Supercalifragilistic", "en") // suggested from the second use
 
         // Test language isolation
         val esWords = dict.wordsWithPrefix("ame", "es")
@@ -81,9 +82,12 @@ class DictionaryAndPersonalDictTest {
 
         // Create a new instance pointing to same directory to test persistence
         val reloadedDict = LocalPersonalDictionary(storageDir)
-        val reloadedEsWords = reloadedDict.wordsWithPrefix("che", "es")
-        assertEquals(1, reloadedEsWords.size)
-        assertEquals("Chevere", reloadedEsWords[0])
+        // A word used once is protected from autocorrect but not yet suggested (could be a typo).
+        assertTrue(reloadedDict.knows("Chevere", "es"))
+        assertTrue(reloadedDict.wordsWithPrefix("che", "es").isEmpty())
+        reloadedDict.learn("Chevere", "es")
+        assertEquals(listOf("Chevere"), reloadedDict.wordsWithPrefix("che", "es"))
+        assertFalse(reloadedDict.knows("Chevere", "en"))
 
         // Test JSON Import on fresh dictionary
         val freshStorage = tempFolder.newFolder("dict_import_test")
