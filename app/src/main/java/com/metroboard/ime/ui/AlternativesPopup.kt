@@ -47,9 +47,10 @@ class AlternativesPopup {
             setPadding(p, p, p, p)
             layoutDirection = View.LAYOUT_DIRECTION_LTR
 
-            // WP8.1 Metro style: Dark container with 2dp Lumia Accent border
+            // Metro style: a container in the keyboard's own background with a 2dp accent border. Read from
+            // KeyboardColors every time the popup is built, so a theme or accent change shows at once.
             background = GradientDrawable().apply {
-                setColor(Color.parseColor("#1C1C1C"))
+                setColor(KeyboardColors.background)
                 setStroke((2 * density).toInt(), KeyboardColors.accent)
                 cornerRadius = 0f // Pure rectangular Metro tile aesthetic
             }
@@ -59,11 +60,18 @@ class AlternativesPopup {
             val btn = TextView(context).apply {
                 text = value
                 textSize = if (value.length > 2) 16f else 22f
-                setTextColor(Color.WHITE)
+                // Keys' own colours; the pressed tile takes the accent, with text chosen for contrast on it.
+                setTextColor(
+                    android.content.res.ColorStateList(
+                        arrayOf(intArrayOf(android.R.attr.state_pressed), intArrayOf()),
+                        intArrayOf(KeyboardColors.onColor(KeyboardColors.accent), KeyboardColors.foreground),
+                    ),
+                )
                 gravity = Gravity.CENTER
                 setPadding(context.dp(8), context.dp(6), context.dp(8), context.dp(6))
-                background = GradientDrawable().apply {
-                    setColor(Color.parseColor("#262626"))
+                background = android.graphics.drawable.StateListDrawable().apply {
+                    addState(intArrayOf(android.R.attr.state_pressed), ColorDrawable(KeyboardColors.accent))
+                    addState(intArrayOf(), ColorDrawable(KeyboardColors.key))
                 }
                 setOnClickListener {
                     dismiss()
