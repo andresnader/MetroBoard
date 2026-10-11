@@ -3,12 +3,12 @@ plugins {
 }
 
 android {
-    namespace = "com.windowsphonekeyboard.ime"
+    namespace = "com.metroboard.ime"
     compileSdk = 36
     buildToolsVersion = "36.0.0"
 
     defaultConfig {
-        applicationId = "com.windowsphonekeyboard.ime"
+        applicationId = "com.metroboard.ime"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

@@ -11,7 +11,7 @@ Se leyeron sus seis hojas antes de implementar. La
 [matriz de trazabilidad](docs/corpus-analysis.md) distingue Confirmado, Probable,
 Inferido y Desconocido. La petición de esta iteración limita el alcance del corpus.
 
-Nombre del proyecto: **MetroBoard**. Package ID: `com.windowsphonekeyboard.ime`.
+Nombre del proyecto: **MetroBoard**. Package ID: `com.metroboard.ime`.
 Es un identificador de paquete técnico, sin afirmar afiliación.
 La raíz Gradle se llama `MetroBoard`.
 
@@ -52,7 +52,7 @@ La raíz Gradle se llama `MetroBoard`.
 Un módulo `app` y paquetes con responsabilidades separadas:
 
 ```text
-app/src/main/java/com/windowsphonekeyboard/ime/
+app/src/main/java/com/metroboard/ime/
   ime/          servicio, política por editor y adaptador InputConnection
   ui/           vistas, iconos geométricos propios y popup de alternativas
   keyboard/     layouts, EditorController, EditorPort, Shift, doble espacio
@@ -166,8 +166,8 @@ Android ni genera un APK**. El compilador de respaldo disponible aquí es 2.3.20
 En un emulador de pruebas también se puede usar:
 
 ```sh
-adb shell ime enable com.windowsphonekeyboard.ime/.ime.WordFlowImeService
-adb shell ime set com.windowsphonekeyboard.ime/.ime.WordFlowImeService
+adb shell ime enable com.metroboard.ime/.ime.WordFlowImeService
+adb shell ime set com.metroboard.ime/.ime.WordFlowImeService
 ```
 
 Para escribir en un AVD con teclado físico, activa **Show virtual keyboard** en

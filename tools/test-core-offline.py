@@ -27,7 +27,7 @@ for jar in (studio / "lib").rglob("*.jar"):
             break
 if not hamcrest:
     raise SystemExit("Hamcrest is missing. Use ./gradlew :app:testDebugUnitTest with network access.")
-source_root = root / "app/src/main/java/com/windowsphonekeyboard/ime"
+source_root = root / "app/src/main/java/com/metroboard/ime"
 sources = [path for module in ("keyboard", "prediction", "dictionary", "gestures")
            for path in (source_root / module).glob("*.kt")]
 tests = sorted((root / "app/src/test/java").rglob("*Test.kt"))
