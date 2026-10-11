@@ -33,6 +33,9 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Unit tests read the shipped dictionaries straight from disk, so a change to them
+        // must invalidate the test task (otherwise Gradle reports a stale green result).
+        unitTests.all { it.inputs.dir("src/main/assets/dictionaries").withPropertyName("dictionaryAssets") }
     }
 }
 
