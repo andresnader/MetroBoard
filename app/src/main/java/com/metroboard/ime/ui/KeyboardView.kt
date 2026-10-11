@@ -193,6 +193,17 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         stateMachine.onLongPressTimerExpired(activeDownPointerId)
     }
 
+    // Taps released while an earlier-pressed key is still held wait (bounded) to keep
+    // press order; this timer guarantees a held key can never delay them indefinitely.
+    private val flushPendingTapsRunnable = Runnable {
+        stateMachine.flushPending(android.os.SystemClock.uptimeMillis())
+    }
+
+    private fun scheduleFlushPendingTaps() {
+        mainHandler.removeCallbacks(flushPendingTapsRunnable)
+        mainHandler.postDelayed(flushPendingTapsRunnable, stateMachine.tapOrderWindowMs + 10L)
+    }
+
     init {
         orientation = VERTICAL
         layoutDirection = View.LAYOUT_DIRECTION_LTR
@@ -470,6 +481,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
                 mainHandler.removeCallbacks(repeatRunnable)
                 highlightKey(key, true)
                 stateMachine.onPointerDown(pointerId, x, y, time, key)
+                scheduleFlushPendingTaps()
                 return true
             }
 
@@ -487,6 +499,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             MotionEvent.ACTION_POINTER_UP -> {
                 highlightKey(key, false)
                 stateMachine.onPointerUp(pointerId, x, y, time, key)
+                scheduleFlushPendingTaps()
                 return true
             }
 

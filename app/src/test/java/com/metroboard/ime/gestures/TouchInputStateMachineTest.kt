@@ -144,10 +144,14 @@ class TouchInputStateMachineTest {
         sm.onMove(0, 120f, 100f, 1020L, keyH)
         sm.onMove(0, 150f, 100f, 1050L, keyO) // totalDist = 50f >= 40f, time >= 30ms
 
+        // Only two letter keys over a short path is not yet evidence of shape writing
+        // (a thumb rolling onto a neighbour key must stay a tap).
+        assertFalse("Two keys over a short path must not start shape writing", sm.isSwiping)
+
+        sm.onMove(0, 180f, 100f, 1080L, keyO) // path now >= 2 * swipeStartDistance
         assertTrue("Expected swipe to be active", sm.isSwiping)
         assertTrue(swipeStarted)
 
-        sm.onMove(0, 180f, 100f, 1080L, keyO)
         sm.onUp(0, 200f, 100f, 1100L, keyO)
 
         assertTrue(swipeEnded)

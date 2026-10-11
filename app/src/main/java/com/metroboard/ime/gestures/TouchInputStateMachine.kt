@@ -51,7 +51,11 @@ data class PointerRecord(
     var distanceTraveled: Float = 0f,
     var hasTriggeredTap: Boolean = false,
     var hasTriggeredLongPress: Boolean = false,
-    val path: MutableList<GesturePoint> = mutableListOf()
+    val path: MutableList<GesturePoint> = mutableListOf(),
+    /** Monotonic press order across the whole gesture; used to emit taps in press order. */
+    val downSeq: Long = 0L,
+    /** Distinct keys this pointer has been over; evidence of shape-writing intent. */
+    val visitedKeys: MutableSet<KeySpec> = LinkedHashSet()
 )
 
 class TouchInputStateMachine(
@@ -62,7 +66,15 @@ class TouchInputStateMachine(
     var doubleTapTimeoutMs: Long = 300L,
     var spaceCursorThreshold: Float = 32f,     // in pixels per cursor move step
     var touchSlop: Float = 24f,                // in pixels
-    var wordFlowEnabled: Boolean = true
+    var wordFlowEnabled: Boolean = true,
+    /** Distinct letter keys a pointer must cross to be treated as shape writing... */
+    var swipeMinDistinctKeys: Int = 3,
+    /** ...unless it crossed at least 2 and travelled this many swipe-start distances. */
+    var swipeLongPathFactor: Float = 2f,
+    /** Max extra drift (in swipe-start distances) for a non-swipe press to still count as a tap. */
+    var tapMaxDriftFactor: Float = 2f,
+    /** A released tap waits at most this long for a key pressed earlier and still held. */
+    var tapOrderWindowMs: Long = 250L
 ) {
     var state: TouchInteractionState = TouchInteractionState.IDLE
         private set
@@ -72,6 +84,10 @@ class TouchInputStateMachine(
     private var lastCursorStepX: Float = 0f
     private var lastTapTime: Long = 0L
     private var lastTapKey: KeySpec? = null
+    private var nextDownSeq = 0L
+
+    /** Taps already released but waiting for an earlier-pressed key, to keep press order. */
+    private val pendingTaps = ArrayList<PointerRecord>()
 
     val isSwiping: Boolean
         get() = state == TouchInteractionState.SWIPE_ACTIVE
@@ -80,7 +96,10 @@ class TouchInputStateMachine(
         get() = activePointers[primaryPointerId]?.path ?: emptyList()
 
     fun onDown(pointerId: Int, x: Float, y: Float, time: Long, key: KeySpec?) {
+        // A fresh gesture means the previous one ended (possibly with a lost UP):
+        // never drop taps that were already released.
         activePointers.clear()
+        flushPending(time, force = true)
         primaryPointerId = pointerId
         val record = PointerRecord(
             pointerId = pointerId,
@@ -91,9 +110,11 @@ class TouchInputStateMachine(
             currentY = y,
             currentTime = time,
             initialKey = key,
-            currentKey = key
+            currentKey = key,
+            downSeq = nextDownSeq++
         ).apply {
             path.add(GesturePoint(x, y, time))
+            key?.let { visitedKeys.add(it) }
         }
         activePointers[pointerId] = record
 
@@ -123,9 +144,11 @@ class TouchInputStateMachine(
             currentY = y,
             currentTime = time,
             initialKey = key,
-            currentKey = key
+            currentKey = key,
+            downSeq = nextDownSeq++
         ).apply {
             path.add(GesturePoint(x, y, time))
+            key?.let { visitedKeys.add(it) }
         }
         activePointers[pointerId] = record
 
@@ -146,6 +169,7 @@ class TouchInputStateMachine(
         record.currentY = y
         record.currentTime = time
         record.currentKey = currentKey
+        currentKey?.let { record.visitedKeys.add(it) }
         val stepDist = hypot((x - prevX).toDouble(), (y - prevY).toDouble()).toFloat()
         record.distanceTraveled += stepDist
         record.path.add(GesturePoint(x, y, time))
@@ -193,7 +217,8 @@ class TouchInputStateMachine(
 
             TouchInteractionState.SWIPE_CANDIDATE -> {
                 if (activePointers.size == 1 && totalDistFromStart >= swipeStartDistance &&
-                    (time - record.startTime) >= swipeStartTimeMinMs) {
+                    (time - record.startTime) >= swipeStartTimeMinMs &&
+                    hasShapeWritingEvidence(record)) {
                     state = TouchInteractionState.SWIPE_ACTIVE
                     listener.onSwipeStarted(record.path.first())
                     for (pt in record.path) {
@@ -248,6 +273,7 @@ class TouchInputStateMachine(
         val dist = hypot((record.currentX - record.startX).toDouble(), (record.currentY - record.startY).toDouble()).toFloat()
         if (dist <= touchSlop) {
             record.hasTriggeredLongPress = true
+            flushPending(record.currentTime)
             if (record.initialKey?.action == KeyAction.SPACE) {
                 state = TouchInteractionState.LONG_PRESS_ACTIVE
                 listener.onSpacebarLongPressed()
@@ -260,13 +286,11 @@ class TouchInputStateMachine(
 
     fun onPointerUp(pointerId: Int, x: Float, y: Float, time: Long, key: KeySpec?) {
         val record = activePointers.remove(pointerId)
-        if (record != null && !record.hasTriggeredLongPress) {
-            val dist = hypot((x - record.startX).toDouble(), (y - record.startY).toDouble()).toFloat()
-            if (dist <= touchSlop * 1.5f && record.initialKey != null) {
-                listener.onKeyTapped(record.initialKey)
-                lastTapTime = time
-                lastTapKey = record.initialKey
-            }
+        if (record != null) {
+            record.currentX = x
+            record.currentY = y
+            record.currentTime = time
+            if (isTap(record, x, y)) completeTap(record, time)
         }
 
         if (activePointers.size <= 1) {
@@ -275,6 +299,7 @@ class TouchInputStateMachine(
                 state = TouchInteractionState.IDLE
             }
         }
+        flushPending(time)
     }
 
     fun onUp(pointerId: Int, x: Float, y: Float, time: Long, key: KeySpec?) {
@@ -307,25 +332,15 @@ class TouchInputStateMachine(
                 // Handled by popup dismissal/selection
             }
 
-            TouchInteractionState.MULTITOUCH_ACTIVE -> {
-                if (record != null && !record.hasTriggeredLongPress) {
-                    val dist = hypot((x - record.startX).toDouble(), (y - record.startY).toDouble()).toFloat()
-                    if (dist <= touchSlop * 1.5f && record.initialKey != null) {
-                        listener.onKeyTapped(record.initialKey)
-                        lastTapTime = time
-                        lastTapKey = record.initialKey
-                    }
-                }
-            }
-
-            TouchInteractionState.TAP_CANDIDATE, TouchInteractionState.SWIPE_CANDIDATE, TouchInteractionState.LONG_PRESS_CANDIDATE -> {
-                if (record != null && !record.hasTriggeredLongPress) {
-                    val dist = hypot((x - record.startX).toDouble(), (y - record.startY).toDouble()).toFloat()
-                    if (dist <= touchSlop * 1.5f && record.initialKey != null) {
-                        listener.onKeyTapped(record.initialKey)
-                        lastTapTime = time
-                        lastTapKey = record.initialKey
-                    }
+            TouchInteractionState.MULTITOUCH_ACTIVE,
+            TouchInteractionState.TAP_CANDIDATE,
+            TouchInteractionState.SWIPE_CANDIDATE,
+            TouchInteractionState.LONG_PRESS_CANDIDATE -> {
+                if (record != null) {
+                    record.currentX = x
+                    record.currentY = y
+                    record.currentTime = time
+                    if (isTap(record, x, y)) completeTap(record, time)
                 }
             }
 
@@ -335,6 +350,7 @@ class TouchInputStateMachine(
         activePointers.clear()
         primaryPointerId = -1
         state = TouchInteractionState.IDLE
+        flushPending(time, force = true)
     }
 
     fun onCancel() {
@@ -344,5 +360,66 @@ class TouchInputStateMachine(
         activePointers.clear()
         primaryPointerId = -1
         state = TouchInteractionState.IDLE
+        // Taps released before the interruption are valid keystrokes.
+        flushPending(lastEventTime(), force = true)
+    }
+
+    /**
+     * Emits deferred taps whose ordering constraint has expired. The view calls this
+     * from a short timer so a long-held key can never hold back later keystrokes.
+     */
+    fun flushPending(time: Long, force: Boolean = false) {
+        if (pendingTaps.isEmpty()) return
+        pendingTaps.sortBy { it.downSeq }
+        while (pendingTaps.isNotEmpty()) {
+            val head = pendingTaps.first()
+            if (!force && isBlockedByEarlierKey(head, time)) break
+            pendingTaps.removeAt(0)
+            emitTap(head, time)
+        }
+    }
+
+    private fun lastEventTime(): Long =
+        pendingTaps.maxOfOrNull { it.currentTime } ?: 0L
+
+    /**
+     * A pointer that never became a swipe, cursor move or long press is a keystroke
+     * for the key it was pressed on, even if the thumb rolled a little. Only a drag
+     * longer than [tapMaxDriftFactor] swipe-start distances is considered abandoned.
+     */
+    private fun isTap(record: PointerRecord, x: Float, y: Float): Boolean {
+        if (record.hasTriggeredLongPress || record.initialKey == null) return false
+        val dist = hypot((x - record.startX).toDouble(), (y - record.startY).toDouble()).toFloat()
+        return dist <= swipeStartDistance * tapMaxDriftFactor
+    }
+
+    /** Shape writing needs real evidence, not just a movement past the touch slop. */
+    private fun hasShapeWritingEvidence(record: PointerRecord): Boolean {
+        val letterKeys = record.visitedKeys.count { it.action == KeyAction.TEXT && it.label.firstOrNull()?.isLetter() == true }
+        if (letterKeys >= swipeMinDistinctKeys) return true
+        return letterKeys >= 2 && record.distanceTraveled >= swipeStartDistance * swipeLongPathFactor
+    }
+
+    private fun completeTap(record: PointerRecord, time: Long) {
+        if (isBlockedByEarlierKey(record, time)) {
+            pendingTaps.add(record)
+        } else {
+            emitTap(record, time)
+            flushPending(time)
+        }
+    }
+
+    /** True while a key pressed earlier is still held and recent enough to define order. */
+    private fun isBlockedByEarlierKey(record: PointerRecord, time: Long): Boolean =
+        activePointers.values.any {
+            it.downSeq < record.downSeq && !it.hasTriggeredLongPress &&
+                time - it.startTime <= tapOrderWindowMs
+        }
+
+    private fun emitTap(record: PointerRecord, time: Long) {
+        val key = record.initialKey ?: return
+        listener.onKeyTapped(key)
+        lastTapTime = time
+        lastTapKey = key
     }
 }
