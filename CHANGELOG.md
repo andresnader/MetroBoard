@@ -43,6 +43,17 @@ Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además e
   *borde a borde*, que no hacía nada.
 - **Tema claro:** el icono de cambio de teclado del sistema era blanco sobre blanco.
 - **Pantalla «Acerca de»** mostraba una versión fija y licencias de fuentes que nunca se usaron.
+- **Pantalla de Ajustes inconsistente y sin memoria de sección.** (1) Cada cambio de opción llamaba a `recreate()` y la pantalla
+  volvía a *languages*; ahora los selectores y interruptores se actualizan en sitio, y el cambio de tema, acento, importación o
+  restablecer reconstruye las páginas conservando la sección y el scroll de cada una (también al rotar o cuando Android recrea la
+  actividad: se guardan en el estado de instancia). (2) Había tres estilos de control (segmentos planos, `Switch` redondeado de Material,
+  filas de texto sin aspecto de botón) y dos tamaños de letra por selector: ahora un único conjunto Metro (`SettingsControls.kt`:
+  segmentos, interruptor rectangular, botón con contorno, campo «pruébalo» idéntico en *typing* y *about*) con 48 dp de alto y tipografía
+  uniforme. (3) El texto del segmento seleccionado era siempre negro (ilegible sobre Cobalt, Indigo…): ahora negro o blanco según contraste
+  con el acento (`KeyboardColors.onColor`, probado en los 20 acentos). (4) El campo de prueba de *about* era oscuro en tema claro, el
+  borde de selección del acento era blanco sobre blanco, los diálogos seguían el tema del sistema y no el del teclado, y en Android < 15 la
+  barra de estado seguía oscura con iconos oscuros: todo sigue ahora el tema del teclado. Los toasts «X seleccionado» se quitaron: el
+  estado visible del segmento ya es la confirmación.
 - **Directrices de Windows Phone** (análisis del PDF en [`docs/0.3/wp-design-guidelines-analysis.md`](docs/0.3/wp-design-guidelines-analysis.md)):
   la paleta tenía 10 colores con valores de Windows 10; ahora son los **20 acentos de WP8 con su hex exacto** (cuadrícula 5×4) y el acento por
   defecto es *Cyan* `#1BA1E2`; el botón de portapapeles era un emoji a color y ahora es un glifo geométrico plano (con descripción en español);

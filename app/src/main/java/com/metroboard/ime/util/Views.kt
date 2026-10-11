@@ -46,6 +46,23 @@ object KeyboardColors {
     var accent: Int = Color.rgb(0, 164, 239)
 
     /**
+     * Black or white, whichever reads better on [background] (WCAG relative luminance, plain integer
+     * maths so it can be unit-tested on the JVM). Accents range from Yellow to Cobalt, so a fixed text
+     * colour is unreadable on one end of the palette.
+     */
+    fun onColor(background: Int): Int {
+        fun channel(v: Int): Double {
+            val c = v / 255.0
+            return if (c <= 0.03928) c / 12.92 else Math.pow((c + 0.055) / 1.055, 2.4)
+        }
+        val luminance = 0.2126 * channel((background shr 16) and 0xFF) +
+            0.7152 * channel((background shr 8) and 0xFF) +
+            0.0722 * channel(background and 0xFF)
+        // Black wins when its contrast ratio (L + 0.05) / 0.05 beats white's 1.05 / (L + 0.05).
+        return if ((luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+    }
+
+    /**
      * The 20 Windows Phone 8 accent colours, names and hex taken from the "Windows Phone Design"
      * deck (BUILD 2013, slide "Colors"). The deck's RGB column has two typos (Pink G, Yellow G);
      * the hex column agrees with the rendered swatches and is the one used here.

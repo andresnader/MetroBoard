@@ -16,6 +16,7 @@ ver [wp-design-guidelines-analysis.md](wp-design-guidelines-analysis.md). Es una
 | Franja inferior | Chevrón y globo del sistema bajo las teclas | Es de Android. Se mantuvo el relleno; en tema claro el globo era blanco sobre blanco → corregido |
 | Mayúsculas | Auto-shift y estados visibles correctos | Sin cambios visuales; se corrigió la capitalización tras `.` sin espacio |
 | Ajustes | Pivotes languages/typing/layout/appearance/sound/gestures/privacy/about | Se quitó «Borde a borde» (no hacía nada); 3 interruptores ahora funcionan; se añadió «Aprender palabras nuevas» |
+| Ajustes: coherencia | Tres estilos de control, campo «pruébalo» oscuro en tema claro, selección de acento invisible en claro, la pantalla volvía a la primera sección con cada cambio | Un solo conjunto de controles Metro, texto del segmento por contraste con el acento, diálogos con el tema del teclado, sección y scroll conservados (también al rotar). Verificado en el emulador (oscuro/claro, vertical/horizontal), **sin TalkBack ni fuente aumentada** |
 | About | «versión 0.2.0» fija y licencias de fuentes no usadas | Versión real (0.3.0) y fuentes reales |
 
 ## 2. Corpus histórico: estado de cada comportamiento
