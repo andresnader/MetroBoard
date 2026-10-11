@@ -109,6 +109,26 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         render()
     }
 
+    /**
+     * Android draws the IME's hide / switch-keyboard buttons itself, tinted by the IME window's
+     * navigation-bar appearance. With a light keyboard they must be dark, or the globe is white on white.
+     */
+    private fun syncSystemBarAppearance() {
+        val win = window?.window ?: return
+        val light = !KeyboardColors.isDarkTheme
+        if (Build.VERSION.SDK_INT >= 30) {
+            win.insetsController?.setSystemBarsAppearance(
+                if (light) android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS else 0,
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            win.decorView.systemUiVisibility = win.decorView.systemUiVisibility.let {
+                if (light) it or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR else it and View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR.inv()
+            }
+        }
+    }
+
     private fun applyKeyboardLayout(kb: KeyboardView) {
         val layoutType = when (preferences.layoutOverride.uppercase()) {
             "QWERTY" -> KeyboardLayoutType.QWERTY
@@ -128,6 +148,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
             theme = preferences.theme,
             oneHandedMode = preferences.oneHandedMode
         )
+        syncSystemBarAppearance()
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
