@@ -72,6 +72,25 @@ class InputConnectionEditor(
 
     override fun hasSelection(): Boolean = start >= 0 && end >= 0 && start != end
 
+    override fun selectedText(): String? =
+        if (hasSelection()) connection()?.getSelectedText(0)?.toString() else null
+
+    override fun replaceSelectionKeepingIt(text: String): Boolean {
+        val ic = connection() ?: return false
+        if (start < 0 || end < 0) return commit(text)
+        val from = minOf(start, end)
+        ic.beginBatchEdit()
+        val ok = try { ic.commitText(text, 1) && ic.setSelection(from, from + text.length) } finally { ic.endBatchEdit() }
+        if (ok) {
+            // The platform will report the collapsed cursor and then the restored range: both are our own.
+            expectedSelections.addLast((from + text.length) to (from + text.length))
+            expectedSelections.addLast(from to (from + text.length))
+            start = from
+            end = from + text.length
+        }
+        return ok
+    }
+
     override fun shouldCapitalize(): Boolean {
         if (!policy.editing.automaticCapitalization) return false
         val ic = connection() ?: return false

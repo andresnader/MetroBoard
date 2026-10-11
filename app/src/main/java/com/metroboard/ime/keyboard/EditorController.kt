@@ -49,6 +49,14 @@ class EditorController(
             shift.tap(now)
             return
         }
+        // Selected text: Shift cycles its casing and keeps it selected (corpus B002, confirmed).
+        if (policy.shiftWordCasing && editor.hasSelection()) {
+            val selected = editor.selectedText()
+            if (selected != null) {
+                if (selected.any(Char::isLetter)) editor.replaceSelectionKeepingIt(nextCasing(selected))
+                return // never mix with the one-shot state of the next letter
+            }
+        }
         val word = if (policy.shiftWordCasing) prefix() else null
         if (word != null && word.any(Char::isLetter)) {
             cycleWordCasing(word)
@@ -58,12 +66,15 @@ class EditorController(
         shift.tap(now)
     }
 
+    /** palabra -> Palabra -> PALABRA -> palabra. */
+    private fun nextCasing(word: String): String = when {
+        word.all { it.isLowerCase() || !it.isLetter() } -> word.replaceFirstChar { it.uppercaseChar() }
+        word.drop(1).all { it.isLowerCase() || !it.isLetter() } && word.first().isUpperCase() -> word.uppercase(Locale.ROOT)
+        else -> word.lowercase(Locale.ROOT)
+    }
+
     private fun cycleWordCasing(word: String) {
-        val next = when {
-            word.all { it.isLowerCase() || !it.isLetter() } -> word.replaceFirstChar { it.uppercaseChar() }
-            word.drop(1).all { it.isLowerCase() || !it.isLetter() } && word.first().isUpperCase() -> word.uppercase(Locale.ROOT)
-            else -> word.lowercase(Locale.ROOT)
-        }
+        val next = nextCasing(word)
         editor.beginBatch()
         try {
             editor.deleteBeforeCursor(word.codePointCount(0, word.length))
@@ -91,7 +102,9 @@ class EditorController(
             value.uppercase(Locale.ROOT) else value
         if (!editor.commit(output)) return
         if (letter) shift.onLetterCommitted()
-        else if (policy.automaticCapitalization && value.lastOrNull() in listOf('.', '!', '?', '\n')) {
+        // Only a newline starts a sentence at once. After ".", "?" or "!" the next letter is capital
+        // only once a space follows (autoCaps() asks the editor), so "www.google.com" and "3.14" stay intact.
+        else if (policy.automaticCapitalization && value.lastOrNull() == '\n') {
             shift.onSentenceBoundary()
         } else shift.updateAutomatic(autoCaps())
     }

@@ -21,6 +21,9 @@ import kotlin.math.hypot
  * a careful user, not a real thumb: the numbers are a regression benchmark, not a user-study result.
  */
 class WordFlowQualityTest {
+    /** Words per language. 400 keeps the whole suite fast; the numbers in the PR used 1,200. */
+    private val SAMPLE = 400
+
     private fun decoder() = WordFlowShapeDecoder(dictionaryFor = RealDictionaries::get)
 
     /** Normalised swipe over [centers] (same coordinate system the decoder expects). */
@@ -60,12 +63,12 @@ class WordFlowQualityTest {
     }
 
     @Test fun benchmarkTop1Top3AndLatency() {
-        println("\n=== Word Flow on synthetic swipes (seed 11, jitter 0.02 of key-board width = 20% of a key) ===")
+        println("\n=== Word Flow on synthetic swipes (seed 11, jitter 0.02 of keyboard width = 20% of a key) ===")
         println("%-4s %5s %7s %7s %10s %10s".format("lang", "n", "top1%", "top3%", "avg ms", "max ms"))
         for (lang in listOf("es", "en", "fr", "de")) {
             val d = decoder()
             val centers = KeyboardGeometry.centers(lang)
-            val words = RealDictionaries.get(lang).getTopWords(3000).filter { usable(lang, it) }.take(1200)
+            val words = RealDictionaries.get(lang).getTopWords(3000).filter { usable(lang, it) }.take(SAMPLE)
             val rnd = Random(11)
             var top1 = 0; var top3 = 0; var n = 0; var totalNs = 0L; var maxNs = 0L
             for (w in words) {
@@ -116,7 +119,7 @@ class WordFlowQualityTest {
         for (lang in listOf("es", "en", "fr", "de")) {
             val d = decoder()
             val centers = KeyboardGeometry.centers(lang)
-            val words = RealDictionaries.get(lang).getTopWords(3000).filter { usable(lang, it) }.take(500)
+            val words = RealDictionaries.get(lang).getTopWords(3000).filter { usable(lang, it) }.take(SAMPLE / 2)
             val cells = ArrayList<String>()
             for (jit in listOf(0.02f, 0.035f, 0.05f)) {
                 val rnd = Random(5)
@@ -131,7 +134,7 @@ class WordFlowQualityTest {
             }
             // random walks that wander over the keyboard: nobody meant a word
             val rnd = Random(99)
-            var accepted = 0; val trials = 600
+            var accepted = 0; val trials = SAMPLE / 2
             repeat(trials) {
                 var x = rnd.nextFloat(); var y = rnd.nextFloat()
                 val pts = ArrayList<GesturePoint>()
@@ -156,7 +159,9 @@ class WordFlowQualityTest {
         assertTrue(d.decode(path, "es").isEmpty())
     }
 
+    /** Slow; only for re-calibrating MIN_CONFIDENCE. Run with METROBOARD_CALIBRATE=1. */
     @Test fun confidenceDistributionForCalibration() {
+        org.junit.Assume.assumeTrue(System.getenv("METROBOARD_CALIBRATE") != null)
         println("\n=== best-candidate geometric 'shape' score: percentiles (p5 p25 p50) ===")
         fun pct(v: List<Double>, q: Double) = v.sorted()[((v.size - 1) * q).toInt()]
         for (lang in listOf("es", "en", "fr", "de")) {

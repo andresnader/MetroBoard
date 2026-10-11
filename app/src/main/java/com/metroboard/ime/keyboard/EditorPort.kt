@@ -13,6 +13,12 @@ interface EditorPort {
     fun beforeCursor(maxChars: Int): String
     fun afterCursor(maxChars: Int): String
     fun hasSelection(): Boolean
+
+    /** The selected text, or null when nothing is selected or the editor does not expose it. */
+    fun selectedText(): String? = null
+
+    /** Replaces the selection with [text] and keeps the new text selected (repeated Shift taps cycle it). */
+    fun replaceSelectionKeepingIt(text: String): Boolean = commit(text)
     fun shouldCapitalize(): Boolean
     fun commit(text: String): Boolean
     fun deleteBeforeCursor(codePoints: Int): Boolean

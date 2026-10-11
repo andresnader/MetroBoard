@@ -28,7 +28,7 @@ class EditorControllerTest {
             return value.substring(maxOf(start, end)).take(maxChars)
         }
         override fun hasSelection() = start != end
-        override fun shouldCapitalize() = start == 0 || value.take(start).endsWith(". ")
+        override fun shouldCapitalize() = start == 0 || Regex("[.?!] $").containsMatchIn(value.take(start))
         override fun commit(text: String): Boolean {
             val from = minOf(start, end)
             value = value.replaceRange(from, maxOf(start, end), text)
@@ -74,14 +74,17 @@ class EditorControllerTest {
         controller.space(1000); controller.space(1500)
         assertEquals("hola  ", editor.value)
     }
-    @Test fun eachTerminalPunctuationCapitalizesNextLetter() {
+    @Test fun eachTerminalPunctuationFollowedByASpaceCapitalizesNextLetter() {
         for (punctuation in listOf(".", "!", "?")) {
             val editor = MemoryEditor("hola")
             val controller = controller(editor)
             controller.text(punctuation)
+            // Not yet: "hola.com" / "3.14" must stay lowercase; the space is what ends the sentence.
+            assertEquals(ShiftState.LOWERCASE, controller.shift.state)
+            controller.space(1000)
             assertEquals(ShiftState.AUTO_SHIFT, controller.shift.state)
             controller.text("a")
-            assertEquals("hola${punctuation}A", editor.value)
+            assertEquals("hola$punctuation A", editor.value)
         }
     }
     @Test fun capsLockAppliesUntilDisabled() {
