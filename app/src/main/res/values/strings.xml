@@ -41,7 +41,6 @@
     <string name="height_tall">Alto (115%)</string>
     <string name="show_number_row">Fila numérica superior</string>
     <string name="key_popup">Popups sobre teclas (pulsación larga)</string>
-    <string name="edge_to_edge">Borde a borde (Edge-to-edge)</string>
 
     <string name="section_appearance">apariencia</string>
     <string name="accent_color_title">color de acento Lumia</string>

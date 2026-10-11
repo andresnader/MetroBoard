@@ -124,6 +124,53 @@ class TouchInputScenarioTest {
         assertEquals(0, swipeStarts)
     }
 
+    // ---- settings that used to do nothing -----------------------------------
+
+    @Test
+    fun withTheSpacebarCursorDisabledSlidingOnSpaceDoesNotMoveTheCursor() {
+        var moved = 0
+        val listener2 = object : TouchInputListener by listener { override fun onSpacebarCursorMoved(step: Int) { moved += step } }
+        val machine = TouchInputStateMachine(listener2, swipeStartDistance = 72f, touchSlop = 36f).apply { spaceCursorEnabled = false }
+        val space = KeySpec("space", KeyAction.SPACE)
+        machine.onDown(0, 300f, 100f, 1000L, space)
+        machine.onMove(0, 360f, 100f, 1040L, space)
+        machine.onMove(0, 420f, 100f, 1080L, space)
+        machine.onUp(0, 420f, 100f, 1100L, space)
+        assertEquals(0, moved)
+    }
+
+    @Test
+    fun withSpaceLongPressDisabledHoldingSpaceStillTypesASpace() {
+        var picker = 0
+        val listener2 = object : TouchInputListener by listener { override fun onSpacebarLongPressed() { picker++ } }
+        val machine = TouchInputStateMachine(listener2, swipeStartDistance = 72f, touchSlop = 36f).apply { spaceLongPressEnabled = false }
+        val space = KeySpec("space", KeyAction.SPACE)
+        machine.onDown(0, 300f, 100f, 1000L, space)
+        machine.onLongPressTimerExpired(0)
+        machine.onUp(0, 300f, 100f, 1500L, space)
+        assertEquals(0, picker)
+        assertEquals(listOf("space"), taps)
+    }
+
+    @Test
+    fun withKeyPopupsDisabledHoldingALetterJustTypesIt() {
+        var popups = 0
+        val listener2 = object : TouchInputListener by listener { override fun onKeyLongPressed(key: KeySpec, anchorX: Float, anchorY: Float) { popups++ } }
+        val machine = TouchInputStateMachine(listener2, swipeStartDistance = 72f, touchSlop = 36f).apply { keyPopupsEnabled = false }
+        val withAlternatives = KeySpec("a", KeyAction.TEXT, alternatives = listOf("á", "à"))
+        machine.onDown(0, 100f, 100f, 1000L, withAlternatives)
+        machine.onLongPressTimerExpired(0)
+        machine.onUp(0, 100f, 100f, 1500L, withAlternatives)
+        assertEquals(0, popups)
+        assertEquals(listOf("a"), taps)
+    }
+
+    @Test
+    fun theDefaultsKeepAllThreeFeaturesOn() {
+        val machine = TouchInputStateMachine(listener)
+        assertTrue(machine.spaceCursorEnabled && machine.spaceLongPressEnabled && machine.keyPopupsEnabled)
+    }
+
     // ---- two thumbs ----------------------------------------------------
 
     @Test

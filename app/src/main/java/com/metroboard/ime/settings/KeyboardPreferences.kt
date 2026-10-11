@@ -121,9 +121,6 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         get() = preferences.getBoolean(KEY_SHOW_KEY_POPUP, true)
         set(value) { preferences.edit().putBoolean(KEY_SHOW_KEY_POPUP, value).apply() }
 
-    var edgeToEdge: Boolean
-        get() = preferences.getBoolean(KEY_EDGE_TO_EDGE, true)
-        set(value) { preferences.edit().putBoolean(KEY_EDGE_TO_EDGE, value).apply() }
 
     var language: String
         get() = preferences.getString(KEY_LANGUAGE, "es") ?: "es"
@@ -176,7 +173,6 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         settings.put(KEY_SPACEBAR_CURSOR, spacebarCursor)
         settings.put(KEY_LONG_PRESS_SPACE, longPressSpace)
         settings.put(KEY_SHOW_KEY_POPUP, keyPopup)
-        settings.put(KEY_EDGE_TO_EDGE, edgeToEdge)
         settings.put(KEY_LANGUAGE, language)
         settings.put(KEY_LAYOUT_OVERRIDE, layoutOverride)
         settings.put(KEY_THEME, theme)
@@ -287,10 +283,6 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
                 editor.putBoolean(KEY_SHOW_KEY_POPUP, settings.getBoolean(KEY_SHOW_KEY_POPUP))
                 settingsImported++
             }
-            if (settings.has(KEY_EDGE_TO_EDGE)) {
-                editor.putBoolean(KEY_EDGE_TO_EDGE, settings.getBoolean(KEY_EDGE_TO_EDGE))
-                settingsImported++
-            }
             if (settings.has(KEY_LANGUAGE)) {
                 editor.putString(KEY_LANGUAGE, settings.getString(KEY_LANGUAGE))
                 settingsImported++
@@ -335,7 +327,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
             .remove(KEY_SPACEBAR_CURSOR)
             .remove(KEY_LONG_PRESS_SPACE)
             .remove(KEY_SHOW_KEY_POPUP)
-            .remove(KEY_EDGE_TO_EDGE)
+            .remove(KEY_EDGE_TO_EDGE) // legacy key from 0.2.0, kept only so a reset clears it
             .remove(KEY_LANGUAGE)
             .remove(KEY_LAYOUT_OVERRIDE)
             .remove(KEY_THEME)

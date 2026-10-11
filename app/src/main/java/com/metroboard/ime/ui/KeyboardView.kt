@@ -333,8 +333,14 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         tintKeys: Boolean = false,
         layoutOverride: KeyboardLayoutType? = null,
         theme: String = "DARK",
-        oneHandedMode: String = "OFF"
+        oneHandedMode: String = "OFF",
+        spacebarCursor: Boolean = true,
+        longPressSpace: Boolean = true,
+        keyPopups: Boolean = true,
     ) {
+        stateMachine.spaceCursorEnabled = spacebarCursor
+        stateMachine.spaceLongPressEnabled = longPressSpace
+        stateMachine.keyPopupsEnabled = keyPopups
         currentPage = page
         wordFlowEnabled = wordFlow
         stateMachine.wordFlowEnabled = wordFlow

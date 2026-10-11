@@ -253,7 +253,6 @@ class SettingsActivity : Activity() {
 
         content.addView(toggle(R.string.show_number_row, preferences.numberRow) { preferences.numberRow = it })
         content.addView(toggle(R.string.key_popup, preferences.keyPopup) { preferences.keyPopup = it })
-        content.addView(toggle(R.string.edge_to_edge, preferences.edgeToEdge) { preferences.edgeToEdge = it })
 
         return makePageScrollView(content)
     }

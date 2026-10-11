@@ -65,6 +65,12 @@ class TouchInputStateMachine(
     var spaceCursorThreshold: Float = 32f,     // in pixels per cursor move step
     var touchSlop: Float = 24f,                // in pixels
     var wordFlowEnabled: Boolean = true,
+    /** Settings > Gestures: slide on the spacebar moves the cursor. */
+    var spaceCursorEnabled: Boolean = true,
+    /** Settings > Gestures: holding the spacebar opens the language / keyboard picker. */
+    var spaceLongPressEnabled: Boolean = true,
+    /** Settings > Layout: holding a letter shows its alternatives. */
+    var keyPopupsEnabled: Boolean = true,
     /** Distinct letter keys a pointer must cross to be treated as shape writing... */
     var swipeMinDistinctKeys: Int = 3,
     /** ...unless it crossed at least 2 and travelled this many swipe-start distances. */
@@ -169,7 +175,7 @@ class TouchInputStateMachine(
                 // Check if starting spacebar cursor movement
                 if (record.initialKey?.action == KeyAction.SPACE) {
                     val dx = x - record.startX
-                    if (abs(dx) >= spaceCursorThreshold) {
+                    if (spaceCursorEnabled && abs(dx) >= spaceCursorThreshold) {
                         state = TouchInteractionState.SPACEBAR_CURSOR_ACTIVE
                         lastCursorStepX = x
                         val step = if (dx > 0) 1 else -1
@@ -260,15 +266,20 @@ class TouchInputStateMachine(
 
         val dist = hypot((record.currentX - record.startX).toDouble(), (record.currentY - record.startY).toDouble()).toFloat()
         if (dist <= touchSlop) {
+            val key = record.initialKey
+            val isSpace = key?.action == KeyAction.SPACE
+            // A disabled long press must leave the press intact so releasing still types the key.
+            val handled = when {
+                isSpace -> spaceLongPressEnabled
+                key != null && key.alternatives.isNotEmpty() -> keyPopupsEnabled
+                else -> false
+            }
+            if (!handled) return
             record.hasTriggeredLongPress = true
             flushPending(record.currentTime)
-            if (record.initialKey?.action == KeyAction.SPACE) {
-                state = TouchInteractionState.LONG_PRESS_ACTIVE
-                listener.onSpacebarLongPressed()
-            } else if (record.initialKey != null && record.initialKey.alternatives.isNotEmpty()) {
-                state = TouchInteractionState.LONG_PRESS_ACTIVE
-                listener.onKeyLongPressed(record.initialKey, record.currentX, record.currentY)
-            }
+            state = TouchInteractionState.LONG_PRESS_ACTIVE
+            if (isSpace) listener.onSpacebarLongPressed()
+            else listener.onKeyLongPressed(key!!, record.currentX, record.currentY)
         }
     }
 

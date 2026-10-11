@@ -146,7 +146,10 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
             tintKeys = preferences.tintKeys,
             layoutOverride = layoutType,
             theme = preferences.theme,
-            oneHandedMode = preferences.oneHandedMode
+            oneHandedMode = preferences.oneHandedMode,
+            spacebarCursor = preferences.spacebarCursor,
+            longPressSpace = preferences.longPressSpace,
+            keyPopups = preferences.keyPopup,
         )
         syncSystemBarAppearance()
     }
