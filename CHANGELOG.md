@@ -51,6 +51,9 @@ Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además e
   Reglas de privacidad en `docs/privacy.md`: texto ≤ 2.000 caracteres, nada marcado como sensible, sin fijar solo en memoria y
   con caducidad de 1 h, sin historial sobre campos de contraseña, desactivable en Ajustes (y al desactivarlo se borra todo).
   **Cambia lo que decía la documentación anterior** («no se lee en segundo plano»). Activado por defecto: decisión del propietario.
+- **Bloqueo de pantalla.** Una revisión de seguridad automática señaló (solo con títulos, sin detalle) fuga de información con
+  el dispositivo bloqueado. El panel de clips, el pegado y el acceso a Ajustes ahora no hacen nada mientras
+  `KeyguardManager.isKeyguardLocked` sea verdadero. Comprobado desbloqueado; el caso bloqueado no se ejercitó.
 - **Barra de herramientas** (botón `⋯` junto a las sugerencias): tamaño rápido (altura y modo a una mano, aplicados en vivo) y
   acceso directo a Ajustes.
 - **Popup de acentos mal colocado.** Al mantener pulsada una tecla el cuadro de acentos salía abajo, sobre la barra espaciadora,

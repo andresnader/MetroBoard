@@ -59,6 +59,9 @@ que decían versiones anteriores («solo cuando lo pulsas»), así que conviene 
   archivo privado de la aplicación (`clipboard_pins`), separado de los ajustes. La copia de seguridad en la nube está
   desactivada y la exportación de ajustes **nunca** incluye clips.
 - En **campos de contraseña** no se muestra el historial: el botón pega directamente lo que hay en el portapapeles.
+- Con el **dispositivo bloqueado** el teclado no da acceso al portapapeles, al historial ni a Ajustes (un teclado puede aparecer
+  sobre apps visibles en la pantalla de bloqueo, donde quien tiene el teléfono no es necesariamente su dueño). Esta protección
+  está en el código y compila, pero **no se ejercitó en el emulador con el teléfono bloqueado**.
 - No hay red ni telemetría: nada sale del dispositivo.
 
 ## Límites

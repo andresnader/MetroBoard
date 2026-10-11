@@ -9,6 +9,7 @@
 package com.metroboard.ime.ime
 
 import android.app.AlertDialog
+import android.app.KeyguardManager
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
@@ -289,7 +290,16 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         clipboardHistory.record(text, System.currentTimeMillis(), sensitive)
     }
 
+    /**
+     * True while the screen is locked. A keyboard can be shown over apps that appear on the lock screen, where
+     * whoever holds the phone is not necessarily its owner: the clipboard, the clip history and Settings (which
+     * lists learned words) stay out of reach until the device is unlocked.
+     */
+    private fun deviceLocked(): Boolean =
+        getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+
     override fun onClipboardPanelRequested() {
+        if (deviceLocked()) return
         // In a password field the history is never shown over the field (anyone looking could read it);
         // the button pastes what is on the clipboard now, as before.
         if (!preferences.clipboardHistory || policy.sensitive) {
@@ -301,6 +311,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     }
 
     override fun onClipInsert(text: String) {
+        if (deviceLocked()) return
         keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
         controller.paste(text)
         keyboard?.closePanel()
@@ -308,6 +319,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     }
 
     override fun onSettingsRequested() {
+        if (deviceLocked()) return
         keyboard?.dismissPopups()
         startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         requestHideSelf(0)
@@ -319,6 +331,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     }
 
     override fun onClipboardPasteRequested() {
+        if (deviceLocked()) return
         val clip = getSystemService(ClipboardManager::class.java)?.primaryClip
         if (clip != null && clip.itemCount > 0) {
             val text = clip.getItemAt(0)?.coerceToText(this)?.toString()
