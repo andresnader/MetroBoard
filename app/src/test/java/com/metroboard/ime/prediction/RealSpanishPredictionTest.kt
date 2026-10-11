@@ -47,8 +47,30 @@ class RealSpanishPredictionTest {
     }
 
     @Test fun prefixSuggestionsAreRankedByFrequencyBestFirst() {
-        assertEquals(listOf("embargo", "embajador", "embarazo"), es.suggest("emba"))
-        assertEquals(listOf("cuando", "cuenta", "cualquier"), es.suggest("cu"))
+        val emba = es.suggest("emba")
+        assertEquals("embargo", emba.first())
+        assertTrue(emba.toString(), emba.all { it.startsWith("emba") })
+        // Ranking follows the corpus: the list must be non-increasing in frequency.
+        val dict = com.metroboard.ime.dictionary.RealDictionaries.get("es")
+        assertEquals(emba, emba.sortedByDescending { dict.getFrequency(it) })
+        // "cu" is itself a (rare) word, yet the user is clearly typing cuando/cuenta/cualquier.
+        val cu = es.suggest("cu")
+        assertEquals(cu.toString(), "cuando", cu.first())
+        assertTrue(cu.toString(), cu.containsAll(listOf("cuenta", "cualquier")))
+    }
+
+    @Test fun wordsThatWereMissingFromTheOldWordListAreNowKnown() {
+        // Field report: "gracias", "escribiendo", "demoro", "pingüino" were absent and got "corrected".
+        for (w in listOf("gracias", "escribiendo", "demoro", "pingüino", "mañana", "teclado", "mensaje", "hola")) {
+            assertEquals("'$w'", w, es.suggest(w).first())
+            assertNull("'$w' must not be replaced", es.autoCorrect(w))
+        }
+    }
+
+    @Test fun typicalTyposOfCommonWordsAreFixed() {
+        assertEquals("gracias", es.autoCorrect("gracuas"))
+        assertEquals("escribiendo", es.autoCorrect("escrbiendo"))
+        assertEquals("mensaje", es.autoCorrect("mnesaje"))
     }
 
     @Test fun conservativeAutocorrectFixesRealTyposButNeverValidWords() {

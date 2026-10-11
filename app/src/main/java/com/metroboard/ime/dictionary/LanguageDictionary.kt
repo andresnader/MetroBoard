@@ -98,15 +98,24 @@ class LanguageDictionary(
         // 2. If already valid word in dictionary, do NOT autocorrect
         if (contains(word)) return null
 
-        // 3. High confidence fuzzy match (distance <= 0.8)
+        // 3. Fuzzy match, only with high confidence AND an unambiguous winner: two similar valid
+        //    words ("mure": mire 0.6, muere 1.0) mean we cannot know what was meant.
         if (word.length >= 3) {
-            val fuzzy = searchFuzzy(word, 1)
+            val fuzzy = searchFuzzy(word, 2)
             if (fuzzy.isNotEmpty()) {
-                val candidate = fuzzy.first()
-                val dist = proximityDamerauLevenshtein(norm, normalize(candidate))
-                if (dist <= AUTOCORRECT_MAX_DISTANCE && trie.getFrequency(candidate) >= minFrequency) {
-                    return candidate
-                }
+                val best = fuzzy[0]
+                val bestDist = proximityDamerauLevenshtein(norm, normalize(best))
+                val bestFreq = trie.getFrequency(best)
+                val second = fuzzy.getOrNull(1)
+                val unambiguous = second == null ||
+                    proximityDamerauLevenshtein(norm, normalize(second)) - bestDist >= AMBIGUITY_MARGIN ||
+                    bestFreq >= DOMINANCE * trie.getFrequency(second)
+                // 3a. Transposition or adjacent-key slip (cost <= 0.8).
+                if (unambiguous && bestDist <= AUTOCORRECT_MAX_DISTANCE && bestFreq >= minFrequency) return best
+                // 3b. One missing / extra / wrong letter (cost <= 1.0): only for longer words and a
+                //     frequent target ("escrbiendo" -> "escribiendo").
+                if (unambiguous && word.length >= SINGLE_EDIT_MIN_LENGTH && bestDist <= SINGLE_EDIT_MAX_DISTANCE &&
+                    bestFreq >= maxOf(minFrequency, SINGLE_EDIT_MIN_FREQUENCY)) return best
             }
         }
         return null
@@ -129,6 +138,15 @@ class LanguageDictionary(
 
         /** Distancia máxima para aplicar autocorrección automática. */
         private const val AUTOCORRECT_MAX_DISTANCE = 0.8
+
+        /** Autocorrección de una sola letra omitida/sobrante/errónea: más exigente que la anterior. */
+        private const val SINGLE_EDIT_MAX_DISTANCE = 1.0
+        private const val SINGLE_EDIT_MIN_LENGTH = 6
+        private const val SINGLE_EDIT_MIN_FREQUENCY = 80
+
+        /** The runner-up must be at least this much farther, or the winner this many times more frequent. */
+        private const val AMBIGUITY_MARGIN = 0.5
+        private const val DOMINANCE = 3
 
         val ADJACENT_KEYS: Map<Char, Set<Char>> get() = CompactWordTrie.ADJACENT_KEYS
 

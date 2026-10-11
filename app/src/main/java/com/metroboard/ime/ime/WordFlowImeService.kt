@@ -23,6 +23,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import com.metroboard.ime.R
+import com.metroboard.ime.dictionary.LanguageDictionaryRegistry
 import com.metroboard.ime.dictionary.LocalPersonalDictionary
 import com.metroboard.ime.haptics.HapticFeedback
 import com.metroboard.ime.keyboard.*
@@ -51,6 +52,10 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         personalDict = LocalPersonalDictionary(this)
         suggestionEngine = LocalSuggestionEngine(personalDict, this, preferences.language)
         controller = EditorController(editor, suggestionEngine)
+        // Dictionaries load on a background thread; refresh the suggestion bar when one is ready.
+        val ui = android.os.Handler(android.os.Looper.getMainLooper())
+        LanguageDictionaryRegistry.onDictionaryLoaded = { ui.post { if (::controller.isInitialized) render() } }
+        LanguageDictionaryRegistry.preload(preferences.language, this)
     }
 
     override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
@@ -88,6 +93,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         controller.start(policy.editing)
         page = KeyboardPage.LETTERS
         suggestionEngine.activeLanguage = preferences.language
+        LanguageDictionaryRegistry.preload(preferences.language, this)
         keyboard?.let { applyKeyboardLayout(it) }
         render()
     }
@@ -229,6 +235,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private fun switchLanguage(newLang: String) {
         preferences.language = newLang
         suggestionEngine.activeLanguage = newLang
+        LanguageDictionaryRegistry.preload(newLang, this)
         keyboard?.let { applyKeyboardLayout(it) }
         render()
         Toast.makeText(this, newLang.uppercase(), Toast.LENGTH_SHORT).show()
@@ -336,6 +343,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         keyboard?.dismissPopups()
         keyboard = null
         sound.release()
+        LanguageDictionaryRegistry.onDictionaryLoaded = null
         super.onDestroy()
     }
 

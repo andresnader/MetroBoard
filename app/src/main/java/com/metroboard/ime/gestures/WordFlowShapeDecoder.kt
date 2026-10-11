@@ -76,7 +76,11 @@ class WordFlowShapeDecoder(
         if (startKeys.isEmpty() || endKeys.isEmpty()) return emptyList()
 
         // 2. Fetch dictionary for active language
-        val dict = LanguageDictionaryRegistry.get(language, context)
+        // Never load a dictionary on the UI thread: if it is not ready yet, start loading and decode nothing.
+        val ctx = context
+        val dict = if (ctx == null) LanguageDictionaryRegistry.get(language, null)
+        else LanguageDictionaryRegistry.getIfLoaded(language)
+            ?: run { LanguageDictionaryRegistry.preload(language, ctx); return emptyList() }
         val dictWords = dict.getTopWords(500)
         val personalWords = personalDictionary?.wordsWithPrefix("") ?: emptyList()
         val candidatePool = (personalWords + dictWords).distinct()

@@ -13,7 +13,15 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 object LanguageDictionaryRegistry {
-    private val loadedDictionaries = HashMap<String, DictionaryProvider>()
+    /**
+     * A 60,000-word trie costs 35-50 MB, so only the language in use and the previous one are kept;
+     * the least recently used one is evicted. Access order makes every read count as a use.
+     */
+    private const val MAX_LOADED = 2
+
+    private val loadedDictionaries = object : LinkedHashMap<String, DictionaryProvider>(4, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, DictionaryProvider>?) = size > MAX_LOADED
+    }
 
     /**
      * Instancia creada sin `Context`, es decir, el diccionario de respaldo.
@@ -24,7 +32,58 @@ object LanguageDictionaryRegistry {
     private val fallbackDictionaries = HashMap<String, DictionaryProvider>()
 
     private val lock = Any()
+    private val inFlight = HashSet<String>()
+    private val callbacks = HashMap<String, MutableList<() -> Unit>>()
 
+    /** One low-priority thread: loading must never compete with the UI thread. */
+    private val loader = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "metroboard-dict-loader").apply { isDaemon = true; priority = Thread.NORM_PRIORITY - 1 }
+    }
+
+    /** Called (on the loader thread) whenever any dictionary finishes loading; the IME uses it to refresh suggestions. */
+    @Volatile var onDictionaryLoaded: (() -> Unit)? = null
+
+    /** The dictionary if it is already in memory, else null. Never blocks. */
+    fun getIfLoaded(language: String): DictionaryProvider? = synchronized(lock) { loadedDictionaries[language.lowercase()] }
+
+    /**
+     * Never blocks: returns the real dictionary when loaded, otherwise starts loading it in the
+     * background and returns the small built-in sample so the UI thread is never held up.
+     */
+    fun getNonBlocking(language: String, context: Context?): DictionaryProvider {
+        val lang = language.lowercase()
+        if (context == null) return synchronized(lock) { fallbackDictionaries.getOrPut(lang) { createFallbackDictionary(lang) } }
+        getIfLoaded(lang)?.let { return it }
+        preload(lang, context)
+        return synchronized(lock) { fallbackDictionaries.getOrPut(lang) { createFallbackDictionary(lang) } }
+    }
+
+    /** Loads [language] on the background thread (once, even if requested repeatedly). */
+    fun preload(language: String, context: Context, onReady: (() -> Unit)? = null) {
+        val app = context.applicationContext ?: context
+        preload(language.lowercase(), onReady) { loadFromAssets(language.lowercase()) { path -> app.assets.open(path) } }
+    }
+
+    internal fun preload(language: String, onReady: (() -> Unit)? = null, load: () -> DictionaryProvider) {
+        val lang = language.lowercase()
+        synchronized(lock) {
+            if (loadedDictionaries[lang] != null) { onReady?.invoke(); return }
+            onReady?.let { callbacks.getOrPut(lang) { ArrayList() }.add(it) }
+            if (!inFlight.add(lang)) return
+        }
+        loader.execute {
+            val result = runCatching { load() }
+            val pending = synchronized(lock) {
+                inFlight.remove(lang)
+                result.getOrNull()?.let { loadedDictionaries[lang] = it }
+                callbacks.remove(lang).orEmpty()
+            }
+            pending.forEach { runCatching(it) }
+            if (result.isSuccess) onDictionaryLoaded?.let { runCatching(it) }
+        }
+    }
+
+    /** Blocking load. For tests and background callers only; the UI thread must use [getNonBlocking]. */
     fun get(language: String, context: Context? = null): DictionaryProvider {
         val lang = language.lowercase()
         // Sin Context no hay forma de leer assets, así que se sirve el

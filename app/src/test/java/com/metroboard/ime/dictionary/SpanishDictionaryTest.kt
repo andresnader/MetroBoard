@@ -226,9 +226,9 @@ class SpanishDictionaryTest {
     fun testFrequencyBandIsContinuous() {
         val dict = LanguageDictionary("es", loadAsset("es"))
         assertTrue("debe incluir la palabra más frecuente", dict.getFrequency("de") > 0)
-        // Las palabras de la cola heurística existen y tienen frecuencia > 0.
-        val tail = dict.getFrequency("fijándonos")
-        assertNotNull(tail)
-        assertTrue("una palabra de la cola debe tener frecuencia positiva: $tail", tail > 0)
+        // Hasta la última palabra de la cola larga existe y tiene frecuencia > 0.
+        val lastWord = loadAsset("es").last().first
+        val tail = dict.getFrequency(lastWord)
+        assertTrue("la última palabra '$lastWord' debe tener frecuencia positiva: $tail", tail > 0)
     }
 }

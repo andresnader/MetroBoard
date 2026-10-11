@@ -36,6 +36,7 @@ class EditorControllerPredictionTest {
         val corrections: Map<String, String> = emptyMap(),
         val suggestions: Map<String, List<String>> = emptyMap(),
         val next: Map<String, List<String>> = emptyMap(),
+        override val elidesApostrophe: Boolean = false,
     ) : SuggestionEngine {
         val autoCorrectCalls = mutableListOf<String>()
         val learned = mutableListOf<String>()
@@ -101,16 +102,27 @@ class EditorControllerPredictionTest {
 
     // ---- tokenisation ---------------------------------------------------
 
-    @Test fun contractionsAndElisionsAreOneToken() {
-        val engine = StubEngine(suggestions = mapOf("don't" to listOf("don't"), "c'est" to listOf("c'est")))
+    @Test fun englishContractionsAreOneToken() {
+        val engine = StubEngine(suggestions = mapOf("don't" to listOf("don't")))
         val editor = MemoryEditor()
         val c = controller(editor, engine)
         c.type("don't")
         assertEquals(listOf("don't"), c.suggestions())
         c.space(1000)
         assertEquals(listOf("don't"), engine.autoCorrectCalls)
+    }
+
+    @Test fun frenchElisionEndsThePreviousWord() {
+        val engine = StubEngine(suggestions = mapOf("est" to listOf("est")), elidesApostrophe = true)
+        val editor = MemoryEditor()
+        val c = controller(editor, engine)
         c.type("c'est")
-        assertEquals(listOf("c'est"), c.suggestions())
+        assertEquals("prediction applies to the word after the elided c'", listOf("est"), c.suggestions())
+        c.space(1000)
+        assertEquals("autocorrect sees \"est\", not \"c'est\" or \"t\"", listOf("est"), engine.autoCorrectCalls)
+        c.type("l'ami")
+        c.chooseSuggestion("est") // not offered for "ami": must be ignored, text untouched
+        assertEquals("c'est l'ami", editor.value)
     }
 
     // ---- suggestion spacing ---------------------------------------------

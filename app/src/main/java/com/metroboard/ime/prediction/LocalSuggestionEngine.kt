@@ -13,6 +13,7 @@ import com.metroboard.ime.dictionary.DictionaryProvider
 import com.metroboard.ime.dictionary.DisabledPersonalDictionary
 import com.metroboard.ime.dictionary.LanguageDictionaryRegistry
 import com.metroboard.ime.dictionary.PersonalDictionary
+import com.metroboard.ime.language.LanguagePacks
 import java.util.Locale
 
 class LocalSuggestionEngine(
@@ -21,7 +22,7 @@ class LocalSuggestionEngine(
     var activeLanguage: String = "es",
     /** Dictionary source; tests inject the real shipped dictionaries here. */
     private val dictionaryFor: (String) -> DictionaryProvider =
-        { language -> LanguageDictionaryRegistry.get(language, context) },
+        { language -> LanguageDictionaryRegistry.getNonBlocking(language, context) },
 ) : SuggestionEngine {
 
     override fun setLanguage(language: String) {
@@ -65,7 +66,14 @@ class LocalSuggestionEngine(
             result.add(w)
         }
 
-        if (valid && !strongValid && result.size < MAX_CANDIDATES) result.add(typed)
+        if (valid && !strongValid) {
+            // Rare-but-valid word: it competes by frequency with the continuations (so "cu" does
+            // not outrank cuando/cuenta/cualquier) but is never replaced by autocorrect.
+            val typedFreq = dict.getFrequency(typed)
+            val at = result.indexOfFirst { dict.getFrequency(it) < typedFreq }.let { if (it < 0) result.size else it }
+            val merged = result.toMutableList().apply { add(at, typed) }
+            result.clear(); result.addAll(merged)
+        }
 
         // 5. Fuzzy neighbours only for unknown words, and only common ones.
         if (!valid && result.size < MAX_CANDIDATES && typed.length >= 3) {
@@ -118,6 +126,9 @@ class LocalSuggestionEngine(
         if (explicit) personal.keep(typed, activeLanguage) else personal.learn(typed, activeLanguage)
     }
 
+    override val elidesApostrophe: Boolean
+        get() = LanguagePacks.of(activeLanguage).elidesApostrophe
+
     override fun isKnownWord(word: String): Boolean {
         val typed = word.lowercase(Locale.ROOT)
         return dictionaryFor(activeLanguage).contains(typed) || personal.knows(typed, activeLanguage)
@@ -127,14 +138,16 @@ class LocalSuggestionEngine(
         const val MAX_CANDIDATES = 3
 
         /**
-         * Frequency scale is 1..255. In the shipped Spanish list 1..63 is the heuristic long-tail
-         * band (no corpus rank), 64..255 are ranked common words. Fuzzy replacements and
-         * suggestions must come from the ranked band, so we never "correct" into a rare word.
-         * Recalibrate if the frequency source changes.
+         * Frequency scale is 1..255, derived from corpus rank by tools/build_dictionaries.py:
+         * freq = 255 * (1 - ln(rank) / ln(300000)). 48 is about rank 32,000 of the 60,000 shipped
+         * words: fuzzy replacements and suggestions come from that common half, never from the
+         * rare tail, so we do not "correct" into obscure words. Recalibrate if the build changes.
          */
-        const val AUTOCORRECT_MIN_FREQUENCY = 64
-        const val FUZZY_SUGGESTION_MIN_FREQUENCY = 64
-        const val STRONG_WORD_MIN_FREQUENCY = 64
+        const val AUTOCORRECT_MIN_FREQUENCY = 48
+        const val FUZZY_SUGGESTION_MIN_FREQUENCY = 48
+
+        /** A valid word at least this frequent (about the top 3,000) is always kept first. */
+        const val STRONG_WORD_MIN_FREQUENCY = 100
 
         /** Longer words offered after a complete valid word (e.g. "cuando" -> "cuándo") must be common. */
         const val VALID_WORD_COMPLETION_MIN_FREQUENCY = 70

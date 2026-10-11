@@ -279,8 +279,12 @@ class EditorController(
         shift.onCursorMoved(autoCaps())
     }
 
-    /** Letters, plus an apostrophe between letters ("don't", "c'est", "l'ami"). */
+    /**
+     * Letters, plus an apostrophe between letters ("don't"). In elision languages (French) the
+     * apostrophe ends the previous word, so "c'est" is the word "est" after the elided "c'".
+     */
     private fun lastWordOf(context: String): String {
+        if (engine.elidesApostrophe) return context.takeLastWhile(Char::isLetter)
         val raw = context.takeLastWhile { it.isLetter() || it == '\'' || it == '\u2019' }.trimStart('\'', '\u2019')
         return if (raw.endsWith('\'') || raw.endsWith('\u2019')) "" else raw
     }
@@ -304,7 +308,7 @@ class EditorController(
         val context = editor.beforeCursor(99)
         if (context.isEmpty() || !context.last().isWhitespace()) return null
         val tokens = context.trimEnd().split(Regex("\\s+"))
-            .filter { it.isNotEmpty() && it.all { ch -> ch.isLetter() || ch == '\'' || ch == '\u2019' } }
+            .filter { it.isNotEmpty() && it.all { ch -> ch.isLetter() || (!engine.elidesApostrophe && (ch == '\'' || ch == '\u2019')) } }
         if (tokens.size >= 2) {
             val w1 = tokens[tokens.size - 2]
             val w2 = tokens[tokens.size - 1]

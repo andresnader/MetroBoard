@@ -21,6 +21,9 @@ fun interface SuggestionEngine {
      */
     fun learn(word: String, explicit: Boolean = false) = Unit
 
+    /** True when an apostrophe ends the previous word in the active language (French elision). */
+    val elidesApostrophe: Boolean get() = false
+
     /** True when [word] is a valid word of the active language or was kept by the user. */
     fun isKnownWord(word: String): Boolean = false
 }
