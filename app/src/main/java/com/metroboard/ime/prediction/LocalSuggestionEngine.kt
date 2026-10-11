@@ -23,7 +23,16 @@ class LocalSuggestionEngine(
     /** Dictionary source; tests inject the real shipped dictionaries here. */
     private val dictionaryFor: (String) -> DictionaryProvider =
         { language -> LanguageDictionaryRegistry.getNonBlocking(language, context) },
+    /**
+     * While the real dictionary is still loading only the tiny built-in sample exists. On a device
+     * (a Context is present) the engine then stays silent instead of acting on it: autocorrecting
+     * towards 35 words or learning common words as "new" would be wrong. Without a Context
+     * (unit tests, headless use) the sample is all there is, so it is used.
+     */
+    private val waitForRealDictionary: Boolean = context != null,
 ) : SuggestionEngine {
+
+    private fun usable(dict: DictionaryProvider) = !(waitForRealDictionary && dict.isSample)
 
     override fun setLanguage(language: String) {
         activeLanguage = language
@@ -41,6 +50,7 @@ class LocalSuggestionEngine(
         if (prefix.isBlank()) return emptyList()
         val typed = prefix.lowercase(Locale.ROOT)
         val dict = dictionaryFor(language)
+        if (!usable(dict)) return emptyList()
         val valid = dict.contains(typed) || personal.knows(typed, language)
         val result = LinkedHashSet<String>()
 
@@ -93,6 +103,7 @@ class LocalSuggestionEngine(
     fun suggestNext(previousWord: String, language: String): List<String> {
         if (previousWord.isBlank()) return emptyList()
         val dict = dictionaryFor(language)
+        if (!usable(dict)) return emptyList()
         return dict.getBigramSuggestions(previousWord).take(3)
     }
 
@@ -102,6 +113,7 @@ class LocalSuggestionEngine(
     fun suggestNextTrigram(word1: String, word2: String, language: String): List<String> {
         if (word1.isBlank() || word2.isBlank()) return emptyList()
         val dict = dictionaryFor(language)
+        if (!usable(dict)) return emptyList()
         return dict.getTrigramSuggestions(word1, word2).take(3)
     }
 
@@ -111,6 +123,7 @@ class LocalSuggestionEngine(
         if (word.isBlank()) return null
         val typed = word.lowercase(Locale.ROOT)
         val dict = dictionaryFor(language)
+        if (!usable(dict)) return null
 
         // NEVER replace a word that is valid in the language or that the user has kept.
         if (dict.contains(typed) || personal.knows(typed, language)) return null
@@ -121,6 +134,7 @@ class LocalSuggestionEngine(
     override fun suggestReplacements(word: String): List<String> {
         val typed = word.lowercase(Locale.ROOT)
         val dict = dictionaryFor(activeLanguage)
+        if (!usable(dict)) return emptyList()
         val out = LinkedHashSet<String>()
         // 1. A typo fix or a missing accent ("tecldao" -> "teclado", "comodo" -> "cómodo").
         dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY)?.let { out.add(it) }
@@ -138,7 +152,8 @@ class LocalSuggestionEngine(
         val typed = word.trim()
         if (typed.length < 2 || typed.any { !it.isLetter() && it != '\'' && it != '\u2019' }) return
         // Dictionary words need no learning; only genuinely new words are worth keeping.
-        if (dictionaryFor(activeLanguage).contains(typed.lowercase(Locale.ROOT))) return
+        val dict = dictionaryFor(activeLanguage)
+        if (!usable(dict) || dict.contains(typed.lowercase(Locale.ROOT))) return
         if (explicit) personal.keep(typed, activeLanguage) else personal.learn(typed, activeLanguage)
     }
 

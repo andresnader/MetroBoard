@@ -213,7 +213,8 @@ object LanguageDictionaryRegistry {
                     "por favor" to listOf("avísame", "envíame"),
                     "nos vemos" to listOf("luego", "pronto")
                 ),
-                defaultLayout = "QWERTY"
+                defaultLayout = "QWERTY",
+                isSample = true
             )
             "en" -> LanguageDictionary(
                 language = "en",
@@ -235,7 +236,8 @@ object LanguageDictionaryRegistry {
                     "have a" to listOf("great", "good", "nice"),
                     "let me" to listOf("know")
                 ),
-                defaultLayout = "QWERTY"
+                defaultLayout = "QWERTY",
+                isSample = true
             )
             "fr" -> LanguageDictionary(
                 language = "fr",
@@ -255,7 +257,8 @@ object LanguageDictionaryRegistry {
                     "merci beaucoup" to listOf("pour"),
                     "comment allez" to listOf("vous")
                 ),
-                defaultLayout = "AZERTY"
+                defaultLayout = "AZERTY",
+                isSample = true
             )
             "de" -> LanguageDictionary(
                 language = "de",
@@ -275,7 +278,8 @@ object LanguageDictionaryRegistry {
                     "wie geht" to listOf("es"),
                     "bis später" to listOf("mein")
                 ),
-                defaultLayout = "QWERTZ"
+                defaultLayout = "QWERTZ",
+                isSample = true
             )
             else -> createFallbackDictionary("es")
         }

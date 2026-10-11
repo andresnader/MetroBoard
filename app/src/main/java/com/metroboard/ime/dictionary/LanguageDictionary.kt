@@ -17,7 +17,8 @@ class LanguageDictionary(
     private val typos: Map<String, String> = emptyMap(),
     private val bigrams: Map<String, List<String>> = emptyMap(),
     private val trigrams: Map<String, List<String>> = emptyMap(),
-    override val defaultLayout: String = "QWERTY"
+    override val defaultLayout: String = "QWERTY",
+    override val isSample: Boolean = false,
 ) : DictionaryProvider {
 
     private val trie = CompactWordTrie()

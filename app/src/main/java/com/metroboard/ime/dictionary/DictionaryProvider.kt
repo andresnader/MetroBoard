@@ -26,6 +26,9 @@ interface DictionaryProvider {
     fun searchFuzzy(word: String, limit: Int = 3): List<String>
     fun getTopWords(limit: Int = 200): List<String>
 
+    /** True for the tiny built-in sample used while the real dictionary is still loading. */
+    val isSample: Boolean get() = false
+
     /**
      * Words (most frequent first) whose first letter is in [first] and last letter in [last],
      * compared accent-insensitively. Candidate pool for shape writing: it must reach the whole
