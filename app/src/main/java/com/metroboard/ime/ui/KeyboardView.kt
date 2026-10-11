@@ -13,6 +13,8 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.metroboard.ime.R
 import com.metroboard.ime.gestures.GesturePoint
+import com.metroboard.ime.gestures.TouchGestureArbiter
+import com.metroboard.ime.gestures.TouchGestureMode
 import com.metroboard.ime.gestures.WordFlowShapeDecoder
 import com.metroboard.ime.ime.EditorPolicy
 import com.metroboard.ime.ime.FieldKind
@@ -51,9 +53,11 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     }
     private val trailPath = Path()
     private var isSwiping = false
-    private var downX = 0f
-    private var downY = 0f
     private val touchSlop = context.dp(16).toFloat()
+    private val gestureArbiter = TouchGestureArbiter(
+        swipeStartDistancePx = touchSlop,
+        minSwipeDurationMs = 28L,
+    )
 
     init {
         orientation = VERTICAL
@@ -165,25 +169,51 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         if (!wordFlowEnabled || currentPage != KeyboardPage.LETTERS) return false
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                downX = ev.x
-                downY = ev.y
+                val pointerId = ev.getPointerId(0)
+                gestureArbiter.onDown(pointerId, ev.getX(0), ev.getY(0), ev.eventTime)
                 isSwiping = false
                 trailPoints.clear()
-                trailPoints.add(GesturePoint(ev.x, ev.y, ev.eventTime))
+                trailPoints.add(GesturePoint(ev.getX(0), ev.getY(0), ev.eventTime))
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                gestureArbiter.onAdditionalPointerDown(ev.pointerCount)
+                // Two-thumb typing wins over shape writing for this whole gesture.
+                isSwiping = false
+                trailPoints.clear()
+                invalidate()
             }
             MotionEvent.ACTION_MOVE -> {
-                val dist = Math.hypot((ev.x - downX).toDouble(), (ev.y - downY).toDouble()).toFloat()
-                if (dist > touchSlop) {
+                if (gestureArbiter.isMultitouch || ev.pointerCount != 1) return false
+                val pointerIndex = ev.findPointerIndex(gestureArbiter.primaryPointerId)
+                if (pointerIndex < 0) return false
+                val x = ev.getX(pointerIndex)
+                val y = ev.getY(pointerIndex)
+                if (gestureArbiter.shouldStartSwipe(
+                        pointerId = gestureArbiter.primaryPointerId,
+                        x = x,
+                        y = y,
+                        eventTime = ev.eventTime,
+                        pointerCount = ev.pointerCount,
+                    )
+                ) {
                     isSwiping = true
-                    trailPoints.add(GesturePoint(ev.x, ev.y, ev.eventTime))
+                    trailPoints.add(GesturePoint(x, y, ev.eventTime))
                     parent?.requestDisallowInterceptTouchEvent(true)
                     invalidate()
                     return true
                 }
             }
+            MotionEvent.ACTION_POINTER_UP -> {
+                if (gestureArbiter.isMultitouch) {
+                    isSwiping = false
+                    trailPoints.clear()
+                    invalidate()
+                }
+            }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 isSwiping = false
                 trailPoints.clear()
+                gestureArbiter.endGesture()
                 invalidate()
             }
         }
@@ -194,16 +224,29 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         if (!wordFlowEnabled || currentPage != KeyboardPage.LETTERS) return super.onTouchEvent(ev)
         when (ev.actionMasked) {
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                gestureArbiter.onAdditionalPointerDown(ev.pointerCount)
+                isSwiping = false
+                trailPoints.clear()
+                invalidate()
+                return false
+            }
             MotionEvent.ACTION_MOVE -> {
-                if (isSwiping) {
-                    trailPoints.add(GesturePoint(ev.x, ev.y, ev.eventTime))
+                if (gestureArbiter.isMultitouch || ev.pointerCount != 1) return false
+                if (isSwiping && gestureArbiter.mode == TouchGestureMode.SWIPE_ACTIVE) {
+                    val pointerIndex = ev.findPointerIndex(gestureArbiter.primaryPointerId)
+                    if (pointerIndex < 0) return false
+                    trailPoints.add(GesturePoint(ev.getX(pointerIndex), ev.getY(pointerIndex), ev.eventTime))
                     invalidate()
                     return true
                 }
             }
             MotionEvent.ACTION_UP -> {
-                if (isSwiping) {
-                    trailPoints.add(GesturePoint(ev.x, ev.y, ev.eventTime))
+                if (isSwiping && gestureArbiter.mode == TouchGestureMode.SWIPE_ACTIVE) {
+                    val pointerIndex = ev.findPointerIndex(gestureArbiter.primaryPointerId)
+                    val x = if (pointerIndex >= 0) ev.getX(pointerIndex) else ev.x
+                    val y = if (pointerIndex >= 0) ev.getY(pointerIndex) else ev.y
+                    trailPoints.add(GesturePoint(x, y, ev.eventTime))
                     if (trailPoints.size >= 3 && keyRows.width > 0) {
                         val firstAlphaIndex = if (hasNumberRow) 1 else 0
                         val lastAlphaIndex = firstAlphaIndex + 2
@@ -225,13 +268,16 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
                     }
                     isSwiping = false
                     trailPoints.clear()
+                    gestureArbiter.endGesture()
                     invalidate()
                     return true
                 }
+                gestureArbiter.endGesture()
             }
             MotionEvent.ACTION_CANCEL -> {
                 isSwiping = false
                 trailPoints.clear()
+                gestureArbiter.endGesture()
                 invalidate()
                 return true
             }
