@@ -27,5 +27,10 @@ decompiled/
 *.aab
 *.xapk
 
+# Upstream wordlists clonados por tools/fetch_spanish_wordlist.py
+# Se fijan por commit en el script, así que no hace falta versionarlos:
+# el asset generado en assets/dictionaries/ sí está commiteado.
+vendor/
+
 # Local test screenshots
 emulator_*.png

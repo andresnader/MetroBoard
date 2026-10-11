@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.keyboard
 
 import org.junit.Assert.*
@@ -84,29 +92,40 @@ class KeyboardLayoutTest {
 
     @Test
     fun testAccentsMapping() {
-        val rows = KeyboardLayout.rows(KeyboardPage.LETTERS)
+        val rows = KeyboardLayout.rows(KeyboardPage.LETTERS, language = "es")
         val allLetters = rows.flatten()
 
         val aKey = allLetters.first { it.label == "a" }
-        assertEquals(listOf("á", "à", "ä"), aKey.alternatives)
+        assertEquals(listOf("á", "à", "â", "ä", "ã", "å", "æ"), aKey.alternatives)
 
         val eKey = allLetters.first { it.label == "e" }
-        assertEquals(listOf("é", "è", "ë"), eKey.alternatives)
+        assertEquals(listOf("é", "è", "ê", "ë"), eKey.alternatives)
 
         val iKey = allLetters.first { it.label == "i" }
-        assertEquals(listOf("í", "ì", "ï"), iKey.alternatives)
+        assertEquals(listOf("í", "ì", "î", "ï"), iKey.alternatives)
 
         val oKey = allLetters.first { it.label == "o" }
-        assertEquals(listOf("ó", "ò", "ö"), oKey.alternatives)
+        assertEquals(listOf("ó", "ò", "ô", "ö", "õ", "ø"), oKey.alternatives)
 
         val uKey = allLetters.first { it.label == "u" }
-        assertEquals(listOf("ú", "ü", "ù"), uKey.alternatives)
+        assertEquals(listOf("ú", "ù", "û", "ü"), uKey.alternatives)
 
         val nKey = allLetters.first { it.label == "n" }
         assertEquals(listOf("ñ"), nKey.alternatives)
 
+        val cKey = allLetters.first { it.label == "c" }
+        assertEquals(listOf("ç"), cKey.alternatives)
+
+        val sKey = allLetters.first { it.label == "s" }
+        assertEquals(listOf("ß", "ś", "š", "§"), sKey.alternatives)
+
         val zKey = allLetters.first { it.label == "z" }
         assertTrue(zKey.alternatives.isEmpty())
+
+        // Test German specific accents
+        val deRows = KeyboardLayout.rows(KeyboardPage.LETTERS, language = "de")
+        val deUKey = deRows.flatten().first { it.label == "u" }
+        assertEquals(listOf("ü", "ú", "ù", "û"), deUKey.alternatives)
     }
 
     @Test
@@ -168,4 +187,21 @@ class KeyboardLayoutTest {
         assertEquals("espacio", rows[3][2].label)
         assertEquals(KeyAction.SPACE, rows[3][2].action)
     }
+
+    @Test
+    fun testFrenchDefaultUsesAzerty() {
+        val rows = KeyboardLayout.rows(KeyboardPage.LETTERS, language = "fr")
+        assertEquals("azertyuiop", rows[0].map { it.label }.joinToString(""))
+        assertEquals("qsdfghjklm", rows[1].map { it.label }.joinToString(""))
+        assertEquals("espace", rows[3][2].label)
+    }
+
+    @Test
+    fun testGermanDefaultUsesQwertz() {
+        val rows = KeyboardLayout.rows(KeyboardPage.LETTERS, language = "de")
+        assertEquals("qwertzuiop", rows[0].map { it.label }.joinToString(""))
+        assertEquals("asdfghjkl", rows[1].map { it.label }.joinToString(""))
+        assertEquals("leerzeichen", rows[3][2].label)
+    }
 }
+

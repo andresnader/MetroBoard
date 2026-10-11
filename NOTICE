@@ -1,0 +1,81 @@
+MetroBoard
+Copyright (C) 2026 MetroBoard Contributors
+
+Licensed under the GNU Affero General Public License, Version 3 or later.
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+
+================================================================================
+AVISO DE LICENCIA Y OBLIGACIONES DE REDISTRIBUCIÓN
+================================================================================
+
+Este proyecto se distribuye bajo AGPL-3.0-or-later, una licencia copyleft viral.
+
+Qué significa en la práctica:
+
+  - Si distribuyes MetroBoard (modificado o sin modificar) debes hacerlo
+    también bajo AGPL-3.0 y ofrecer su código fuente completo a quien lo
+    reciba.
+  - La AGPL se extiende a la oferta del programa en red: si alguien usa
+    MetroBoard como servicio alcanzable por red, también debe poder obtener
+    el código fuente.
+  - No hay distribución de código propietario que enlace con MetroBoard sin
+    cumplimiento de la AGPL.
+
+Esta decisión es deliberada y se tomó de forma consciente. El proyecto
+necesita un diccionario español completo y la única fuente libre y abierta
+encontrada con esa cobertura lo publica bajo AGPL-3.0. Los datos de
+frecuencia son la excepción, detallada más abajo.
+
+Si en el futuro MetroBoard deja de incluir los datos de AGPL, su código
+puede relicenciarse bajo términos más permisivos; la licencia se aplica al
+estado actual del repositorio.
+
+
+================================================================================
+TERCEROS INCLUIDOS
+================================================================================
+
+1. Diccionario español (76.440 palabras)
+   -------------------------------------
+   Origen:    https://github.com/xavier-hernandez/spanish-wordlist
+   Archivo:   text/spanish_words.txt (ISO-8859-1, CRLF)
+   Commit:    17df0ec (fijado en tools/fetch_spanish_wordlist.py)
+   Licencia:  GNU Affero General Public License v3
+   Upstream:  https://github.com/sbosio/rla-es
+              (Recursos Lingüísticos Abiertos del Español; triple GPL-3.0 /
+               LGPL-3.0 / MPL-1.1; el reempaquetador eligió AGPL)
+
+   Uso:       vocabulario base de app/src/main/assets/dictionaries/es.dict
+   Nota:      AGPL-3.0. Este es el motivo de la relicenciación de MetroBoard
+              a AGPL. Ver la sección anterior.
+
+2. Datos de frecuencia de palabras (rank 1..1000)
+   -----------------------------------------------
+   Origen:    decompiled/chiboard/resources/assets/dicts/es.txt
+   Extraído de: Chi+Flow 1.2.2 (APK de teclado de terceros incluido en
+               apks/, solo para análisis; no se distribuye código suyo)
+   Licencia:  estado legal desconocido — ver NOTA DE RIESGO
+
+   Uso:       solo como fuente de frecuencias para clasificar las 8.777
+              palabras que aparecen en él. No se distribuye ningún código
+              de Chi+Flow.
+
+   NOTA DE RIESGO: los datos de frecuencia se extrajeron de un APK propietario
+   y su status de licencia no está verificado. Antes de publicar MetroBoard
+   en una tienda de apps debe sustituirse esta fuente por una de licencia
+   clara (p. ej. Leipzig Corpora, CC BY 4.0) ejecutando el mismo pipeline con
+   otro corpus. El resto del pipeline no cambia: solo la función
+   read_corpus_ranks() en tools/fetch_spanish_wordlist.py.
+
+   Nota: la tenencia de una lista de palabras no constituye por sí sola una
+   obra protegida por derecho de autor en la mayoría de jurisdicciones (solo
+   se protegen las selecciones y la expresión original), y muchos términos
+   están en dominio público. Aun así, usar datos derivados de un APK
+   propietario merece una revisión legal antes de una distribución comercial.
+
+3. Licencias de herramientas externas (no incluidas)
+   -----------------------------------------------
+   Gradle Wrapper, Kotlin, JUnit, Hamcrest, Android SDK: cada uno bajo sus
+   respectivas licencias de código abierto. No se incluyen ni se
+   redistribuyen aquí; se descargan en tiempo de compilación.

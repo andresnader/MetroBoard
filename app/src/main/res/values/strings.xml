@@ -1,34 +1,100 @@
 <resources>
     <string name="app_name">MetroBoard</string>
-    <string name="subtype_name">QWERTY · español básico</string>
+    <string name="subtype_es">Español (QWERTY)</string>
+    <string name="subtype_en">English (QWERTY)</string>
+    <string name="subtype_fr">Français (AZERTY)</string>
+    <string name="subtype_de">Deutsch (QWERTZ)</string>
+
     <string name="setup_title">tu teclado.\ntu ritmo.</string>
-    <string name="setup_subtitle">MetroBoard · v0.1</string>
-    <string name="setup_instructions">1. Habilita MetroBoard en los ajustes del sistema.\n2. Selecciónalo como método de entrada.\n3. Prueba el campo de abajo.</string>
+    <string name="setup_subtitle">MetroBoard · Word Flow 8.1 Experience</string>
+    <string name="setup_instructions">1. Habilita MetroBoard en los ajustes del sistema.\n2. Selecciónalo como método de entrada.\n3. Disfruta de la experiencia Word Flow offline.</string>
     <string name="enable_keyboard">1  habilitar teclado</string>
     <string name="select_keyboard">2  seleccionar teclado</string>
     <string name="keyboard_active">El teclado está seleccionado.</string>
     <string name="keyboard_enabled">Habilitado. Falta seleccionarlo.</string>
     <string name="keyboard_disabled">El teclado todavía no está habilitado.</string>
-    <string name="feedback_title">preferencias</string>
-    <string name="vibration">Vibración al tocar</string>
-    <string name="sound">Sonido al tocar</string>
-    <string name="suggestions">Sugerencias locales de demostración</string>
-    <string name="privacy_note">Funciona sin conexión. No guarda lo que escribes, no aprende palabras y no envía datos. En campos de contraseña se desactivan las sugerencias y las transformaciones automáticas.</string>
-    <string name="independent_note">Proyecto independiente inspirado en la ergonomía y estética de Windows Phone 8.1 / diseño Metro. Sin afiliación con Microsoft ni assets propietarios.</string>
-    <string name="test_hint">Escribe aquí. Prueba dos espacios…</string>
+
+    <string name="section_languages">idiomas</string>
+    <string name="lang_es">Español</string>
+    <string name="lang_en">English</string>
+    <string name="lang_fr">Français</string>
+    <string name="lang_de">Deutsch</string>
+    <string name="select_system_ime">Cambiar teclado del sistema…</string>
+    <string name="layout_title">distribución de teclas</string>
+    <string name="layout_auto">Automático según idioma</string>
+    <string name="layout_qwerty">QWERTY</string>
+    <string name="layout_azerty">AZERTY</string>
+    <string name="layout_qwertz">QWERTZ</string>
+
+    <string name="section_typing">escritura y corrección</string>
+    <string name="suggestions">Texto predictivo</string>
+    <string name="autocorrect">Corrección ortográfica automática</string>
+    <string name="autocap">Mayúscula inicial automática</string>
+    <string name="double_space_period">Punto rápido con doble espacio</string>
+    <string name="shift_word_casing">Cambio de capitalización con Shift</string>
+    <string name="shift_word_casing_summary">Al tocar Shift al final de una palabra: mayúscula inicial → MAYÚSCULAS → minúsculas</string>
+
+    <string name="section_layout">distribución y tamaño</string>
+    <string name="height_scale_title">altura del teclado</string>
+    <string name="height_small">Compacto (85%)</string>
+    <string name="height_normal">Estándar (100%)</string>
+    <string name="height_tall">Alto (115%)</string>
+    <string name="show_number_row">Fila numérica superior</string>
+    <string name="key_popup">Popups sobre teclas (pulsación larga)</string>
+    <string name="edge_to_edge">Borde a borde (Edge-to-edge)</string>
+
+    <string name="section_appearance">apariencia</string>
+    <string name="accent_color_title">color de acento Lumia</string>
+    <string name="tint_keys">Aplicar tinte de acento a teclas</string>
+    <string name="suggestion_bar_style">Estilo de barra de sugerencias</string>
+
+    <string name="section_sound_haptics">sonido y respuesta háptica</string>
+    <string name="sound">Sonido al escribir (clic seco WP8.1)</string>
+    <string name="sound_volume">Volumen del sonido</string>
+    <string name="vibration">Vibración táctil (hápticos)</string>
+    <string name="haptic_strength">Intensidad de vibración</string>
+    <string name="haptic_light">Suave</string>
+    <string name="haptic_medium">Media</string>
+    <string name="haptic_strong">Fuerte</string>
+
+    <string name="section_gestures">gestos</string>
+    <string name="wordflow">Escritura por deslizamiento (Word Flow)</string>
+    <string name="wordflow_summary">Desliza el dedo por las teclas para escribir con estela fluida</string>
+    <string name="spacebar_cursor">Control de cursor desde espacio</string>
+    <string name="spacebar_cursor_summary">Desliza horizontalmente sobre espacio para desplazar el cursor</string>
+    <string name="long_press_space">Pulsación larga en espacio</string>
+    <string name="long_press_space_summary">Abre el selector de idiomas y teclado</string>
+
+    <string name="section_privacy">privacidad y datos</string>
+    <string name="offline_indicator">100% Desconectado · Sin permiso de internet</string>
+    <string name="personal_dictionary">Diccionario personal local</string>
+    <string name="view_learned_words">Ver palabras aprendidas</string>
+    <string name="clear_learned_words">Borrar diccionario personal</string>
+    <string name="export_settings">Exportar ajustes y palabras (JSON)</string>
+    <string name="import_settings">Importar ajustes y palabras (JSON)</string>
+    <string name="reset_settings">Restablecer valores por defecto</string>
+    <string name="privacy_note">No se solicita permiso de internet. Sin telemetría, analytics ni registro de pulsaciones. En campos de contraseña el aprendizaje se desactiva estrictamente.</string>
+
+    <string name="section_about">acerca de</string>
+    <string name="about_version">MetroBoard versión 0.2.0</string>
+    <string name="about_legal">Implementación propia e independiente inspirada en el teclado Word Flow de Windows Phone 8.1. Sin código, fuentes, sonidos ni recursos propietarios de Microsoft ni de Chiflow.</string>
+    <string name="about_licenses">Licencias de diccionarios: SCOWL/Kevin Atkinson (Public Domain/MIT), Wiktionary/CREA (CC BY-SA 3.0), Lexique 3 (ODbL/GPL), Leipzig Corpora (CC BY 4.0).</string>
+
+    <string name="test_hint">Escribe aquí para probar el teclado…</string>
     <string name="test_email">Prueba un correo electrónico</string>
-    <string name="test_password">Prueba una contraseña ficticia</string>
+    <string name="test_password">Prueba una contraseña (aprendizaje OFF)</string>
     <string name="test_number">Prueba un número decimal</string>
     <string name="try_title">pruébalo</string>
+
     <string name="suggestion_description">Insertar sugerencia: %1$s</string>
     <string name="shift_lower">Shift: minúsculas</string>
     <string name="shift_auto">Shift: mayúscula automática</string>
     <string name="shift_once">Shift: siguiente letra mayúscula</string>
     <string name="shift_locked">Shift: bloqueo de mayúsculas</string>
-    <string name="space">Espacio. Mantén pulsado para cambiar de teclado</string>
+    <string name="space">Espacio. Mantén pulsado para selector de idioma</string>
     <string name="backspace">Borrar</string>
     <string name="punctuation">Punto. Mantén pulsado para más puntuación</string>
-    <string name="emoji">Emoticonos de texto</string>
+    <string name="emoji">Selector de emoticonos y emojis</string>
     <string name="symbols">Números y símbolos</string>
     <string name="letters">Volver a letras</string>
     <string name="more_symbols">Más símbolos</string>
@@ -40,39 +106,27 @@
     <string name="action_go">ir</string>
     <string name="action_send">enviar</string>
     <string name="settings_unavailable">Abre los ajustes de idioma y teclado del dispositivo.</string>
-    <string name="section_typing">escritura y corrección</string>
-    <string name="autocorrect">Corrección automática con espacio</string>
-    <string name="autocap">Mayúscula inicial automática</string>
-    <string name="double_space_period">Punto rápido con doble espacio</string>
-    <string name="shift_word_casing">Shift capitaliza la palabra al final</string>
-    <string name="shift_word_casing_summary">Al tocar Shift al final de una palabra: mayúscula inicial → MAYÚSCULAS → minúsculas</string>
-    <string name="section_appearance">apariencia</string>
-    <string name="show_number_row">Fila de números dedicada</string>
-    <string name="accent_color_title">color de acento Lumia</string>
-    <string name="height_scale_title">altura del teclado</string>
-    <string name="height_small">Compacto (85%)</string>
-    <string name="height_normal">Estándar (100%)</string>
-    <string name="height_tall">Alto (115%)</string>
-    <string name="section_tools">copia y restauración</string>
-    <string name="export_settings">Exportar ajustes (JSON)</string>
-    <string name="import_settings">Importar ajustes (JSON)</string>
-    <string name="reset_settings">Restablecer ajustes</string>
     <string name="copied_to_clipboard">Configuración copiada al portapapeles</string>
     <string name="settings_imported">Configuración importada correctamente</string>
     <string name="invalid_json">JSON inválido o incompatible</string>
     <string name="reset_done">Ajustes restablecidos por defecto</string>
+
     <string name="pivot_general">general</string>
     <string name="pivot_typing">escritura</string>
     <string name="pivot_appearance">apariencia</string>
     <string name="pivot_backup">copia</string>
     <string name="pivot_try">pruébalo</string>
-    <string name="section_feedback">respuesta y gestos</string>
-    <string name="wordflow">Escritura por deslizamiento (Word Flow)</string>
-    <string name="wordflow_summary">Desliza el dedo por las teclas para escribir con estela fluida</string>
     <string name="language_title">idioma del teclado</string>
-    <string name="lang_spanish">Español (con ñ)</string>
-    <string name="lang_english">English (QWERTY)</string>
-    <string name="space_spanish">espacio</string>
-    <string name="space_english">space</string>
-    <string name="language_switched">Idioma cambiado a %1$s</string>
+    <string name="theme_title">tema del teclado</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_system">Sistema</string>
+    <string name="one_handed_title">modo a una mano</string>
+    <string name="one_handed_off">Desactivado</string>
+    <string name="one_handed_left">Izquierda</string>
+    <string name="one_handed_right">Derecha</string>
+    <string name="import_android_dict">importar del diccionario personal de android</string>
+    <string name="import_android_dict_done">%1$d palabras importadas del diccionario del sistema</string>
+    <string name="swipe_delete_title">deslizar para borrar</string>
+    <string name="swipe_delete_summary">Desliza hacia la izquierda desde la tecla de retroceso para borrar palabras completas</string>
 </resources>

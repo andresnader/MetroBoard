@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.keyboard
 
 import com.metroboard.ime.prediction.LocalSuggestionEngine
@@ -190,5 +198,26 @@ class EditorControllerTest {
         val controller = controller(editor)
         controller.commitWordFlow("gracias")
         assertEquals("Gracias ", editor.value)
+    }
+
+    @Test fun swipeToDeleteRemovesSingleWord() {
+        val editor = MemoryEditor("Hola mundo maravilloso")
+        val controller = controller(editor)
+        controller.deleteWords(1)
+        assertEquals("Hola mundo ", editor.value)
+    }
+
+    @Test fun swipeToDeleteRemovesMultipleWords() {
+        val editor = MemoryEditor("Hola mundo maravilloso")
+        val controller = controller(editor)
+        controller.deleteWords(2)
+        assertEquals("Hola ", editor.value)
+    }
+
+    @Test fun trigramContextPrioritizedAfterTwoWords() {
+        val editor = MemoryEditor("muchas gracias ")
+        val controller = controller(editor)
+        val suggestions = controller.suggestions()
+        assertTrue("Expected trigram prediction 'por' for 'muchas gracias ', got: $suggestions", suggestions.contains("por"))
     }
 }

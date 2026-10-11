@@ -15,6 +15,21 @@ Nombre del proyecto: **MetroBoard**. Package ID: `com.metroboard.ime`.
 Es un identificador de paquete técnico, sin afirmar afiliación.
 La raíz Gradle se llama `MetroBoard`.
 
+## Licencia, Código Abierto y Atribución
+
+MetroBoard es un proyecto de **software libre y de código abierto (Open Source)** distribuido bajo la licencia [GNU Affero General Public License v3 (AGPL-3.0)](LICENSE).
+
+Este proyecto está inspirado en múltiples proyectos y trabajos de la comunidad:
+- **Microsoft Word Flow / Windows Phone 8.1**: Inspiración del diseño ergonómico Metro UI y dinámica de escritura.
+- **ChiBoard (ChiApps)**: Teclado comunitario Metro en Android y base de frecuencias relativas en español.
+- **Santiago Bosio (sbosio/rla-es) y Xavier Hernández**: Wordlist libre en español de 76.440 palabras (`es.dict`).
+- **SCOWL / Kevin Atkinson & Peter Norvig**: Diccionario y frecuencias en inglés.
+- **Lexique 3 & Wiktionary**: Diccionario y frecuencias en francés.
+- **Leipzig Wortschatz & Wiktionary**: Diccionario y frecuencias en alemán.
+- **Android Open Source Project (AOSP)**: Arquitectura base de `InputMethodService`.
+
+Agradecemos formalmente a cada autor y comunidad. Consulta [ATTRIBUTION.md](ATTRIBUTION.md) para los agradecimientos y licencias completas, y [CHANGELOG.md](CHANGELOG.md) para el historial de versiones.
+
 ## Funcionalidades v0.1
 
 - Servicio `InputMethodService` registrado con `BIND_INPUT_METHOD`, metadatos XML,
@@ -42,8 +57,10 @@ La raíz Gradle se llama `MetroBoard`.
   línea, respetando `IME_FLAG_NO_ENTER_ACTION` y acciones personalizadas.
 - Borrado de selecciones y de puntos de código Unicode, sin cortar pares sustitutos.
 - Layouts Android para teléfono, fecha y números; respeta flags decimal/signo.
-- Hasta tres sugerencias por prefijo, con lista española pequeña escrita a mano.
-  Tocar una sustituye el prefijo; no añade espacio ni autocorrige. Se revalida al tocar.
+- Hasta tres sugerencias por prefijo, con un diccionario español real de
+  **76.440 palabras** en assets y frecuencias de corpus reales para las más
+  comunes. Tocar una sustituye el prefijo; no añade espacio ni autocorrige.
+  Se revalida al tocar.
 - Vibración y sonido Android opcionales, **apagados por defecto**, con ajustes
   persistentes. Respetan las restricciones del sistema y el modo de sonido.
 
@@ -187,12 +204,24 @@ Consulta [la política técnica completa](docs/privacy.md).
 
 - Inspiración histórica; geometría, color exacto y timings propios. No se afirma
   fidelidad exacta del Shift histórico, que el corpus marca Probable.
-- Un único subtipo QWERTY con demostración de vocabulario español; no hay motor
-  multilingüe, autocorrección, siguiente palabra ni catálogo completo de emoji.
-- El popup requiere levantar y elegir; no implementa el gesto deslizante &123 ni
-  retorno automático desde emoji. Los layouts de campos son adaptaciones Android.
-- No se transforma la capitalización de una palabra seleccionada con Shift
-  (B002), ni se implementan shape writing, caret propio, contactos o nube.
+- Hay cuatro subtipos de idioma (`es`/`en`/`fr`/`de`) con layout, autocorrección y
+  siguiente palabra. Pero **solo `es` tiene vocabulario real**: los otros tres
+  siguen con listas de demostración de ~200 palabras escritas a mano.
+  `docs/dictionaries.md` detalla el desfase de atribución de cada uno.
+- El Popup de sugerencias requiere levantar y elegir; no implementa el gesto
+  deslizante &123 ni retorno automático desde emoji. Los layouts de campos son
+  adaptaciones Android.
+- No se transforma la capitalización de una palabra seleccionada con Shift (B002),
+  ni se implementan caret propio, contactos ni nube. El shape writing sí está
+  implementado, pero su pool de candidatos son las 500 palabras más frecuentes
+  más las aprendidas por el usuario.
+- Los datos de frecuencia del diccionario español provienen de un corpus
+  extraído de un APK propietario cuyo estado legal no está verificado. Está
+  documentado en [`NOTICE`](NOTICE) y debe sustituirse por una fuente de
+  licencia clara antes de publicar en una tienda de apps.
+- Los diccionarios viajan en `assets/` sin `noCompress`, así que se descomprimen
+  en cada carga. Aceptable con el español actual (904 KiB); a revisar si se
+  multiplican los idiomas.
 - Backspace borra puntos de código, no clústeres de grafemas completos: un emoji
   compuesto o una letra con marca combinante puede requerir varios toques.
 - Selección y capitalización dependen de que el editor anfitrión implemente las
