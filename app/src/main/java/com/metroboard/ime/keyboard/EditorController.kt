@@ -12,6 +12,10 @@ class EditorController(
     var policy = EditingPolicy()
         private set
 
+    fun setLanguage(language: String) {
+        engine.setLanguage(language)
+    }
+
     fun start(policy: EditingPolicy) {
         this.policy = policy
         spaces.reset()
