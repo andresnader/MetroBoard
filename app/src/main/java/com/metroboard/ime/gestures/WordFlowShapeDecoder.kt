@@ -1,25 +1,25 @@
 package com.metroboard.ime.gestures
 
-import com.metroboard.ime.prediction.LocalSuggestionEngine
+import com.metroboard.ime.prediction.LanguagePacks
 import java.util.Locale
 import kotlin.math.hypot
 
-class WordFlowShapeDecoder(
-    dictionary: List<String> = DEFAULT_WORDS
-) : ShapeWritingDecoder {
+class WordFlowShapeDecoder : ShapeWritingDecoder {
 
-    private val bucketedWords: Map<Pair<Char, Char>, List<String>>
+    private val bucketCache = HashMap<String, Map<Pair<Char, Char>, List<String>>>()
 
-    init {
-        val map = HashMap<Pair<Char, Char>, MutableList<String>>()
-        for (raw in dictionary) {
-            val clean = cleanWord(raw)
-            if (clean.length >= 2) {
-                val pair = clean.first() to clean.last()
-                map.getOrPut(pair) { ArrayList() }.add(raw)
+    private fun bucketsFor(language: String): Map<Pair<Char, Char>, List<String>> {
+        return bucketCache.getOrPut(language) {
+            val map = HashMap<Pair<Char, Char>, MutableList<String>>()
+            for (raw in LanguagePacks.forCode(language).words) {
+                val clean = cleanWord(raw)
+                if (clean.length >= 2) {
+                    val pair = clean.first() to clean.last()
+                    map.getOrPut(pair) { ArrayList() }.add(raw)
+                }
             }
+            map
         }
-        bucketedWords = map
     }
 
     override fun decode(path: List<GesturePoint>): List<String> = decode(path, "es")
@@ -43,7 +43,7 @@ class WordFlowShapeDecoder(
         val candidates = LinkedHashSet<String>()
         for (s in startKeys) {
             for (e in endKeys) {
-                bucketedWords[s to e]?.let { candidates.addAll(it) }
+                bucketsFor(language)[s to e]?.let { candidates.addAll(it) }
             }
         }
 
@@ -145,29 +145,6 @@ class WordFlowShapeDecoder(
                 }
             }.joinToString("")
 
-        val DEFAULT_WORDS: List<String> = listOf(
-            // Spanish
-            "hola", "amigo", "casa", "comer", "como", "cuando", "donde", "gracias",
-            "hacer", "hasta", "hombre", "hora", "hoy", "juntos", "luego", "mañana",
-            "mejor", "mensaje", "muchas", "mundo", "noche", "nosotros", "nuevo",
-            "para", "pero", "podemos", "porque", "pronto", "puedo", "quiero",
-            "saber", "saludos", "siempre", "también", "tarde", "teclado", "tenemos",
-            "tiempo", "tienes", "todos", "vamos", "verdad", "vida", "bueno", "buenas",
-            "gente", "mano", "lugar", "mujer", "padre", "trabajo", "año", "años",
-            "niño", "niña", "señor", "pequeño", "bien", "claro", "favor", "mucho",
-            "nada", "todo", "está", "estoy", "ahora", "después", "desde", "sobre",
-            "entre", "tener", "estar", "decir", "poder", "ir", "ver", "dar",
-            "llegar", "pasar", "deber", "poner", "parecer", "quedar", "creer",
-            "hablar", "llevar", "dejar", "seguir", "encontrar", "llamar", "venir",
-            "pensar", "salir", "volver", "tomar", "conocer", "vivir", "sentir",
-            // English
-            "about", "after", "again", "also", "back", "because", "been", "before",
-            "come", "could", "first", "from", "give", "good", "have", "here",
-            "into", "just", "know", "like", "look", "make", "most", "only",
-            "other", "over", "people", "some", "take", "than", "that", "the",
-            "their", "them", "then", "there", "these", "they", "think", "this",
-            "time", "want", "well", "what", "when", "which", "will", "with",
-            "work", "would", "year", "your"
-        )
+
     }
 }
