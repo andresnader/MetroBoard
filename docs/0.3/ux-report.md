@@ -2,8 +2,8 @@
 
 Fuentes: el video del dispositivo (`test teclado.mp4`, 5 min, app = rama `main` local), capturas del emulador de esta iteración y el
 corpus `wordflow_8_1_reverse_engineering_corpus_v0_1.xlsx` (15 comportamientos, 6 preguntas abiertas). **No se hizo ninguna prueba de
-usuario ni se usó un teléfono Windows Phone real.** La carpeta «Windows phone 81. UI UX Design» (PDF de 20 MB) apareció sin versionar
-durante la sesión; **no se leyó ni se versionó** (origen y derechos desconocidos).
+usuario ni se usó un teléfono Windows Phone real.** Posteriormente se analizó por completo la presentación «Windows Phone Design» (52 diapositivas, 2013) que aportó el propietario:
+ver [wp-design-guidelines-analysis.md](wp-design-guidelines-analysis.md). Es una guía de diseño de *aplicaciones*; no trata teclados.
 
 ## 1. Lo visto en el video y qué cambió
 

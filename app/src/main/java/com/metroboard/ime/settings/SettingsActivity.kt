@@ -80,6 +80,7 @@ class SettingsActivity : Activity() {
             }
         }
         setContentView(root)
+        syncSystemBarAppearance()
 
         // 1. App Subtitle
         val appTitle = TextView(this).apply {
@@ -732,6 +733,25 @@ class SettingsActivity : Activity() {
             layoutParams = LinearLayout.LayoutParams(resources.displayMetrics.widthPixels, LinearLayout.LayoutParams.MATCH_PARENT)
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
+        }
+    }
+
+    /** Light theme needs dark status/navigation icons; otherwise the clock and battery are white on white. */
+    private fun syncSystemBarAppearance() {
+        val light = !KeyboardColors.isDarkTheme
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (light) mask else 0, mask)
+        } else {
+            @Suppress("DEPRECATION")
+            var flags = window.decorView.systemUiVisibility
+            val bits = if (android.os.Build.VERSION.SDK_INT >= 26)
+                android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            else android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            flags = if (light) flags or bits else flags and bits.inv()
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = flags
         }
     }
 

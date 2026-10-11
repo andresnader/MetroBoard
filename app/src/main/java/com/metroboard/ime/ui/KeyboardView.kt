@@ -23,6 +23,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.metroboard.ime.R
@@ -61,7 +62,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     private val keyboardRowContainer = LinearLayout(context)
     private val leftDockBar = LinearLayout(context)
     private val rightDockBar = LinearLayout(context)
-    private val clipButton = TextView(context)
+    private val clipButton = ImageView(context)
     private var currentOneHandedMode = "OFF"
     private var currentTheme = "DARK"
     private val alternatives = AlternativesPopup()
@@ -202,13 +203,13 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
 
         // Discreet Clipboard Button on left
         clipButton.apply {
-            text = "📋"
-            textSize = 15f
-            gravity = Gravity.CENTER
+            // Flat geometric glyph, tinted like the keys (the colour emoji clashed with the Metro style).
+            setImageResource(R.drawable.ic_clipboard)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setColorFilter(KeyboardColors.foreground)
             setBackgroundColor(Color.TRANSPARENT)
-            setTextColor(KeyboardColors.foreground)
-            setPadding(context.dp(6), 0, context.dp(6), 0)
-            contentDescription = "Clipboard"
+            setPadding(context.dp(7), context.dp(10), context.dp(7), context.dp(10))
+            contentDescription = context.getString(R.string.clipboard)
             setOnClickListener { listener.onClipboardPasteRequested() }
         }
         suggestionBar.addView(clipButton, LayoutParams(context.dp(34), context.dp(40)))
@@ -354,7 +355,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         KeyboardColors.setTheme(theme, isSystemDark)
         setBackgroundColor(KeyboardColors.background)
         suggestionBar.setBackgroundColor(KeyboardColors.background)
-        clipButton.setTextColor(KeyboardColors.foreground)
+        clipButton.setColorFilter(KeyboardColors.foreground)
 
         applyOneHandedMode(oneHandedMode)
         currentPage = page

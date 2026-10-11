@@ -43,6 +43,10 @@ Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además e
   *borde a borde*, que no hacía nada.
 - **Tema claro:** el icono de cambio de teclado del sistema era blanco sobre blanco.
 - **Pantalla «Acerca de»** mostraba una versión fija y licencias de fuentes que nunca se usaron.
+- **Directrices de Windows Phone** (análisis del PDF en [`docs/0.3/wp-design-guidelines-analysis.md`](docs/0.3/wp-design-guidelines-analysis.md)):
+  la paleta tenía 10 colores con valores de Windows 10; ahora son los **20 acentos de WP8 con su hex exacto** (cuadrícula 5×4) y el acento por
+  defecto es *Cyan* `#1BA1E2`; el botón de portapapeles era un emoji a color y ahora es un glifo geométrico plano (con descripción en español);
+  en tema claro los iconos de la barra de estado de Ajustes eran invisibles.
 
 ### Added
 - **Diccionarios reales de 60.000 palabras** para es/en/fr/de generados de forma reproducible

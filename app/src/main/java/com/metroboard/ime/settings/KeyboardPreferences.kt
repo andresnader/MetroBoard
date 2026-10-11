@@ -232,7 +232,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
     }
 
     companion object {
-        const val DEFAULT_ACCENT_COLOR: Int = -16735073 // 0xFF00A4EF.toInt() Lumia Cyan
+        const val DEFAULT_ACCENT_COLOR: Int = 0xFF1BA1E2.toInt() // Windows Phone 8 "Cyan", the Lumia default (was a stray 0xFF00A49F mislabelled as 0xFF00A4EF)
         const val KEY_LEGACY_VIBRATION = "vibration"
         const val KEY_LEGACY_SOUND = "sound"
         const val KEY_LEGACY_SUGGESTIONS = "suggestions"

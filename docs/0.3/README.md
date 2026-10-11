@@ -7,6 +7,7 @@ Principio rector de la iteración: **el teclado debe escribir correctamente ante
 | [issue-matrix.md](issue-matrix.md) | Problemas verificados, causa raíz, corrección y verificación; y lo que **no** se resolvió |
 | [technical-report.md](technical-report.md) | Ramas, sistema de entrada y su máquina de estados, predicción, diccionarios, Word Flow, compatibilidad |
 | [ux-report.md](ux-report.md) | Observaciones del video, estado de cada comportamiento del corpus, diferencias con Windows Phone 8.1 |
+| [wp-design-guidelines-analysis.md](wp-design-guidelines-analysis.md) | Análisis completo del PDF de directrices de diseño de Windows Phone y su aplicación a MetroBoard |
 | [qa-report.md](qa-report.md) | Ejecuciones, métricas, rendimiento, comprobaciones manuales y limitaciones |
 | [security-audit.md](security-audit.md) | Comprobaciones reproducibles, hallazgos corregidos y riesgos residuales |
 | [../dictionaries.md](../dictionaries.md), [../privacy.md](../privacy.md) | Datos y privacidad |
@@ -34,4 +35,4 @@ versiones de Android ni navegación de tres botones. Quedan sin hacer los hitbox
    una revisión legal antes de publicar en una tienda. La licencia del proyecto **no** se cambió.
 2. **Aprendizaje de palabras.** Está activado por defecto (como ya ocurría) y tiene interruptor. Si se prefiere opt-in, es un cambio de una línea.
 3. **Publicación del commit local `3d4de42`**: viaja dentro de esta rama (el PR está apilado sobre el PR #1).
-4. **El PDF «Windows phone 8 Design»** apareció en la raíz sin versionar; no se leyó ni se añadió al repositorio.
+4. **Directrices de Windows Phone**: el PDF se analizó entero (ver el documento enlazado). Quedan dos incumplimientos que dependen de ti (8 paneles en Ajustes y el campo de prueba dentro del pivote) y la política de tamaño mínimo de texto.

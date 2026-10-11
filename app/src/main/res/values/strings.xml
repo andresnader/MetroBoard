@@ -105,11 +105,11 @@
     <string name="action_go">ir</string>
     <string name="action_send">enviar</string>
     <string name="settings_unavailable">Abre los ajustes de idioma y teclado del dispositivo.</string>
+    <string name="clipboard">Portapapeles</string>
     <string name="learn_words">Aprender palabras nuevas</string>
     <string name="backup_saved">Copia guardada</string>
     <string name="backup_failed">No se pudo guardar la copia</string>
     <string name="backup_imported">%1$d ajustes y %2$d palabras importadas</string>
-    <string name="settings_imported">Configuración importada correctamente</string>
     <string name="invalid_json">JSON inválido o incompatible</string>
     <string name="reset_done">Ajustes restablecidos por defecto</string>
 
