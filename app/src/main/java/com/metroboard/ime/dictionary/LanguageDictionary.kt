@@ -76,6 +76,37 @@ class LanguageDictionary(
 
     override fun getTopWords(limit: Int): List<String> = topWords.take(limit)
 
+    /** (first letter, last letter) -> words, most frequent first. Built once, on first use. */
+    private val endpointIndex: Map<Int, List<String>> by lazy {
+        val index = HashMap<Int, MutableList<String>>()
+        for (word in topWords) { // already sorted by frequency
+            val norm = CompactWordTrie.normalize(word)
+            if (norm.length < 2) continue
+            index.getOrPut(norm.first().code shl 16 or norm.last().code) { ArrayList() }.add(word)
+        }
+        index
+    }
+
+    override fun wordsByEndpoints(first: Set<Char>, last: Set<Char>, minFrequency: Int, limit: Int): List<String> {
+        val pools = ArrayList<List<String>>()
+        for (f in first) for (l in last) endpointIndex[f.code shl 16 or l.code]?.let { pools += it }
+        // k-way merge by frequency so the limit keeps the best words of every pool.
+        val cursor = IntArray(pools.size)
+        val out = ArrayList<String>()
+        while (out.size < limit) {
+            var bestPool = -1
+            var bestFreq = -1
+            for (p in pools.indices) {
+                val w = pools[p].getOrNull(cursor[p]) ?: continue
+                val f = trie.getFrequency(w)
+                if (f > bestFreq) { bestFreq = f; bestPool = p }
+            }
+            if (bestPool < 0 || bestFreq < minFrequency) break
+            out += pools[bestPool][cursor[bestPool]++]
+        }
+        return out
+    }
+
     override fun getBigramSuggestions(previousWord: String): List<String> {
         val norm = normalize(previousWord)
         return bigrams[norm] ?: emptyList()

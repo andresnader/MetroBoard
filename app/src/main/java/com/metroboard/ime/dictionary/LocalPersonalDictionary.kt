@@ -41,6 +41,13 @@ class LocalPersonalDictionary(
     override fun wordsWithPrefix(prefix: String): List<String> = wordsWithPrefix(prefix, "es")
 
     @Synchronized
+    override fun words(language: String): List<String> =
+        (wordMap[language.lowercase(Locale.ROOT)]?.values ?: emptyList())
+            .filter { it.frequency >= MIN_USES_TO_SUGGEST }
+            .sortedByDescending { it.frequency }
+            .map { it.word }
+
+    @Synchronized
     override fun knows(word: String, language: String): Boolean =
         (wordMap[language.lowercase(Locale.ROOT)]?.get(word.trim().lowercase(Locale.ROOT))?.frequency ?: 0) >= MIN_USES_TO_SUGGEST
 

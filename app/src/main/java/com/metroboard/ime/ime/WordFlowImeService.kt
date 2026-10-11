@@ -80,6 +80,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
 
     override fun onCreateInputView(): View = KeyboardView(this, this).also {
         keyboard = it
+        it.setPersonalDictionary(personalDict)
         KeyboardColors.accent = preferences.accentColor
         applyKeyboardLayout(it)
         render()

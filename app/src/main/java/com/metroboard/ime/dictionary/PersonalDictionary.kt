@@ -16,6 +16,9 @@ interface PersonalDictionary {
     /** Words learned for [language] that are frequent enough to be suggested. */
     fun wordsWithPrefix(prefix: String, language: String): List<String> = wordsWithPrefix(prefix)
 
+    /** Every word established in [language] (used repeatedly or explicitly kept). */
+    fun words(language: String): List<String> = emptyList()
+
     /** Records one use of [word] in [language]. */
     fun learn(word: String, language: String) = learn(word)
 

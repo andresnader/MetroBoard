@@ -27,6 +27,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.metroboard.ime.R
 import com.metroboard.ime.gestures.GesturePoint
+import com.metroboard.ime.gestures.KeyCenter
 import com.metroboard.ime.gestures.TouchInputListener
 import com.metroboard.ime.gestures.TouchInputStateMachine
 import com.metroboard.ime.gestures.TouchInteractionState
@@ -114,33 +115,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         }
 
         override fun onSwipeEnded(path: List<GesturePoint>) {
-            if (path.size >= 3 && keyRows.width > 0) {
-                val firstAlphaIndex = if (hasNumberRow) 1 else 0
-                val lastAlphaIndex = firstAlphaIndex + 2
-                val firstAlphaRow = keyRows.getChildAt(firstAlphaIndex)
-                val lastAlphaRow = keyRows.getChildAt(lastAlphaIndex)
-                var krLeft = 0
-                var krTop = 0
-                var p: View? = keyRows
-                while (p != null && p != this@KeyboardView) {
-                    krLeft += p.left
-                    krTop += p.top
-                    p = p.parent as? View
-                }
-                val alphaTop = krTop + (firstAlphaRow?.top ?: 0)
-                val alphaBottom = krTop + (lastAlphaRow?.bottom ?: keyRows.height)
-                val alphaHeight = (alphaBottom - alphaTop).coerceAtLeast(1)
-
-                val normPoints = path.map { pt ->
-                    val nx = ((pt.x - krLeft) / keyRows.width.toFloat()).coerceIn(0f, 1f)
-                    val ny = ((pt.y - alphaTop) / alphaHeight.toFloat()).coerceIn(0f, 1f)
-                    GesturePoint(nx, ny, pt.timeMillis)
-                }
-                val candidates = decoder.decode(normPoints, currentLanguage)
-                if (candidates.isNotEmpty()) {
-                    listener.onWordFlow(candidates.first(), candidates)
-                }
-            }
+            decodeShapeAsync(path)
             trailPoints.clear()
             invalidate()
         }
@@ -523,6 +498,65 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         }
 
         return super.dispatchTouchEvent(ev)
+    }
+
+    /**
+     * Real geometry: centres of the letter keys as they are rendered right now (orientation, height,
+     * number row, one-handed mode, layout), normalised to the bounding box of the letter keys. The
+     * swipe path is normalised with the same box, so both live in one coordinate system.
+     */
+    private class LetterGeometry(val left: Float, val top: Float, val width: Float, val height: Float, val centers: Map<Char, KeyCenter>)
+
+    private fun letterGeometry(): LetterGeometry? {
+        val letters = ArrayList<Pair<Char, FloatArray>>()
+        for ((spec, button) in keys) {
+            if (!button.isShown || spec.action != KeyAction.TEXT) continue
+            val ch = spec.label.singleOrNull()?.takeIf { it.isLetter() }?.lowercaseChar() ?: continue
+            var x = button.width / 2f
+            var y = button.height / 2f
+            var cur: View = button
+            while (cur !== this && cur.parent is View) {
+                x += cur.left; y += cur.top
+                cur = cur.parent as View
+            }
+            letters += ch to floatArrayOf(x, y, button.width.toFloat(), button.height.toFloat())
+        }
+        if (letters.size < 10) return null
+        val left = letters.minOf { it.second[0] - it.second[2] / 2f }
+        val right = letters.maxOf { it.second[0] + it.second[2] / 2f }
+        val top = letters.minOf { it.second[1] - it.second[3] / 2f }
+        val bottom = letters.maxOf { it.second[1] + it.second[3] / 2f }
+        val w = (right - left).coerceAtLeast(1f)
+        val h = (bottom - top).coerceAtLeast(1f)
+        val centers = letters.associate { (ch, v) -> ch to KeyCenter(ch, (v[0] - left) / w, (v[1] - top) / h) }
+        return LetterGeometry(left, top, w, h, centers)
+    }
+
+    // One worker that exits after 30 s idle, so the view never needs to shut it down (the IME may
+    // detach and re-attach this view) and no thread lingers while the keyboard is unused.
+    private val shapeExecutor = java.util.concurrent.ThreadPoolExecutor(
+        1, 1, 30, java.util.concurrent.TimeUnit.SECONDS, java.util.concurrent.LinkedBlockingQueue(),
+    ) { r -> Thread(r, "metroboard-wordflow").apply { isDaemon = true } }.apply { allowCoreThreadTimeOut(true) }
+
+    /** Decoding scans the whole lexicon, so it runs off the UI thread and the result is posted back. */
+    private fun decodeShapeAsync(path: List<GesturePoint>) {
+        if (path.size < 3) return
+        val geo = letterGeometry() ?: return
+        val language = currentLanguage
+        val normalized = path.map { pt ->
+            GesturePoint(((pt.x - geo.left) / geo.width).coerceIn(-0.1f, 1.1f), ((pt.y - geo.top) / geo.height).coerceIn(-0.1f, 1.1f), pt.timeMillis)
+        }
+        shapeExecutor.execute {
+            val candidates = decoder.decode(normalized, language, geo.centers)
+            if (candidates.isNotEmpty()) {
+                mainHandler.post { if (isAttachedToWindow && language == currentLanguage) listener.onWordFlow(candidates.first(), candidates) }
+            }
+        }
+    }
+
+    /** Learned words take part in shape-writing candidate generation. */
+    fun setPersonalDictionary(dictionary: com.metroboard.ime.dictionary.PersonalDictionary?) {
+        decoder.personalDictionary = dictionary
     }
 
     private fun findKeyAt(x: Float, y: Float): KeySpec? {

@@ -25,6 +25,14 @@ interface DictionaryProvider {
     fun wordsWithPrefix(prefix: String, limit: Int = 5): List<String>
     fun searchFuzzy(word: String, limit: Int = 3): List<String>
     fun getTopWords(limit: Int = 200): List<String>
+
+    /**
+     * Words (most frequent first) whose first letter is in [first] and last letter in [last],
+     * compared accent-insensitively. Candidate pool for shape writing: it must reach the whole
+     * lexicon, not only the most frequent few hundred words.
+     */
+    fun wordsByEndpoints(first: Set<Char>, last: Set<Char>, minFrequency: Int = 0, limit: Int = 4000): List<String> =
+        emptyList()
     fun getBigramSuggestions(previousWord: String): List<String>
     fun getTrigramSuggestions(word1: String, word2: String): List<String> = emptyList()
     fun autoCorrect(word: String): String?

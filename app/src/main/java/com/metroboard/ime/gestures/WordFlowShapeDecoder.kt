@@ -44,127 +44,133 @@ class KeyHitMap(
 }
 
 class WordFlowShapeDecoder(
-    private val personalDictionary: PersonalDictionary? = null,
+    personalDictionary: PersonalDictionary? = null,
     /**
      * Contexto usado para leer los diccionarios empaquetados en assets.
      * Sin él el decodificador solo puede usar la lista de respaldo de 240
      * palabras, que es lo que pasaba antes: `LanguageDictionaryRegistry.get()`
      * se llamaba sin contexto y por tanto nunca alcanzaba `es.dict`.
      */
-    private val context: android.content.Context? = null
+    private val context: android.content.Context? = null,
+    /** Test seam: supplies dictionaries directly instead of the Android-backed registry. */
+    private val dictionaryFor: ((String) -> com.metroboard.ime.dictionary.DictionaryProvider)? = null,
 ) : ShapeWritingDecoder {
+
+    /** Learned words are offered to the decoder too; set by the IME. */
+    var personalDictionary: PersonalDictionary? = personalDictionary
 
     override fun decode(path: List<GesturePoint>): List<String> = decode(path, "es")
 
-    fun decode(path: List<GesturePoint>, language: String = "es"): List<String> {
-        if (path.size < 3) return emptyList()
+    /**
+     * Gesture Capture -> Resampling -> Geometric Decoding -> Candidate Generation -> Language Ranking.
+     *
+     * [path] and [centersOverride] must share one coordinate system (the caller normalises both to
+     * the bounding box of the letter keys). Without [centersOverride] the static layout maps are used.
+     */
+    fun decode(path: List<GesturePoint>, language: String = "es", centersOverride: Map<Char, KeyCenter>? = null): List<String> {
+        val ranked = decodeScored(path, language, centersOverride)
+        // Confidence gate: a scribble must not turn into a confidently wrong word.
+        if (ranked.isEmpty() || ranked.first().shapeSimilarity < MIN_CONFIDENCE) return emptyList()
+        return ranked.map { it.word }.distinct().take(3)
+    }
 
-        // 1. Noise reduction and normalization
+    /** Ranked candidates with their scores, before the confidence gate. Exposed for calibration. */
+    internal fun decodeScored(path: List<GesturePoint>, language: String, centersOverride: Map<Char, KeyCenter>? = null): List<SwipeCandidate> {
+        if (path.size < 3) return emptyList()
+        val centers = centersOverride ?: KeyboardGeometry.centers(language)
+
+        // 1. Noise reduction, normalisation, fixed-length resampling.
         val simplified = simplifyPath(path)
         if (simplified.size < 3) return emptyList()
+        val resampled = GestureResampler.resample(normalizeCoordinates(simplified), SAMPLES)
+        if (resampled.size < SAMPLES) return emptyList()
+        val userLength = polylineLength(resampled)
+        if (userLength < MIN_PATH_LENGTH) return emptyList() // too short to be a word
 
-        val normalizedPath = normalizeCoordinates(simplified)
-        val resampled = GestureResampler.resample(normalizedPath, 32)
-        if (resampled.size < 32) return emptyList()
-
-        val startPoint = resampled.first()
-        val endPoint = resampled.last()
-        val centers = KeyboardGeometry.centers(language)
-
-        val startKeys = KeyboardGeometry.findKeysNear(startPoint.x, startPoint.y, 0.24f, language)
-        val endKeys = KeyboardGeometry.findKeysNear(endPoint.x, endPoint.y, 0.24f, language)
+        val startKeys = nearestKeys(centers, resampled.first(), ENDPOINT_KEYS, ENDPOINT_RADIUS)
+        val endKeys = nearestKeys(centers, resampled.last(), ENDPOINT_KEYS, ENDPOINT_RADIUS)
         if (startKeys.isEmpty() || endKeys.isEmpty()) return emptyList()
 
-        // 2. Fetch dictionary for active language
-        // Never load a dictionary on the UI thread: if it is not ready yet, start loading and decode nothing.
+        // 2. Dictionary of the active language. Never load one on the UI thread.
         val ctx = context
-        val dict = if (ctx == null) LanguageDictionaryRegistry.get(language, null)
+        val dict = dictionaryFor?.invoke(language) ?: if (ctx == null) LanguageDictionaryRegistry.get(language, null)
         else LanguageDictionaryRegistry.getIfLoaded(language)
             ?: run { LanguageDictionaryRegistry.preload(language, ctx); return emptyList() }
-        val dictWords = dict.getTopWords(500)
-        val personalWords = personalDictionary?.wordsWithPrefix("") ?: emptyList()
-        val candidatePool = (personalWords + dictWords).distinct()
 
-        val candidates = ArrayList<String>()
+        // 3. Candidate generation over the WHOLE lexicon (not just the most frequent words).
         val startSet = startKeys.toSet()
         val endSet = endKeys.toSet()
-
-        for (raw in candidatePool) {
-            val clean = cleanWord(raw)
-            if (clean.length >= 2 && clean.first() in startSet && clean.last() in endSet) {
-                candidates.add(raw)
-            }
+        val personalWords = personalDictionary?.words(language).orEmpty().filter {
+            val c = cleanWord(it)
+            c.length >= 2 && c.first() in startSet && c.last() in endSet
         }
+        val personalSet = personalWords.toHashSet()
+        val pool = LinkedHashSet<String>(personalWords)
+        pool.addAll(dict.wordsByEndpoints(startSet, endSet, MIN_CANDIDATE_FREQUENCY, MAX_POOL))
 
-        if (candidates.isEmpty()) return emptyList()
-
+        // 4. Geometric scoring with cheap rejections first.
         val scored = ArrayList<SwipeCandidate>()
-
-        for (candidate in candidates) {
+        for (candidate in pool) {
             val clean = cleanWord(candidate)
-            val keyPoints = ArrayList<GesturePoint>()
+            val keyPoints = ArrayList<GesturePoint>(clean.length)
             var prevChar = ' '
+            var unknownKey = false
             for (ch in clean) {
-                if (ch != prevChar) {
-                    val center = centers[ch] ?: continue
-                    keyPoints.add(GesturePoint(center.x, center.y, 0L))
-                    prevChar = ch
+                if (ch == prevChar) continue
+                val center = centers[ch]
+                if (center == null) { unknownKey = true; break }
+                keyPoints.add(GesturePoint(center.x, center.y, 0L))
+                prevChar = ch
+            }
+            if (unknownKey || keyPoints.size < 2) continue
+
+            // A word whose ideal path is far longer or shorter than the swipe cannot be the one.
+            val idealLength = polylineLength(keyPoints)
+            val ratio = idealLength / userLength
+            if (ratio < MIN_LENGTH_RATIO || ratio > MAX_LENGTH_RATIO) continue
+
+            // Letters must be visited in order along the swipe.
+            var matched = 0
+            var from = 0
+            for (ch in clean) {
+                val center = centers[ch] ?: continue
+                var hit = -1
+                for (i in from until resampled.size) {
+                    if (hypot(resampled[i].x - center.x, resampled[i].y - center.y) <= LETTER_RADIUS) { hit = i; break }
                 }
+                if (hit >= 0) { matched++; from = hit }
             }
-            if (keyPoints.size < 2) continue
+            val completeness = matched.toDouble() / clean.length
+            if (completeness < MIN_COMPLETENESS) continue
 
-            // Ideal 32-point polyline for this word
-            val idealResampled = GestureResampler.resample(keyPoints, 32)
+            val ideal = GestureResampler.resample(keyPoints, SAMPLES)
+            val dtw = dtwDistance(resampled, ideal, window = 8) / SAMPLES
+            var euclid = 0.0
+            for (i in 0 until SAMPLES) euclid += hypot(resampled[i].x - ideal[i].x, resampled[i].y - ideal[i].y)
+            val effectiveDist = dtw * 0.6 + euclid / SAMPLES * 0.4
+            if (effectiveDist > MAX_DISTANCE) continue
 
-            // Dynamic Time Warping (DTW) elastic matching
-            val dtwDist = dtwDistance(resampled, idealResampled, window = 8) / 32.0
-
-            // Fixed Euclidean average distance for baseline comparison
-            var totalEuclidDistance = 0.0
-            for (i in 0 until 32) {
-                val p1 = resampled[i]
-                val p2 = idealResampled[i]
-                totalEuclidDistance += hypot(p1.x - p2.x, p1.y - p2.y)
-            }
-            val avgEuclidDist = totalEuclidDistance / 32.0
-
-            // Combined DTW (60%) + Euclidean (40%) metric
-            val effectiveDist = (dtwDist * 0.6) + (avgEuclidDist * 0.4)
-
-            // Letter ordering alignment
-            var matchedLetterIdx = 0
-            var lastMatchedPathIdx = 0
-            for (charIdx in clean.indices) {
-                val targetChar = clean[charIdx]
-                val center = centers[targetChar] ?: continue
-                var found = false
-                for (pIdx in lastMatchedPathIdx until resampled.size) {
-                    val p = resampled[pIdx]
-                    if (hypot(p.x - center.x, p.y - center.y) <= 0.26f) {
-                        found = true
-                        lastMatchedPathIdx = pIdx
-                        break
-                    }
-                }
-                if (found) matchedLetterIdx++
-            }
-
-            val completeness = matchedLetterIdx.toDouble() / clean.length.toDouble()
-            if (completeness < 0.60 || effectiveDist > 0.35) continue
-
-            val shapeSimilarity = (completeness * 2.2) / (1.0 + effectiveDist * 3.8)
-            val freqScore = (dict.getFrequency(candidate).toDouble() / 255.0) * 0.8
-            val userBonus = if (personalWords.contains(candidate)) 1.2 else 0.0
-
-            val totalScore = shapeSimilarity + freqScore + userBonus
-            scored.add(SwipeCandidate(candidate, totalScore, shapeSimilarity, freqScore, userBonus))
+            val shape = completeness * 2.2 / (1.0 + effectiveDist * SHAPE_SHARPNESS)
+            val freq = dict.getFrequency(candidate).toDouble() / 255.0 * FREQUENCY_WEIGHT
+            val user = if (candidate in personalSet) USER_BONUS else 0.0
+            scored.add(SwipeCandidate(candidate, shape + freq + user, shape, freq, user))
         }
 
         return scored.sortedByDescending { it.score }
-            .map { it.word }
-            .distinct()
-            .take(3)
     }
+
+    private fun polylineLength(points: List<GesturePoint>): Double {
+        var len = 0.0
+        for (i in 1 until points.size) len += hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y)
+        return len
+    }
+
+    private fun nearestKeys(centers: Map<Char, KeyCenter>, p: GesturePoint, count: Int, maxDistance: Float): List<Char> =
+        centers.values.map { it.char to hypot(it.x - p.x, it.y - p.y) }
+            .filter { it.second <= maxDistance }
+            .sortedBy { it.second }
+            .take(count)
+            .map { it.first }
 
     private fun simplifyPath(points: List<GesturePoint>, threshold: Float = 0.015f): List<GesturePoint> {
         if (points.size <= 2) return points
@@ -205,6 +211,28 @@ class WordFlowShapeDecoder(
     }
 
     companion object {
+        // Tunables, calibrated with WordFlowQualityTest (synthetic swipes on the real dictionaries).
+        const val SAMPLES = 32
+        const val MIN_PATH_LENGTH = 0.15            // normalised units; a shorter gesture is a tap/jitter
+        const val ENDPOINT_KEYS = 4                 // keys considered for the first/last letter
+        const val ENDPOINT_RADIUS = 0.18f
+        const val MIN_CANDIDATE_FREQUENCY = 24
+        const val MAX_POOL = 6000
+        const val MIN_LENGTH_RATIO = 0.55
+        const val MAX_LENGTH_RATIO = 1.9
+        const val LETTER_RADIUS = 0.16f
+        const val MIN_COMPLETENESS = 0.60
+        const val MAX_DISTANCE = 0.30
+        const val SHAPE_SHARPNESS = 3.8
+        const val FREQUENCY_WEIGHT = 0.8
+        const val USER_BONUS = 1.2
+        /**
+         * Minimum geometric similarity of the best candidate. Calibrated on synthetic data: correct
+         * swipes score p5 >= 1.72 (jitter up to 50% of a key) and random scribbles peak at about 1.63
+         * (p95 ~1.45). 1.55 keeps margin on the swipe side for noisier real thumbs.
+         */
+        const val MIN_CONFIDENCE = 1.55
+
         fun cleanWord(raw: String): String = CompactWordTrie.normalize(raw)
 
         /**
