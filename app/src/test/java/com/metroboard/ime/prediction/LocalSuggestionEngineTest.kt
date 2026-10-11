@@ -6,40 +6,68 @@ import org.junit.Test
 
 class LocalSuggestionEngineTest {
     @Test fun returnsAtMostThreeMatchingWords() {
-        val words = LocalSuggestionEngine().suggest("a")
+        val words = LocalSuggestionEngine(language = "es").suggest("a")
         assertEquals(3, words.size)
         assertTrue(words.all { it.startsWith("a") })
     }
+
     @Test fun prefixIsCaseInsensitive() {
-        assertEquals(LocalSuggestionEngine().suggest("ho"), LocalSuggestionEngine().suggest("HO"))
+        val engine = LocalSuggestionEngine(language = "es")
+        assertEquals(engine.suggest("ho"), engine.suggest("HO"))
     }
-    @Test fun blankPrefixDoesNotSuggest() { assertTrue(LocalSuggestionEngine().suggest("").isEmpty()) }
+
+    @Test fun blankPrefixDoesNotSuggest() {
+        assertTrue(LocalSuggestionEngine().suggest("").isEmpty())
+    }
+
     @Test fun exactWordIsNotSuggestedAgain() {
-        assertFalse(LocalSuggestionEngine().suggest("hola").contains("hola"))
+        assertFalse(LocalSuggestionEngine(language = "es").suggest("hola").contains("hola"))
     }
+
     @Test fun personalDictionaryStoresNothing() {
         DisabledPersonalDictionary.learn("secreto")
         assertTrue(DisabledPersonalDictionary.wordsWithPrefix("sec").isEmpty())
     }
-    @Test fun bigramNextWordSuggestions() {
-        val next = LocalSuggestionEngine().suggestNext("gracias")
+
+    @Test fun spanishBigramNextWordSuggestions() {
+        val next = LocalSuggestionEngine(language = "es").suggestNext("gracias")
         assertTrue(next.contains("por"))
     }
-    @Test fun contractionAndTypoSuggestions() {
-        val english = LocalSuggestionEngine().suggest("dont")
-        assertTrue(english.contains("don't"))
-        val spanish = LocalSuggestionEngine().suggest("tambien")
-        assertTrue(spanish.contains("también"))
+
+    @Test fun languageSwitchSeparatesLexicons() {
+        val engine = LocalSuggestionEngine(language = "es")
+        assertTrue(engine.suggest("ho").contains("hola"))
+        assertFalse(engine.suggest("th").contains("the"))
+
+        engine.setLanguage("en")
+        assertTrue(engine.suggest("th").contains("the") || engine.suggest("th").contains("think"))
+        assertFalse(engine.suggest("ho").contains("hola"))
     }
-    @Test fun autoCorrectRecognizesTypos() {
-        val engine = LocalSuggestionEngine()
+
+    @Test fun contractionAndTypoSuggestionsAreLanguageSpecific() {
+        val engine = LocalSuggestionEngine(language = "en")
+        assertTrue(engine.suggest("dont").contains("don't"))
+        assertFalse(engine.suggest("tambien").contains("también"))
+
+        engine.setLanguage("es")
+        assertTrue(engine.suggest("tambien").contains("también"))
+        assertFalse(engine.suggest("dont").contains("don't"))
+    }
+
+    @Test fun autoCorrectUsesActiveLanguageOnly() {
+        val engine = LocalSuggestionEngine(language = "en")
         assertEquals("the", engine.autoCorrect("teh"))
         assertEquals("don't", engine.autoCorrect("dont"))
+        assertNull(engine.autoCorrect("tambien"))
+
+        engine.setLanguage("es")
         assertEquals("también", engine.autoCorrect("tambien"))
+        assertNull(engine.autoCorrect("teh"))
         assertNull(engine.autoCorrect("hola"))
     }
+
     @Test fun proximityFuzzyMatchingOnAdjacentKeys() {
-        val suggestions = LocalSuggestionEngine().suggest("gracuas")
+        val suggestions = LocalSuggestionEngine(language = "es").suggest("gracuas")
         assertTrue(suggestions.contains("gracias"))
     }
 }
