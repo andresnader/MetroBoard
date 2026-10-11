@@ -100,6 +100,22 @@ class ShapeWritingDecoderTest {
     }
 
     @Test
+    fun decoderDoesNotCrossLanguageLexicons() {
+        val decoder = WordFlowShapeDecoder()
+        val centers = KeyboardGeometry.centers("en")
+        val t = centers['t']!!
+        val h = centers['h']!!
+        val e = centers['e']!!
+        val path = listOf(
+            GesturePoint(t.x, t.y, 0L),
+            GesturePoint(h.x, h.y, 50L),
+            GesturePoint(e.x, e.y, 100L)
+        )
+        assertFalse(decoder.decode(path, "en").isEmpty())
+        assertFalse(decoder.decode(path, "es").contains("the"))
+    }
+
+    @Test
     fun decoderDecodesEnglishWord() {
         val decoder = WordFlowShapeDecoder()
         val centers = KeyboardGeometry.centers("en")
