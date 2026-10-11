@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="setup_subtitle">MetroBoard · expérience Word Flow 8.1</string>
     <string name="enable_keyboard">1  activer le clavier</string>
     <string name="select_keyboard">2  sélectionner le clavier</string>
     <string name="select_system_ime">Changer de clavier système…</string>
@@ -90,7 +89,6 @@
     <string name="invalid_json">JSON invalide ou incompatible</string>
     <string name="settings_unavailable">Ouvrez les réglages de langue et de clavier de l\'appareil.</string>
 
-    <string name="about_version">MetroBoard version %1$s</string>
     <string name="about_legal">Implémentation propre et indépendante inspirée du clavier Word Flow de Windows Phone 8.1. Sans code, polices, sons ni ressources propriétaires de Microsoft ni de Chiflow.</string>
     <string name="about_licenses">Code : AGPL-3.0-or-later. Dictionnaires : validité des mots avec Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL) ; fréquences d\'OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0). Détails dans ATTRIBUTION.md.</string>
 
@@ -117,4 +115,44 @@
     <string name="action_go">aller</string>
     <string name="action_send">envoyer</string>
     <string name="clipboard">Presse-papiers</string>
+
+    <string name="version_label">version %1$s</string>
+    <string name="changelog_title">nouveautés</string>
+    <string-array name="changelog_0_3_0">
+        <item>Presse-papiers en direct : ce que vous copiez apparaît en vignettes. Touchez-en une pour l\'écrire, épinglez-la pour la garder.</item>
+        <item>Nouvelle barre d\'outils à côté des suggestions : taille rapide du clavier et raccourci vers les réglages.</item>
+        <item>Le menu des réglages est maintenant circulaire : glissez après la dernière section et vous revenez à la première.</item>
+        <item>Les réglages et le clavier suivent la langue du téléphone (anglais, espagnol, français, allemand).</item>
+        <item>Word Flow refait : il examine tout le dictionnaire et n\'écrit rien quand il n\'est pas sûr.</item>
+        <item>60 000 mots par langue, chaque langue avec son propre dictionnaire.</item>
+        <item>La correction automatique ne change jamais un mot valide, et Retour arrière l\'annule.</item>
+        <item>Les 20 couleurs d\'accent officielles de Windows Phone et une icône de presse-papiers plate.</item>
+        <item>Corrigé : lettres répétées (ww, oo) qui sélectionnaient le mot, et touches perdues en écrivant avec deux pouces.</item>
+        <item>Sauvegarde des réglages et des mots dans un fichier de votre choix, sans autorisation de stockage.</item>
+    </string-array>
+    <string-array name="changelog_0_2_0">
+        <item>Saisie gestuelle (Word Flow) et glissement vers la gauche sur Retour arrière pour effacer des mots entiers.</item>
+        <item>Mode une main, thèmes clair et sombre, et prise en charge des claviers physiques.</item>
+        <item>Sélecteur de teinte de peau pour les emojis et import du dictionnaire personnel d\'Android.</item>
+    </string-array>
+    <string-array name="changelog_0_1_0">
+        <item>Première version : touches Metro plates, états de Maj, double espace pour le point et appui long pour les accents.</item>
+        <item>Dictionnaires hors ligne en quatre langues. Aucune autorisation Internet.</item>
+    </string-array>
+
+    <string name="clipboard_title">presse-papiers</string>
+    <string name="clipboard_empty">Rien n\'a encore été copié. Ce que vous copiez apparaîtra ici.</string>
+    <string name="clipboard_back">Retour au clavier</string>
+    <string name="clipboard_clear">Effacer</string>
+    <string name="clipboard_pin">Épingler</string>
+    <string name="clipboard_unpin">Désépingler</string>
+    <string name="clipboard_delete">Supprimer</string>
+    <string name="resize_title">taille</string>
+    <string name="open_settings">Ouvrir les réglages</string>
+    <string name="toolbar_open">Plus d\'outils</string>
+    <string name="toolbar_close">Fermer les outils</string>
+    <string name="clipboard_history">Historique du presse-papiers</string>
+    <string name="clipboard_history_summary">Le texte copié reste en mémoire pendant une heure ; seuls les éléments épinglés sont enregistrés, sur cet appareil. Ce que l\'application marque comme sensible n\'est jamais conservé. Il n\'est pas affiché dans les champs de mot de passe.</string>
+    <string name="clear_clipboard">Effacer l\'historique du presse-papiers</string>
+    <string name="clipboard_cleared">Historique du presse-papiers effacé</string>
 </resources>

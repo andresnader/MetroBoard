@@ -43,6 +43,20 @@ Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además e
   *borde a borde*, que no hacía nada.
 - **Tema claro:** el icono de cambio de teclado del sistema era blanco sobre blanco.
 - **Pantalla «Acerca de»** mostraba una versión fija y licencias de fuentes que nunca se usaron.
+- **Menú de Ajustes: título y versión arriba y «novedades» dentro de la app.** La cabecera muestra el nombre y la versión
+  (tocar la versión lleva a *About*), y *About* incluye el registro de cambios de 0.3.0, 0.2.0 y 0.1.0 en los cuatro idiomas.
+- **Portapapeles en vivo.** El botón de portapapeles abre un panel con los clips recientes (más reciente primero, fijados
+  arriba): tocar inserta el texto **tal cual** (un clip ya no se pasa a mayúsculas por el Shift automático; esto también
+  corrige el pegado antiguo), fijar lo conserva entre reinicios y la cruz lo borra. Se actualiza solo al copiar en otra app.
+  Reglas de privacidad en `docs/privacy.md`: texto ≤ 2.000 caracteres, nada marcado como sensible, sin fijar solo en memoria y
+  con caducidad de 1 h, sin historial sobre campos de contraseña, desactivable en Ajustes (y al desactivarlo se borra todo).
+  **Cambia lo que decía la documentación anterior** («no se lee en segundo plano»). Activado por defecto: decisión del propietario.
+- **Barra de herramientas** (botón `⋯` junto a las sugerencias): tamaño rápido (altura y modo a una mano, aplicados en vivo) y
+  acceso directo a Ajustes.
+- **Popup de acentos mal colocado.** Al mantener pulsada una tecla el cuadro de acentos salía abajo, sobre la barra espaciadora,
+  en lugar de encima de la tecla: `showAtLocation` mide desde la ventana del teclado y se le pasaba una Y de pantalla.
+  Ahora se coloca respecto a esa ventana (`PopupPlacement`, 5 pruebas) y solo baja bajo la tecla si la *pantalla* no tiene
+  sitio arriba. Verificado en el emulador con una tecla de la fila central, una de la fila superior y una en el borde derecho.
 - **Encabezado de Ajustes no circular, en negrita y en inglés.** (1) El pivote era un scroll lineal acotado: no se podía pasar de
   la última sección a la primera ni al revés. Ahora es un carrusel (`MetroPivot`, `PivotMath`): al deslizar más allá del final se
   vuelve al principio y viceversa; los letreros rotan con el contenido (el que se acaba de pasar sale por la izquierda y vuelve por

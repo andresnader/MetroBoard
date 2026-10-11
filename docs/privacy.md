@@ -46,8 +46,20 @@ sugiere, corrige ni aprende.
 
 ## Portapapeles
 
-El botón 📋 de la barra de sugerencias pega el contenido actual del portapapeles **solo cuando lo pulsas**. No se lee en
-segundo plano ni se guarda historial.
+Desde 0.3 el teclado tiene un **historial del portapapeles** (el panel que abre el botón de portapapeles). Esto **cambia** lo
+que decían versiones anteriores («solo cuando lo pulsas»), así que conviene saber exactamente qué hace:
+
+- **Lee el portapapeles en segundo plano** mientras MetroBoard es el teclado activo: se suscribe a los cambios y guarda lo que
+  copias, aunque no abras el panel. Se puede desactivar en *Ajustes → Privacidad → Historial del portapapeles*; al desactivarlo
+  se borra todo lo guardado, también los clips fijados.
+- Solo **texto**, de hasta 2.000 caracteres. Se ignora lo que la aplicación de origen marca como **sensible**
+  (`android.content.extra.IS_SENSITIVE`, Android 13 o superior). **Límite:** en Android 12 o inferior esa marca no existe, así que
+  un gestor de contraseñas que copia una clave podría aparecer en el historial hasta que caduque.
+- Los clips sin fijar viven **solo en memoria**: máximo 20 y caducan a la hora. Solo los **fijados** se guardan en disco, en un
+  archivo privado de la aplicación (`clipboard_pins`), separado de los ajustes. La copia de seguridad en la nube está
+  desactivada y la exportación de ajustes **nunca** incluye clips.
+- En **campos de contraseña** no se muestra el historial: el botón pega directamente lo que hay en el portapapeles.
+- No hay red ni telemetría: nada sale del dispositivo.
 
 ## Límites
 

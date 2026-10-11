@@ -24,6 +24,7 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import com.metroboard.ime.R
+import com.metroboard.ime.clipboard.ClipboardHistories
 import com.metroboard.ime.dictionary.BackupFormat
 import com.metroboard.ime.dictionary.LocalPersonalDictionary
 import com.metroboard.ime.util.KeyboardColors
@@ -107,21 +108,47 @@ class SettingsActivity : Activity() {
         setContentView(root)
         syncSystemBarAppearance()
 
-        // 1. App Subtitle
-        val appTitle = TextView(this).apply {
-            setText(R.string.setup_subtitle)
-            textSize = MetroType.HELP
-            setTextColor(KeyboardColors.muted)
-            setPadding(dp(24), dp(16), dp(24), 0)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-        }
-        root.addView(appTitle)
+        // 1. App title and version; tapping the version goes to "what's new" on the last page
+        root.addView(createAppHeader())
 
         // 2. The circular pivot: section labels on top, pages below
         pageScrolls.clear()
         root.addView(createPivot(), LinearLayout.LayoutParams(-1, 0, 1f))
 
         restorePosition(root, scrolls)
+    }
+
+    private fun versionName(): String =
+        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty()
+
+    /** The app's name with its version underneath, like the headers of other Metro apps. */
+    private fun createAppHeader(): View {
+        val whatsNew = getString(R.string.changelog_title)
+        val line = "${getString(R.string.version_label, versionName())} · $whatsNew"
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(16), dp(24), 0)
+            isClickable = true
+            contentDescription = "${getString(R.string.app_name)}, $line"
+            setOnClickListener { pivot.goTo(sectionTitles.size - 1) }
+            addView(TextView(this@SettingsActivity).apply {
+                text = getString(R.string.app_name)
+                textSize = MetroType.APP_TITLE
+                setTextColor(KeyboardColors.foreground)
+                typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            })
+            addView(TextView(this@SettingsActivity).apply {
+                text = android.text.SpannableString(line).apply {
+                    setSpan(
+                        android.text.style.ForegroundColorSpan(KeyboardColors.accent),
+                        line.length - whatsNew.length, line.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
+                }
+                textSize = MetroType.HELP
+                setTextColor(KeyboardColors.muted)
+                typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            })
+        }
     }
 
     /** Puts the pivot and each page's vertical scroll back once the new views have been laid out. */
@@ -314,6 +341,18 @@ class SettingsActivity : Activity() {
         addView(metroLabel(getString(R.string.offline_indicator), MetroType.BODY, preferences.accentColor))
         help(getString(R.string.privacy_note))
 
+        toggle(R.string.clipboard_history, preferences.clipboardHistory) {
+            preferences.clipboardHistory = it
+            // Turning it off also forgets what was kept, pinned clips included: off must mean nothing is stored.
+            if (!it) ClipboardHistories.shared(this@SettingsActivity).clearAll()
+        }
+        help(getString(R.string.clipboard_history_summary))
+        action(R.string.clear_clipboard) {
+            ClipboardHistories.shared(this@SettingsActivity).clearAll()
+            Toast.makeText(this@SettingsActivity, R.string.clipboard_cleared, Toast.LENGTH_SHORT).show()
+        }
+
+
         action(R.string.import_android_dict) {
             val count = personalDict.importFromSystemUserDictionary(this@SettingsActivity)
             Toast.makeText(this@SettingsActivity, getString(R.string.import_android_dict_done, count), Toast.LENGTH_LONG).show()
@@ -330,14 +369,25 @@ class SettingsActivity : Activity() {
 
     // 8. ABOUT
     private fun createAboutPage() = page {
-        val versionName = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty()
-        title(getString(R.string.about_version, versionName))
+        title(getString(R.string.changelog_title))
+        changelog(R.string.version_030, R.array.changelog_0_3_0)
+        changelog(R.string.version_020, R.array.changelog_0_2_0)
+        changelog(R.string.version_010, R.array.changelog_0_1_0)
+
         help(getString(R.string.about_legal))
         help(getString(R.string.about_licenses))
 
         // Same field as on the typing page, for instant verification.
         title(getString(R.string.try_title))
         addView(metroTextField(getString(R.string.test_hint)))
+    }
+
+    /** One version heading in the accent colour, then its notes as a plain list. */
+    private fun LinearLayout.changelog(versionRes: Int, notesRes: Int) {
+        addView(metroLabel(getString(versionRes), MetroType.BODY, KeyboardColors.accent))
+        resources.getStringArray(notesRes).forEach {
+            addView(metroLabel("–  $it", MetroType.LIST, KeyboardColors.foreground).apply { setPadding(0, dp(3), 0, dp(3)) })
+        }
     }
 
     private fun createColorPicker(): View {

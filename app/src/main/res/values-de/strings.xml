@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="setup_subtitle">MetroBoard · Word-Flow-8.1-Erlebnis</string>
     <string name="enable_keyboard">1  Tastatur aktivieren</string>
     <string name="select_keyboard">2  Tastatur auswählen</string>
     <string name="select_system_ime">System-Tastatur wechseln…</string>
@@ -90,7 +89,6 @@
     <string name="invalid_json">Ungültiges oder inkompatibles JSON</string>
     <string name="settings_unavailable">Öffnen Sie die Sprach- und Tastatureinstellungen des Geräts.</string>
 
-    <string name="about_version">MetroBoard Version %1$s</string>
     <string name="about_legal">Eigene, unabhängige Implementierung, inspiriert von der Word-Flow-Tastatur von Windows Phone 8.1. Ohne proprietären Code, Schriftarten, Töne oder Ressourcen von Microsoft oder Chiflow.</string>
     <string name="about_licenses">Code: AGPL-3.0-or-later. Wörterbücher: Wortgültigkeit mit Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL); Häufigkeiten aus OpenSubtitles 2018 über hermitdave/FrequencyWords (CC BY-SA 4.0). Details in ATTRIBUTION.md.</string>
 
@@ -117,4 +115,44 @@
     <string name="action_go">los</string>
     <string name="action_send">senden</string>
     <string name="clipboard">Zwischenablage</string>
+
+    <string name="version_label">Version %1$s</string>
+    <string name="changelog_title">Neuigkeiten</string>
+    <string-array name="changelog_0_3_0">
+        <item>Zwischenablage live: Kopiertes erscheint als Kacheln. Antippen zum Einfügen, anheften zum Behalten.</item>
+        <item>Neue Werkzeugleiste neben den Vorschlägen: schnelle Tastaturgröße und Abkürzung zu den Einstellungen.</item>
+        <item>Das Einstellungsmenü ist jetzt zirkulär: Wischen Sie über den letzten Bereich hinaus, und Sie sind wieder beim ersten.</item>
+        <item>Einstellungen und Tastatur folgen der Sprache des Telefons (Englisch, Spanisch, Französisch, Deutsch).</item>
+        <item>Word Flow neu gebaut: Es betrachtet das ganze Wörterbuch und schreibt nichts, wenn es sich nicht sicher ist.</item>
+        <item>60.000 Wörter pro Sprache, jede Sprache mit eigenem Wörterbuch.</item>
+        <item>Die Autokorrektur ändert nie ein gültiges Wort, und die Löschtaste macht sie rückgängig.</item>
+        <item>Die 20 offiziellen Windows-Phone-Akzentfarben und ein flaches Zwischenablage-Symbol.</item>
+        <item>Behoben: doppelte Buchstaben (ww, oo) markierten das Wort, und Tipper gingen beim Schreiben mit zwei Daumen verloren.</item>
+        <item>Einstellungen und Wörter in eine selbst gewählte Datei sichern, ohne Speicherberechtigung.</item>
+    </string-array>
+    <string-array name="changelog_0_2_0">
+        <item>Wischeingabe (Word Flow) und Wischen nach links auf der Löschtaste, um ganze Wörter zu löschen.</item>
+        <item>Einhandmodus, helles und dunkles Design und Unterstützung für Hardware-Tastaturen.</item>
+        <item>Hautton-Auswahl für Emojis und Import des persönlichen Android-Wörterbuchs.</item>
+    </string-array>
+    <string-array name="changelog_0_1_0">
+        <item>Erste Version: flache Metro-Tasten, Umschaltzustände, Doppel-Leertaste für den Punkt und langes Drücken für Akzente.</item>
+        <item>Offline-Wörterbücher in vier Sprachen. Keine Internetberechtigung.</item>
+    </string-array>
+
+    <string name="clipboard_title">Zwischenablage</string>
+    <string name="clipboard_empty">Noch nichts kopiert. Was Sie kopieren, erscheint hier.</string>
+    <string name="clipboard_back">Zurück zur Tastatur</string>
+    <string name="clipboard_clear">Leeren</string>
+    <string name="clipboard_pin">Anheften</string>
+    <string name="clipboard_unpin">Lösen</string>
+    <string name="clipboard_delete">Löschen</string>
+    <string name="resize_title">Größe</string>
+    <string name="open_settings">Einstellungen öffnen</string>
+    <string name="toolbar_open">Weitere Werkzeuge</string>
+    <string name="toolbar_close">Werkzeuge schließen</string>
+    <string name="clipboard_history">Verlauf der Zwischenablage</string>
+    <string name="clipboard_history_summary">Kopierter Text bleibt eine Stunde im Speicher; nur angeheftete Einträge werden auf diesem Gerät gespeichert. Was die App als sensibel markiert, wird nie behalten. In Passwortfeldern wird er nicht angezeigt.</string>
+    <string name="clear_clipboard">Verlauf der Zwischenablage löschen</string>
+    <string name="clipboard_cleared">Verlauf der Zwischenablage gelöscht</string>
 </resources>

@@ -13,7 +13,6 @@
     <string name="lang_fr" translatable="false">Français</string>
     <string name="lang_de" translatable="false">Deutsch</string>
 
-    <string name="setup_subtitle">MetroBoard · Word Flow 8.1 experience</string>
     <string name="enable_keyboard">1  enable keyboard</string>
     <string name="select_keyboard">2  select keyboard</string>
     <string name="select_system_ime">Switch system keyboard…</string>
@@ -104,7 +103,6 @@
     <string name="invalid_json">Invalid or incompatible JSON</string>
     <string name="settings_unavailable">Open the device language and keyboard settings.</string>
 
-    <string name="about_version">MetroBoard version %1$s</string>
     <string name="about_legal">Own, independent implementation inspired by the Windows Phone 8.1 Word Flow keyboard. No proprietary code, fonts, sounds or resources from Microsoft or Chiflow.</string>
     <string name="about_licenses">Code: AGPL-3.0-or-later. Dictionaries: word validity from Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL); frequencies from OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0). Details in ATTRIBUTION.md.</string>
 
@@ -132,4 +130,49 @@
     <string name="action_go">go</string>
     <string name="action_send">send</string>
     <string name="clipboard">Clipboard</string>
+
+    <!-- Versions are names, not prose: the same in every language. -->
+    <string name="version_030" translatable="false">0.3.0</string>
+    <string name="version_020" translatable="false">0.2.0</string>
+    <string name="version_010" translatable="false">0.1.0</string>
+
+    <string name="version_label">version %1$s</string>
+    <string name="changelog_title">what\'s new</string>
+    <string-array name="changelog_0_3_0">
+        <item>Live clipboard: what you copy appears as tiles. Tap one to type it, pin it to keep it.</item>
+        <item>New toolbar next to the suggestions: quick keyboard size and a shortcut to Settings.</item>
+        <item>The Settings menu now loops: swipe past the last section and you are back at the first.</item>
+        <item>Settings and the keyboard follow your phone\'s language (English, Spanish, French, German).</item>
+        <item>Word Flow rebuilt: it looks at the whole dictionary and writes nothing when it is not sure.</item>
+        <item>60,000 words per language, each language with its own dictionary.</item>
+        <item>Autocorrect never changes a valid word, and Backspace undoes it.</item>
+        <item>The 20 official Windows Phone accent colors and a flat clipboard icon.</item>
+        <item>Fixed: repeated letters (ww, oo) selecting a word, and taps lost when typing with two thumbs.</item>
+        <item>Back up settings and words to a file you choose, with no storage permission.</item>
+    </string-array>
+    <string-array name="changelog_0_2_0">
+        <item>Swipe typing (Word Flow) and swipe left on Backspace to delete whole words.</item>
+        <item>One-handed mode, light and dark themes, and hardware keyboard support.</item>
+        <item>Skin tone picker for emoji, and import from the Android personal dictionary.</item>
+    </string-array>
+    <string-array name="changelog_0_1_0">
+        <item>First release: flat Metro keys, Shift states, double space for a period and long press for accents.</item>
+        <item>Offline dictionaries in four languages. No internet permission.</item>
+    </string-array>
+
+    <string name="clipboard_title">clipboard</string>
+    <string name="clipboard_empty">Nothing copied yet. What you copy will appear here.</string>
+    <string name="clipboard_back">Back to the keyboard</string>
+    <string name="clipboard_clear">Clear</string>
+    <string name="clipboard_pin">Pin</string>
+    <string name="clipboard_unpin">Unpin</string>
+    <string name="clipboard_delete">Delete</string>
+    <string name="resize_title">size</string>
+    <string name="open_settings">Open settings</string>
+    <string name="toolbar_open">More tools</string>
+    <string name="toolbar_close">Close tools</string>
+    <string name="clipboard_history">Clipboard history</string>
+    <string name="clipboard_history_summary">Copied text is kept in memory for one hour; only pinned clips are saved, on this device. Anything the app marks as sensitive is never kept. It is not shown in password fields.</string>
+    <string name="clear_clipboard">Clear clipboard history</string>
+    <string name="clipboard_cleared">Clipboard history cleared</string>
 </resources>

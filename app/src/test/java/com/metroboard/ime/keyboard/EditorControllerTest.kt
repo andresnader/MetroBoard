@@ -51,6 +51,22 @@ class EditorControllerTest {
         language: String = "es",
     ) = EditorController(editor, LocalSuggestionEngine(activeLanguage = language)).also { it.start(policy) }
 
+    @Test fun pastedTextIsInsertedVerbatimEvenWithAutomaticCapital() {
+        val editor = MemoryEditor()
+        val controller = controller(editor)
+        assertTrue("the empty field starts in automatic capital", controller.shift.isUppercase)
+        controller.paste("Segundo texto copiado")
+        assertEquals("Segundo texto copiado", editor.value)
+    }
+
+    @Test fun pastedTextIsNotRecasedByCapsLockOrOneShotShift() {
+        val editor = MemoryEditor("x ")
+        val controller = controller(editor)
+        controller.tapShift(0)
+        controller.paste("mixed Case 123")
+        assertEquals("x mixed Case 123", editor.value)
+    }
+
     @Test fun typingAtStartCapitalizesOnlyFirstLetter() {
         val editor = MemoryEditor()
         val controller = controller(editor)

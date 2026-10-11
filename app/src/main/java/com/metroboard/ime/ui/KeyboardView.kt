@@ -36,6 +36,7 @@ import com.metroboard.ime.gestures.WordFlowShapeDecoder
 import com.metroboard.ime.ime.EditorPolicy
 import com.metroboard.ime.ime.FieldKind
 import com.metroboard.ime.keyboard.*
+import com.metroboard.ime.clipboard.ClipboardHistory
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.dp
 
@@ -53,6 +54,11 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         fun onClipboardPasteRequested()
         fun onSwipeToDelete(wordsCount: Int) = Unit
         fun onOneHandedToggled(newMode: String) = Unit
+        /** The clipboard button. The service decides: show the history, or (in a password field) paste directly. */
+        fun onClipboardPanelRequested() = Unit
+        fun onClipInsert(text: String) = Unit
+        fun onSettingsRequested() = Unit
+        fun onHeightModeChanged(mode: String) = Unit
     }
 
     private val suggestionButtons = mutableListOf<TextView>()
@@ -63,6 +69,13 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     private val leftDockBar = LinearLayout(context)
     private val rightDockBar = LinearLayout(context)
     private val clipButton = ImageView(context)
+    private val moreButton = ImageView(context)
+    private val toolbarRow = LinearLayout(context)
+    private var toolbarOpen = false
+    private var panel: View? = null
+    private var heightMode = "NORMAL"
+    /** Height of the key area as laid out by [setLayout]; the panels that replace the keys use it. */
+    private var keyAreaHeight = 0
     private var currentOneHandedMode = "OFF"
     private var currentTheme = "DARK"
     private val alternatives = AlternativesPopup()
@@ -210,7 +223,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             setBackgroundColor(Color.TRANSPARENT)
             setPadding(context.dp(7), context.dp(10), context.dp(7), context.dp(10))
             contentDescription = context.getString(R.string.clipboard)
-            setOnClickListener { listener.onClipboardPasteRequested() }
+            setOnClickListener { listener.onClipboardPanelRequested() }
         }
         suggestionBar.addView(clipButton, LayoutParams(context.dp(34), context.dp(40)))
 
@@ -235,6 +248,31 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             suggestionButtons += button
             suggestionBar.addView(button, LayoutParams(0, context.dp(40), 1f))
         }
+
+        // The toolbar replaces the three suggestions while it is open: size and settings.
+        toolbarRow.apply {
+            orientation = HORIZONTAL
+            gravity = Gravity.CENTER
+            visibility = View.GONE
+            addView(toolbarButton(R.drawable.ic_resize, context.getString(R.string.resize_title)) { showResizePanel() },
+                LayoutParams(0, context.dp(40), 1f))
+            addView(toolbarButton(R.drawable.ic_settings, context.getString(R.string.open_settings)) {
+                setToolbarOpen(false)
+                listener.onSettingsRequested()
+            }, LayoutParams(0, context.dp(40), 1f))
+        }
+        suggestionBar.addView(toolbarRow, LayoutParams(0, context.dp(40), 3f))
+
+        moreButton.apply {
+            setImageResource(R.drawable.ic_more)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setColorFilter(KeyboardColors.foreground)
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(context.dp(7), context.dp(10), context.dp(7), context.dp(10))
+            contentDescription = context.getString(R.string.toolbar_open)
+            setOnClickListener { setToolbarOpen(!toolbarOpen) }
+        }
+        suggestionBar.addView(moreButton, LayoutParams(context.dp(34), context.dp(40)))
         addView(suggestionBar)
 
         // 2. Keyboard Row Container holding leftDockBar, keyRows, rightDockBar
@@ -248,6 +286,67 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         keyRows.orientation = VERTICAL
         contentContainer.addView(keyboardRowContainer, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(contentContainer, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+    }
+
+    private fun toolbarButton(icon: Int, description: String, onClick: () -> Unit) = ImageView(context).apply {
+        setImageResource(icon)
+        scaleType = ImageView.ScaleType.CENTER_INSIDE
+        setColorFilter(KeyboardColors.foreground)
+        setBackgroundColor(Color.TRANSPARENT)
+        setPadding(context.dp(10), context.dp(10), context.dp(10), context.dp(10))
+        contentDescription = description
+        setOnClickListener { onClick() }
+    }
+
+    /** Swaps the three suggestions for the toolbar (and back). */
+    private fun setToolbarOpen(open: Boolean) {
+        toolbarOpen = open
+        toolbarRow.visibility = if (open) View.VISIBLE else View.GONE
+        suggestionButtons.forEach { it.visibility = if (open) View.GONE else View.VISIBLE }
+        moreButton.setImageResource(if (open) R.drawable.ic_close else R.drawable.ic_more)
+        moreButton.contentDescription = context.getString(if (open) R.string.toolbar_close else R.string.toolbar_open)
+    }
+
+    /** Shows the live clipboard in place of the keys. */
+    fun showClipboardPanel(history: ClipboardHistory) {
+        setToolbarOpen(false)
+        showPanel(ClipboardPanelView(
+            context = context,
+            history = history,
+            clock = { System.currentTimeMillis() },
+            onInsert = { text -> listener.onClipInsert(text) },
+            onClose = { closePanel() },
+        ))
+    }
+
+    private fun showResizePanel() {
+        setToolbarOpen(false)
+        showPanel(ResizePanelView(
+            context = context,
+            heightMode = heightMode,
+            oneHandedMode = currentOneHandedMode,
+            onHeight = { mode -> heightMode = mode; listener.onHeightModeChanged(mode) },
+            onOneHanded = { mode -> listener.onOneHandedToggled(mode) },
+            onClose = { closePanel() },
+        ))
+    }
+
+    private fun showPanel(view: View) {
+        closePanel()
+        closeEmoji()
+        panel = view
+        keyboardRowContainer.visibility = View.GONE
+        contentContainer.addView(view, FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, panelHeight()))
+    }
+
+    private fun panelHeight() = maxOf(keyAreaHeight, keyRows.height, context.dp(190))
+
+    fun closePanel(): Boolean {
+        val view = panel ?: return false
+        contentContainer.removeView(view)
+        panel = null
+        if (emojiKeyboard == null) keyboardRowContainer.visibility = View.VISIBLE
+        return true
     }
 
     private fun createDockButton(symbol: String, desc: String, onClick: () -> Unit): TextView {
@@ -356,6 +455,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         setBackgroundColor(KeyboardColors.background)
         suggestionBar.setBackgroundColor(KeyboardColors.background)
         clipButton.setColorFilter(KeyboardColors.foreground)
+        moreButton.setColorFilter(KeyboardColors.foreground)
+        (0 until toolbarRow.childCount).forEach { (toolbarRow.getChildAt(it) as? ImageView)?.setColorFilter(KeyboardColors.foreground) }
 
         applyOneHandedMode(oneHandedMode)
         currentPage = page
@@ -370,6 +471,11 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         alternatives.dismiss()
         keyRows.removeAllViews()
         keys.clear()
+        heightMode = when {
+            heightScale < 0.93f -> "COMPACT"
+            heightScale > 1.07f -> "TALL"
+            else -> "NORMAL"
+        }
 
         val rows = if (policy.kind == FieldKind.TEXT) {
             KeyboardLayout.rows(page, numberRow, language, currentLayoutType)
@@ -418,12 +524,18 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             }
             keyRows.addView(row, LayoutParams(LayoutParams.MATCH_PARENT, height))
         }
+        keyAreaHeight = rows.size * height
+        panel?.let { open ->
+            // Resizing keeps the panel open; it follows the new height of the key area it replaces.
+            open.layoutParams = open.layoutParams.apply { this.height = panelHeight() }
+            keyboardRowContainer.visibility = View.GONE
+        }
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         // If touches occur on suggestion bar, allow normal button click dispatch
         val childY = ev.y
-        if (childY < contentContainer.top || emojiKeyboard != null) {
+        if (childY < contentContainer.top || emojiKeyboard != null || panel != null) {
             return super.dispatchTouchEvent(ev)
         }
 
@@ -645,6 +757,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
 
         // Render suggestion bar: left, center (bold), right. The engine ranks best first; the best
         // candidate goes in the emphasised centre slot, the runner-up on its left.
+        if (toolbarOpen && candidates.isNotEmpty()) setToolbarOpen(false)
         val slots = listOf(candidates.getOrNull(1), candidates.getOrNull(0), candidates.getOrNull(2))
         suggestionButtons.forEachIndexed { index, view ->
             val value = slots.getOrNull(index).orEmpty()
@@ -684,13 +797,15 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         val ek = emojiKeyboard ?: return false
         contentContainer.removeView(ek)
         emojiKeyboard = null
-        keyboardRowContainer.visibility = View.VISIBLE
+        if (panel == null) keyboardRowContainer.visibility = View.VISIBLE
         return true
     }
 
     fun dismissPopups() {
         alternatives.dismiss()
         closeEmoji()
+        closePanel()
+        setToolbarOpen(false)
     }
 
     override fun onAttachedToWindow() {

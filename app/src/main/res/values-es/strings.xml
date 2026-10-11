@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="setup_subtitle">MetroBoard · experiencia Word Flow 8.1</string>
     <string name="enable_keyboard">1  habilitar teclado</string>
     <string name="select_keyboard">2  seleccionar teclado</string>
     <string name="select_system_ime">Cambiar teclado del sistema…</string>
@@ -90,7 +89,6 @@
     <string name="invalid_json">JSON inválido o incompatible</string>
     <string name="settings_unavailable">Abre los ajustes de idioma y teclado del dispositivo.</string>
 
-    <string name="about_version">MetroBoard versión %1$s</string>
     <string name="about_legal">Implementación propia e independiente inspirada en el teclado Word Flow de Windows Phone 8.1. Sin código, fuentes, sonidos ni recursos propietarios de Microsoft ni de Chiflow.</string>
     <string name="about_licenses">Código: AGPL-3.0-or-later. Diccionarios: validez de palabras con Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL); frecuencias de OpenSubtitles 2018 vía hermitdave/FrequencyWords (CC BY-SA 4.0). Detalle en ATTRIBUTION.md.</string>
 
@@ -117,4 +115,44 @@
     <string name="action_go">ir</string>
     <string name="action_send">enviar</string>
     <string name="clipboard">Portapapeles</string>
+
+    <string name="version_label">versión %1$s</string>
+    <string name="changelog_title">novedades</string>
+    <string-array name="changelog_0_3_0">
+        <item>Portapapeles en vivo: lo que copias aparece en mosaicos. Toca uno para escribirlo, fíjalo para conservarlo.</item>
+        <item>Nueva barra de herramientas junto a las sugerencias: tamaño rápido del teclado y acceso directo a Ajustes.</item>
+        <item>El menú de Ajustes ahora es circular: desliza más allá de la última sección y vuelves a la primera.</item>
+        <item>Ajustes y teclado siguen el idioma del teléfono (inglés, español, francés, alemán).</item>
+        <item>Word Flow rehecho: mira todo el diccionario y no escribe nada cuando no está seguro.</item>
+        <item>60.000 palabras por idioma, cada idioma con su propio diccionario.</item>
+        <item>La autocorrección nunca cambia una palabra válida, y Retroceso la deshace.</item>
+        <item>Los 20 colores de acento oficiales de Windows Phone y un icono de portapapeles plano.</item>
+        <item>Corregido: letras repetidas (ww, oo) que seleccionaban la palabra y toques perdidos al escribir con dos pulgares.</item>
+        <item>Copia de seguridad de ajustes y palabras en un archivo que eliges, sin permiso de almacenamiento.</item>
+    </string-array>
+    <string-array name="changelog_0_2_0">
+        <item>Escritura por deslizamiento (Word Flow) y deslizar a la izquierda en Retroceso para borrar palabras completas.</item>
+        <item>Modo a una mano, temas claro y oscuro, y compatibilidad con teclados físicos.</item>
+        <item>Selector de tono de piel para emojis e importación del diccionario personal de Android.</item>
+    </string-array>
+    <string-array name="changelog_0_1_0">
+        <item>Primera versión: teclas Metro planas, estados de Shift, doble espacio para el punto y pulsación larga para acentos.</item>
+        <item>Diccionarios sin conexión en cuatro idiomas. Sin permiso de internet.</item>
+    </string-array>
+
+    <string name="clipboard_title">portapapeles</string>
+    <string name="clipboard_empty">Aún no has copiado nada. Lo que copies aparecerá aquí.</string>
+    <string name="clipboard_back">Volver al teclado</string>
+    <string name="clipboard_clear">Borrar</string>
+    <string name="clipboard_pin">Fijar</string>
+    <string name="clipboard_unpin">Soltar</string>
+    <string name="clipboard_delete">Eliminar</string>
+    <string name="resize_title">tamaño</string>
+    <string name="open_settings">Abrir ajustes</string>
+    <string name="toolbar_open">Más herramientas</string>
+    <string name="toolbar_close">Cerrar herramientas</string>
+    <string name="clipboard_history">Historial del portapapeles</string>
+    <string name="clipboard_history_summary">El texto copiado se guarda en memoria durante una hora; solo los clips fijados se guardan, en este dispositivo. Lo que la app marque como sensible nunca se conserva. No se muestra en campos de contraseña.</string>
+    <string name="clear_clipboard">Borrar historial del portapapeles</string>
+    <string name="clipboard_cleared">Historial del portapapeles borrado</string>
 </resources>

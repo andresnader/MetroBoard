@@ -7,10 +7,10 @@ Todo lo de aquí sale de ejecuciones reales de esta rama. Lo que no se ejecutó 
 | | |
 |---|---|
 | Build | `./gradlew clean test assembleDebug lintDebug` → **BUILD SUCCESSFUL** (1 min 26 s, JDK 25 de Android Studio) |
-| Pruebas unitarias (JVM) | **248 en total, 0 fallos, 1 omitida** (la omitida es la de calibración de Word Flow, que exige `METROBOARD_CALIBRATE=1`) |
+| Pruebas unitarias (JVM) | **265 en total, 0 fallos, 1 omitida** (la omitida es la de calibración de Word Flow, que exige `METROBOARD_CALIBRATE=1`) |
 | Pruebas instrumentadas | **39, 0 fallos** (ejecutadas antes de los cambios de Ajustes e idioma; **no se volvieron a ejecutar**: la prueba de preferencias cambió y no se ha corrido), `connectedDebugAndroidTest` en AVD `Medium_Phone_API_37.0` (Android 17, API 37, arm64) |
-| Lint (`lintDebug`) | **0 errores, 12 avisos** (sin comparación con una línea base) |
-| APK | `app/build/outputs/apk/debug/app-debug.apk`, 2.377.352 bytes, **debug** (no firmado para publicación) |
+| Lint (`lintDebug`) | **0 errores, 14 avisos** (sin comparación con una línea base) |
+| APK | `app/build/outputs/apk/debug/app-debug.apk`, 2.419.236 bytes, **debug** (no firmado para publicación) |
 | Dispositivo | Solo el emulador. **Ningún dispositivo físico.** |
 
 ## Qué cubre cada grupo del prompt

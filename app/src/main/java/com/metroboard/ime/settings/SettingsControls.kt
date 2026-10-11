@@ -35,7 +35,9 @@ import com.metroboard.ime.util.dp
  * type size and flat Metro look. Nothing here is a stock Material widget.
  */
 internal object MetroType {
+    const val APP_TITLE = 26f
     const val PIVOT = 30f
+    const val LIST = 15f
     const val TITLE = 22f
     const val BODY = 16f
     const val SEGMENT = 15f

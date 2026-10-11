@@ -11,6 +11,7 @@ package com.metroboard.ime.ime
 import android.app.AlertDialog
 import android.content.ClipDescription
 import android.content.ClipboardManager
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
@@ -23,15 +24,21 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import com.metroboard.ime.R
+import com.metroboard.ime.clipboard.ClipboardHistories
+import com.metroboard.ime.clipboard.ClipboardHistory
 import com.metroboard.ime.dictionary.LanguageDictionaryRegistry
 import com.metroboard.ime.dictionary.LocalPersonalDictionary
 import com.metroboard.ime.haptics.HapticFeedback
 import com.metroboard.ime.keyboard.*
 import com.metroboard.ime.prediction.LocalSuggestionEngine
 import com.metroboard.ime.settings.KeyboardPreferences
+import com.metroboard.ime.settings.SettingsActivity
 import com.metroboard.ime.sound.KeySound
 import com.metroboard.ime.ui.KeyboardView
 import com.metroboard.ime.util.KeyboardColors
+
+/** `ClipDescription.EXTRA_IS_SENSITIVE` (API 33), spelled out so it also reads on the older versions we support. */
+private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
 
 class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private lateinit var preferences: KeyboardPreferences
@@ -44,6 +51,8 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private var keyboard: KeyboardView? = null
     private var page = KeyboardPage.LETTERS
     private var policy = EditorPolicy.from(EditorInfo(), false)
+    private lateinit var clipboardHistory: ClipboardHistory
+    private val primaryClipListener = ClipboardManager.OnPrimaryClipChangedListener { recordPrimaryClip() }
 
     override fun onCreate() {
         super.onCreate()
@@ -56,6 +65,9 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         val ui = android.os.Handler(android.os.Looper.getMainLooper())
         LanguageDictionaryRegistry.onDictionaryLoaded = { ui.post { if (::controller.isInitialized) render() } }
         LanguageDictionaryRegistry.preload(preferences.language, this)
+        clipboardHistory = ClipboardHistories.shared(this)
+        getSystemService(ClipboardManager::class.java)?.addPrimaryClipChangedListener(primaryClipListener)
+        recordPrimaryClip()
     }
 
     override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
@@ -95,6 +107,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         page = KeyboardPage.LETTERS
         suggestionEngine.activeLanguage = preferences.language
         LanguageDictionaryRegistry.preload(preferences.language, this)
+        keyboard?.closePanel() // a panel opened in one field must not follow the user into the next
         keyboard?.let { applyKeyboardLayout(it) }
         render()
     }
@@ -266,12 +279,51 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         Toast.makeText(this, newLang.uppercase(), Toast.LENGTH_SHORT).show()
     }
 
+    /** Adds whatever was just copied to the history, unless the source flagged it as sensitive. */
+    private fun recordPrimaryClip() {
+        if (!preferences.clipboardHistory) return
+        val clip = getSystemService(ClipboardManager::class.java)?.primaryClip ?: return
+        if (clip.itemCount == 0 || clip.description?.hasMimeType("text/*") != true) return
+        val sensitive = clip.description.extras?.getBoolean(EXTRA_IS_SENSITIVE, false) == true
+        val text = clip.getItemAt(0)?.coerceToText(this)?.toString() ?: return
+        clipboardHistory.record(text, System.currentTimeMillis(), sensitive)
+    }
+
+    override fun onClipboardPanelRequested() {
+        // In a password field the history is never shown over the field (anyone looking could read it);
+        // the button pastes what is on the clipboard now, as before.
+        if (!preferences.clipboardHistory || policy.sensitive) {
+            onClipboardPasteRequested()
+            return
+        }
+        recordPrimaryClip()
+        keyboard?.showClipboardPanel(clipboardHistory)
+    }
+
+    override fun onClipInsert(text: String) {
+        keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
+        controller.paste(text)
+        keyboard?.closePanel()
+        render()
+    }
+
+    override fun onSettingsRequested() {
+        keyboard?.dismissPopups()
+        startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        requestHideSelf(0)
+    }
+
+    override fun onHeightModeChanged(mode: String) {
+        preferences.heightMode = mode
+        keyboard?.let { applyKeyboardLayout(it) }
+    }
+
     override fun onClipboardPasteRequested() {
         val clip = getSystemService(ClipboardManager::class.java)?.primaryClip
         if (clip != null && clip.itemCount > 0) {
             val text = clip.getItemAt(0)?.coerceToText(this)?.toString()
             if (!text.isNullOrEmpty()) {
-                controller.text(text)
+                controller.paste(text)
                 render()
             }
         }
@@ -347,6 +399,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     }
 
     override fun onDestroy() {
+        getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(primaryClipListener)
         keyboard?.dismissPopups()
         keyboard = null
         sound.release()

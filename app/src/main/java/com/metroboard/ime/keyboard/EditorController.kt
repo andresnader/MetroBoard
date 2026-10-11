@@ -109,6 +109,17 @@ class EditorController(
         } else shift.updateAutomatic(autoCaps())
     }
 
+    /**
+     * Inserts [value] exactly as it was copied. Unlike [text], which types a character under the current
+     * Shift state, pasted text is never recased: a clip copied as "Segundo texto" must not become
+     * "SEGUNDO TEXTO" because the field happened to start with automatic capital.
+     */
+    fun paste(value: String) {
+        cancelSequence()
+        if (value.isEmpty() || !editor.commit(value)) return
+        if (value.any(Char::isLetter)) shift.onLetterCommitted() else shift.updateAutomatic(autoCaps())
+    }
+
     fun space(now: Long) {
         shift.breakTapSequence()
         lastCorrection = null

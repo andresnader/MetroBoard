@@ -124,6 +124,15 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         get() = preferences.getBoolean(KEY_LONG_PRESS_SPACE, true)
         set(value) { preferences.edit().putBoolean(KEY_LONG_PRESS_SPACE, value).apply() }
 
+    /**
+     * Keeps a short history of copied text for the keyboard's clipboard panel. On by default (the panel is a
+     * feature the keyboard advertises); deliberately not part of settings backups, so importing a file can
+     * never switch it on.
+     */
+    var clipboardHistory: Boolean
+        get() = preferences.getBoolean(KEY_CLIPBOARD_HISTORY, true)
+        set(value) { preferences.edit().putBoolean(KEY_CLIPBOARD_HISTORY, value).apply() }
+
     var keyPopup: Boolean
         get() = preferences.getBoolean(KEY_SHOW_KEY_POPUP, true)
         set(value) { preferences.edit().putBoolean(KEY_SHOW_KEY_POPUP, value).apply() }
@@ -223,6 +232,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
             .remove(KEY_SPACEBAR_CURSOR)
             .remove(KEY_LONG_PRESS_SPACE)
             .remove(KEY_SHOW_KEY_POPUP)
+            .remove(KEY_CLIPBOARD_HISTORY)
             .remove(KEY_EDGE_TO_EDGE) // legacy key from 0.2.0, kept only so a reset clears it
             .remove(KEY_LANGUAGE)
             .remove(KEY_LAYOUT_OVERRIDE)
@@ -243,6 +253,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
             deviceLanguage.lowercase(java.util.Locale.ROOT).takeIf { it in SUPPORTED_LANGUAGES } ?: "en"
 
         const val DEFAULT_ACCENT_COLOR: Int = 0xFF1BA1E2.toInt() // Windows Phone 8 "Cyan", the Lumia default (was a stray 0xFF00A49F mislabelled as 0xFF00A4EF)
+        const val KEY_CLIPBOARD_HISTORY = "pref_clipboard_history"
         const val KEY_LEGACY_VIBRATION = "vibration"
         const val KEY_LEGACY_SOUND = "sound"
         const val KEY_LEGACY_SUGGESTIONS = "suggestions"
