@@ -42,6 +42,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         KeyboardColors.accent = preferences.accentColor
         policy = EditorPolicy.from(attribute, preferences)
         editor.start(attribute, policy)
+        controller.setLanguage(preferences.language)
         controller.start(policy.editing)
         page = KeyboardPage.LETTERS
         keyboard?.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
@@ -52,6 +53,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         super.onStartInputView(info, restarting)
         KeyboardColors.accent = preferences.accentColor
         policy = EditorPolicy.from(info, preferences)
+        controller.setLanguage(preferences.language)
         controller.start(policy.editing)
         keyboard?.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
         render()
@@ -116,6 +118,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     override fun onLanguageToggled() {
         val nextLang = if (preferences.language == "es") "en" else "es"
         preferences.language = nextLang
+        controller.setLanguage(nextLang)
         keyboard?.let { haptics.play(it, preferences.vibration) }
         keyboard?.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
         render()
