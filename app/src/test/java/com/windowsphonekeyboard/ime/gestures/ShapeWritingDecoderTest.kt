@@ -78,4 +78,44 @@ class ShapeWritingDecoderTest {
         assertFalse(results.isEmpty())
         assertTrue(results.contains("casa"))
     }
+
+    @Test
+    fun decoderDecodesGestureForEnyeWord() {
+        val decoder = WordFlowShapeDecoder()
+        val centers = KeyboardGeometry.centers("es")
+        val a = centers['a']!!
+        val enye = centers['ñ']!!
+        val o = centers['o']!!
+
+        val path = listOf(
+            GesturePoint(a.x, a.y, 0L),
+            GesturePoint((a.x + enye.x) / 2f, (a.y + enye.y) / 2f, 50L),
+            GesturePoint(enye.x, enye.y, 100L),
+            GesturePoint(o.x, o.y, 150L)
+        )
+
+        val results = decoder.decode(path, "es")
+        assertFalse("Expected to decode word with ñ", results.isEmpty())
+        assertEquals("año", results.first())
+    }
+
+    @Test
+    fun decoderDecodesEnglishWord() {
+        val decoder = WordFlowShapeDecoder()
+        val centers = KeyboardGeometry.centers("en")
+        val t = centers['t']!!
+        val h = centers['h']!!
+        val e = centers['e']!!
+
+        val path = listOf(
+            GesturePoint(t.x, t.y, 0L),
+            GesturePoint(h.x, h.y, 50L),
+            GesturePoint((h.x + e.x) / 2f, (h.y + e.y) / 2f, 100L),
+            GesturePoint(e.x, e.y, 150L)
+        )
+
+        val results = decoder.decode(path, "en")
+        assertFalse("Expected to decode English word", results.isEmpty())
+        assertEquals("the", results.first())
+    }
 }

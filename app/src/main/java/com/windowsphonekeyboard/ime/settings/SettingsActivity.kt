@@ -603,4 +603,13 @@ class PivotHorizontalScrollView(context: Context) : HorizontalScrollView(context
             }
         }
     }
+
+    override fun requestChildRectangleOnScreen(
+        child: View,
+        rectangle: android.graphics.Rect,
+        immediate: Boolean
+    ): Boolean {
+        // Prevent child views (like EditText gaining focus) from disrupting page snapping!
+        return false
+    }
 }
