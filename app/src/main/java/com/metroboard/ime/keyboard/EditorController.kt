@@ -209,7 +209,7 @@ class EditorController(
             return
         }
         cancelSequence()
-        if (editor.hasSelection()) editor.commit("") else editor.deleteBeforeCursor(1)
+        if (editor.hasSelection()) editor.commit("") else editor.deleteBeforeCursor(lastGraphemeLength())
         shift.onCursorMoved(autoCaps())
     }
 
@@ -330,6 +330,27 @@ class EditorController(
         if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
         val word = lastWordOf(editor.beforeCursor(49))
         return word.takeIf { it.isNotEmpty() && it.length <= 48 }
+    }
+
+    /**
+     * Code points in the last user-perceived character before the cursor (emoji with skin tone, flags,
+     * ZWJ families, letter + combining mark, CRLF are one each). Password fields are never read: 1.
+     */
+    private fun lastGraphemeLength(): Int {
+        if (policy.sensitive) return 1
+        val before = editor.beforeCursor(GRAPHEME_WINDOW)
+        if (before.isEmpty()) return 1
+        val boundaries = java.text.BreakIterator.getCharacterInstance()
+        boundaries.setText(before)
+        val end = boundaries.last()
+        val start = boundaries.previous() // (preceding(last()) returns DONE on some runtimes)
+        if (start == java.text.BreakIterator.DONE) return 1
+        return before.codePointCount(start, end).coerceAtLeast(1)
+    }
+
+    private companion object {
+        /** Longest grapheme cluster we expect (a ZWJ family is 8 code points / 11 UTF-16 units). */
+        const val GRAPHEME_WINDOW = 32
     }
 
     private fun isSingleWord(text: String): Boolean =

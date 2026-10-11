@@ -36,4 +36,6 @@ data class EditingPolicy(
     val shiftWordCasing: Boolean = true,
     /** Remember new words the user types. Off for sensitive fields and no-personalized-learning editors. */
     val learnWords: Boolean = false,
+    /** Password-like field: the text must never be read, not even to delete a whole grapheme. */
+    val sensitive: Boolean = false,
 )

@@ -357,7 +357,8 @@ class SettingsActivity : Activity() {
             setPadding(dp(24), dp(10), dp(24), dp(24))
         }
 
-        content.addView(label(R.string.about_version, 24f))
+        val versionName = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty()
+        content.addView(label(getString(R.string.about_version, versionName), 24f))
         content.addView(label(R.string.about_legal, 14f, KeyboardColors.muted))
         content.addView(label(R.string.about_licenses, 13f, KeyboardColors.muted))
 

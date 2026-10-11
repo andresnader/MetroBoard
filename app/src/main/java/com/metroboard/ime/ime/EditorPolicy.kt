@@ -65,6 +65,7 @@ data class EditorPolicy(
                     shiftWordCasing = shiftWordCasingEnabled,
                     // Never in sensitive/address fields, nor when the editor opts out of personalised learning.
                     learnWords = normal && !noSuggestions && suggestionsEnabled,
+                    sensitive = sensitive,
                 ),
                 kind = when (typeClass) {
                     InputType.TYPE_CLASS_NUMBER -> FieldKind.NUMBER
