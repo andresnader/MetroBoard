@@ -92,30 +92,24 @@ class AlternativesPopup {
         popup = window
 
         row.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-        val measuredWidth = row.measuredWidth
-        val measuredHeight = row.measuredHeight
 
         val location = IntArray(2)
         anchor.getLocationOnScreen(location)
-        val anchorLeft = location[0]
-        val anchorTop = location[1]
-        val anchorWidth = anchor.width
-        val screenWidth = context.resources.displayMetrics.widthPixels
-        val margin = context.dp(4)
+        val windowOrigin = IntArray(2)
+        anchor.rootView.getLocationOnScreen(windowOrigin)
 
-        // Center popup horizontally relative to the anchor key, then clamp within screen bounds
-        val idealX = anchorLeft + (anchorWidth - measuredWidth) / 2
-        val clampedX = idealX.coerceIn(margin, (screenWidth - measuredWidth - margin).coerceAtLeast(margin))
-
-        // Position directly physically ABOVE the pressed key
-        var popupY = anchorTop - measuredHeight - context.dp(4)
-        if (popupY < margin) {
-            // If clipped at the top, position just below key
-            popupY = anchorTop + anchor.height + context.dp(4)
-        }
+        val at = PopupPlacement.above(
+            anchorLeft = location[0], anchorTop = location[1],
+            anchorWidth = anchor.width, anchorHeight = anchor.height,
+            popupWidth = row.measuredWidth, popupHeight = row.measuredHeight,
+            screenWidth = context.resources.displayMetrics.widthPixels,
+            screenHeight = context.resources.displayMetrics.heightPixels,
+            gap = context.dp(4), margin = context.dp(4),
+            windowLeft = windowOrigin[0], windowTop = windowOrigin[1],
+        )
 
         try {
-            window.showAtLocation(anchor, Gravity.TOP or Gravity.LEFT, clampedX, popupY)
+            window.showAtLocation(anchor, Gravity.TOP or Gravity.LEFT, at.x, at.y)
         } catch (_: Exception) {}
     }
 
