@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.settings
 
 import android.annotation.SuppressLint
@@ -6,11 +14,12 @@ import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings
@@ -21,39 +30,42 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import com.metroboard.ime.R
-import com.metroboard.ime.ime.WordFlowImeService
+import com.metroboard.ime.dictionary.LocalPersonalDictionary
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.dp
 
 class SettingsActivity : Activity() {
-    private lateinit var status: TextView
     private lateinit var preferences: KeyboardPreferences
+    private lateinit var personalDict: LocalPersonalDictionary
     private val colorTileViews = mutableListOf<Pair<Int, View>>()
     private val pivotTabViews = mutableListOf<TextView>()
     private lateinit var lateralPager: PivotHorizontalScrollView
     private lateinit var pivotHeaderScroll: HorizontalScrollView
     private lateinit var accentColorLabel: TextView
     private var currentPageIndex = 0
-    private var screenWidthPx = 1080
 
-    private val PIVOT_TITLES = listOf(
-        R.string.pivot_general,
-        R.string.pivot_typing,
-        R.string.pivot_appearance,
-        R.string.pivot_backup,
-        R.string.pivot_try
+    private val SECTIONS = listOf(
+        "LANGUAGES",
+        "TYPING",
+        "LAYOUT",
+        "APPEARANCE",
+        "SOUND & HAPTICS",
+        "GESTURES",
+        "PRIVACY",
+        "ABOUT"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         preferences = KeyboardPreferences(this)
+        personalDict = LocalPersonalDictionary(this)
         KeyboardColors.accent = preferences.accentColor
-        screenWidthPx = resources.displayMetrics.widthPixels
+        val isSystemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        KeyboardColors.setTheme(preferences.theme, isSystemDark)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(KeyboardColors.background)
-            // Android 15+ edge-to-edge
             setOnApplyWindowInsetsListener { view, insets ->
                 @Suppress("DEPRECATION")
                 view.setPadding(
@@ -94,9 +106,9 @@ class SettingsActivity : Activity() {
         }
 
         pivotTabViews.clear()
-        PIVOT_TITLES.forEachIndexed { index, titleRes ->
+        SECTIONS.forEachIndexed { index, title ->
             val tabView = TextView(this).apply {
-                setText(titleRes)
+                text = title.lowercase()
                 setPadding(0, 0, dp(28), 0)
                 setOnClickListener { scrollToPage(index) }
             }
@@ -111,8 +123,8 @@ class SettingsActivity : Activity() {
         currentPageIndex = activeIndex
         pivotTabViews.forEachIndexed { index, tabView ->
             val isActive = index == activeIndex
-            tabView.textSize = if (isActive) 34f else 26f
-            tabView.setTextColor(if (isActive) Color.WHITE else KeyboardColors.muted)
+            tabView.textSize = if (isActive) 32f else 24f
+            tabView.setTextColor(if (isActive) KeyboardColors.foreground else KeyboardColors.muted)
             tabView.typeface = Typeface.create("sans-serif-light", if (isActive) Typeface.BOLD else Typeface.NORMAL)
         }
         pivotTabViews.getOrNull(activeIndex)?.let { activeTab ->
@@ -128,14 +140,17 @@ class SettingsActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
         }
 
-        pagesContainer.addView(createGeneralPage())
+        pagesContainer.addView(createLanguagesPage())
         pagesContainer.addView(createTypingPage())
+        pagesContainer.addView(createLayoutPage())
         pagesContainer.addView(createAppearancePage())
-        pagesContainer.addView(createBackupPage())
-        pagesContainer.addView(createTestingPage())
+        pagesContainer.addView(createSoundHapticsPage())
+        pagesContainer.addView(createGesturesPage())
+        pagesContainer.addView(createPrivacyPage())
+        pagesContainer.addView(createAboutPage())
 
         lateralPager = PivotHorizontalScrollView(this).apply {
-            pageCount = PIVOT_TITLES.size
+            pageCount = SECTIONS.size
             addView(pagesContainer)
             onPageSelected = { pageIndex ->
                 updatePivotHeaderStyles(pageIndex)
@@ -145,20 +160,24 @@ class SettingsActivity : Activity() {
     }
 
     private fun scrollToPage(index: Int) {
-        val safeIndex = index.coerceIn(0, PIVOT_TITLES.size - 1)
+        val safeIndex = index.coerceIn(0, SECTIONS.size - 1)
         lateralPager.snapToPage(safeIndex)
     }
 
-    private fun createGeneralPage(): View {
+    // 1. LANGUAGES
+    private fun createLanguagesPage(): View {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(10), dp(24), dp(24))
         }
-        content.addView(label(R.string.setup_title, 36f))
-        content.addView(label(R.string.setup_instructions, 15f))
-        status = label(R.string.keyboard_disabled, 14f, preferences.accentColor)
-        content.addView(status)
 
+        content.addView(label("idioma activo", 22f))
+        content.addView(createLanguageSelector())
+
+        content.addView(label("distribución de teclas", 22f))
+        content.addView(createLayoutOverrideSelector())
+
+        content.addView(label("método de entrada", 22f))
         content.addView(action(R.string.enable_keyboard) {
             try { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
             catch (_: ActivityNotFoundException) {
@@ -169,25 +188,16 @@ class SettingsActivity : Activity() {
             getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
         })
 
-        content.addView(label(R.string.section_feedback, 22f))
-        content.addView(toggle(R.string.vibration, preferences.vibration) { preferences.vibration = it })
-        content.addView(toggle(R.string.sound, preferences.sound) { preferences.sound = it })
-        content.addView(toggle(R.string.wordflow, preferences.wordFlow) { preferences.wordFlow = it })
-        content.addView(label(R.string.wordflow_summary, 12f, KeyboardColors.muted))
-
         return makePageScrollView(content)
     }
 
+    // 2. TYPING
     private fun createTypingPage(): View {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(10), dp(24), dp(24))
         }
 
-        content.addView(label(R.string.language_title, 22f))
-        content.addView(createLanguageSelector())
-
-        content.addView(label(R.string.section_typing, 22f))
         content.addView(toggle(R.string.suggestions, preferences.suggestions) { preferences.suggestions = it })
         content.addView(toggle(R.string.autocorrect, preferences.autoCorrect) { preferences.autoCorrect = it })
         content.addView(toggle(R.string.autocap, preferences.autoCapitalization) { preferences.autoCapitalization = it })
@@ -195,16 +205,68 @@ class SettingsActivity : Activity() {
         content.addView(toggle(R.string.shift_word_casing, preferences.shiftWordCasing) { preferences.shiftWordCasing = it })
         content.addView(label(R.string.shift_word_casing_summary, 12f, KeyboardColors.muted))
 
+        content.addView(action(R.string.view_learned_words) { showLearnedWordsDialog() })
+
+        content.addView(View(this).apply { layoutParams = LinearLayout.LayoutParams(1, dp(16)) })
+        content.addView(label(R.string.try_title, 20f))
+        val testField = EditText(this).apply {
+            hint = getString(R.string.test_hint)
+            setTextColor(KeyboardColors.foreground)
+            setHintTextColor(KeyboardColors.muted)
+            textSize = 16f
+            isFocusable = true
+            isFocusableInTouchMode = true
+            setPadding(dp(8), dp(12), dp(8), dp(12))
+            background = GradientDrawable().apply {
+                setColor(if (KeyboardColors.isDarkTheme) 0xFF1A1A1A.toInt() else 0xFFF0F0F0.toInt())
+                setStroke(dp(1), KeyboardColors.accent)
+            }
+            setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) {
+                    v.postDelayed({
+                        (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(v, InputMethodManager.SHOW_FORCED)
+                    }, 100)
+                }
+            }
+            setOnClickListener {
+                requestFocus()
+                (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.showSoftInput(this, InputMethodManager.SHOW_FORCED)
+            }
+        }
+        content.addView(testField)
+
         return makePageScrollView(content)
     }
 
+    // 3. LAYOUT
+    private fun createLayoutPage(): View {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(10), dp(24), dp(24))
+        }
+
+        content.addView(label(R.string.one_handed_title, 22f))
+        content.addView(createOneHandedSelector())
+
+        content.addView(label(R.string.height_scale_title, 22f))
+        content.addView(createHeightScaleSelector())
+
+        content.addView(toggle(R.string.show_number_row, preferences.numberRow) { preferences.numberRow = it })
+        content.addView(toggle(R.string.key_popup, preferences.keyPopup) { preferences.keyPopup = it })
+        content.addView(toggle(R.string.edge_to_edge, preferences.edgeToEdge) { preferences.edgeToEdge = it })
+
+        return makePageScrollView(content)
+    }
+
+    // 4. APPEARANCE
     private fun createAppearancePage(): View {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(10), dp(24), dp(24))
         }
 
-        content.addView(toggle(R.string.show_number_row, preferences.numberRow) { preferences.numberRow = it })
+        content.addView(label(R.string.theme_title, 22f))
+        content.addView(createThemeSelector())
 
         val activeName = KeyboardColors.LUMIA_PALETTE.find { it.color == preferences.accentColor }?.name ?: ""
         accentColorLabel = label(R.string.accent_color_title, 22f).apply {
@@ -212,19 +274,72 @@ class SettingsActivity : Activity() {
         }
         content.addView(accentColorLabel)
         content.addView(createColorPicker())
-        content.addView(label(R.string.height_scale_title, 22f))
-        content.addView(createHeightScaleSelector())
+
+        content.addView(toggle(R.string.tint_keys, preferences.tintKeys) { preferences.tintKeys = it })
 
         return makePageScrollView(content)
     }
 
-    private fun createBackupPage(): View {
+    // 5. SOUND & HAPTICS
+    private fun createSoundHapticsPage(): View {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(10), dp(24), dp(24))
         }
 
-        content.addView(label(R.string.section_tools, 22f))
+        content.addView(toggle(R.string.sound, preferences.sound) { preferences.sound = it })
+        content.addView(label(R.string.sound_volume, 18f))
+        content.addView(createSoundVolumeSelector())
+
+        content.addView(toggle(R.string.vibration, preferences.vibration) { preferences.vibration = it })
+        content.addView(label(R.string.haptic_strength, 18f))
+        content.addView(createHapticStrengthSelector())
+
+        return makePageScrollView(content)
+    }
+
+    // 6. GESTURES
+    private fun createGesturesPage(): View {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(10), dp(24), dp(24))
+        }
+
+        content.addView(toggle(R.string.wordflow, preferences.wordFlow) { preferences.wordFlow = it })
+        content.addView(label(R.string.wordflow_summary, 12f, KeyboardColors.muted))
+
+        content.addView(label(R.string.swipe_delete_title, 18f).apply { setPadding(0, dp(12), 0, dp(2)) })
+        content.addView(label(R.string.swipe_delete_summary, 12f, KeyboardColors.muted))
+
+        content.addView(toggle(R.string.spacebar_cursor, preferences.spacebarCursor) { preferences.spacebarCursor = it })
+        content.addView(label(R.string.spacebar_cursor_summary, 12f, KeyboardColors.muted))
+
+        content.addView(toggle(R.string.long_press_space, preferences.longPressSpace) { preferences.longPressSpace = it })
+        content.addView(label(R.string.long_press_space_summary, 12f, KeyboardColors.muted))
+
+        return makePageScrollView(content)
+    }
+
+    // 7. PRIVACY
+    private fun createPrivacyPage(): View {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(10), dp(24), dp(24))
+        }
+
+        content.addView(label(R.string.offline_indicator, 18f, preferences.accentColor))
+        content.addView(label(R.string.privacy_note, 13f, KeyboardColors.muted))
+
+        content.addView(action(R.string.import_android_dict) {
+            val count = personalDict.importFromSystemUserDictionary(this)
+            Toast.makeText(this, getString(R.string.import_android_dict_done, count), Toast.LENGTH_LONG).show()
+        })
+
+        content.addView(action(R.string.view_learned_words) { showLearnedWordsDialog() })
+        content.addView(action(R.string.clear_learned_words) {
+            personalDict.clear()
+            Toast.makeText(this, "Diccionario personal borrado", Toast.LENGTH_SHORT).show()
+        })
         content.addView(action(R.string.export_settings) { exportSettings() })
         content.addView(action(R.string.import_settings) { showImportDialog() })
         content.addView(action(R.string.reset_settings) { showResetDialog() })
@@ -232,217 +347,337 @@ class SettingsActivity : Activity() {
         return makePageScrollView(content)
     }
 
-    private fun createTestingPage(): View {
+    // 8. ABOUT
+    private fun createAboutPage(): View {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(10), dp(24), dp(24))
         }
 
-        content.addView(label(R.string.try_title, 22f))
-        content.addView(testField(R.string.test_hint, InputType.TYPE_CLASS_TEXT or
-            InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE))
-        content.addView(testField(R.string.test_email, InputType.TYPE_CLASS_TEXT or
-            InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS))
-        content.addView(testField(R.string.test_password, InputType.TYPE_CLASS_TEXT or
-            InputType.TYPE_TEXT_VARIATION_PASSWORD))
-        content.addView(testField(R.string.test_number, InputType.TYPE_CLASS_NUMBER or
-            InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED))
-        content.addView(label(R.string.privacy_note, 13f, KeyboardColors.muted))
-        content.addView(label(R.string.independent_note, 12f, KeyboardColors.muted))
+        content.addView(label(R.string.about_version, 24f))
+        content.addView(label(R.string.about_legal, 14f, KeyboardColors.muted))
+        content.addView(label(R.string.about_licenses, 13f, KeyboardColors.muted))
+
+        // Quick test field in About page for instant verification
+        content.addView(label(R.string.try_title, 20f).apply { setPadding(0, dp(16), 0, dp(4)) })
+        content.addView(EditText(this).apply {
+            hint = getString(R.string.test_hint)
+            setTextColor(Color.WHITE)
+            setHintTextColor(KeyboardColors.muted)
+            setBackgroundColor(Color.parseColor("#222222"))
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        })
 
         return makePageScrollView(content)
     }
 
-    private fun makePageScrollView(content: View): View {
-        return ScrollView(this).apply {
-            isFillViewport = true
-            layoutParams = LinearLayout.LayoutParams(screenWidthPx, -1)
-            addView(content)
-        }
-    }
-
+    // Selectors & Controls
     private fun createLanguageSelector(): View {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(6), 0, dp(14))
+            setPadding(0, dp(8), 0, dp(16))
         }
-        val languages = listOf("es" to getString(R.string.lang_spanish), "en" to getString(R.string.lang_english))
-        val buttons = mutableListOf<Button>()
-
-        fun updateStyles(active: String) {
-            buttons.forEachIndexed { i, btn ->
-                val code = languages[i].first
-                val isSelected = code == active
-                btn.setTextColor(if (isSelected) Color.BLACK else Color.WHITE)
-                btn.setBackgroundColor(if (isSelected) Color.WHITE else KeyboardColors.key)
-            }
-        }
-
-        languages.forEach { (code, name) ->
+        val languages = listOf("es" to "Español", "en" to "English", "fr" to "Français", "de" to "Deutsch")
+        languages.forEach { (code, title) ->
+            val isCurrent = preferences.language == code
             val btn = Button(this).apply {
-                text = name
-                textSize = 13f
+                text = title
                 isAllCaps = false
-                layoutParams = LinearLayout.LayoutParams(0, dp(46), 1f).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
+                textSize = 13f
+                setTextColor(if (isCurrent) Color.BLACK else KeyboardColors.foreground)
+                background = GradientDrawable().apply {
+                    setColor(if (isCurrent) preferences.accentColor else KeyboardColors.key)
+                    cornerRadius = 0f
                 }
                 setOnClickListener {
                     preferences.language = code
-                    updateStyles(code)
+                    Toast.makeText(this@SettingsActivity, "$title seleccionado", Toast.LENGTH_SHORT).show()
+                    recreate()
                 }
             }
-            buttons.add(btn)
-            row.addView(btn)
+            row.addView(btn, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
         }
-        updateStyles(preferences.language)
         return row
     }
 
-    private fun createColorPicker(): View {
-        val grid = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+    private fun createLayoutOverrideSelector(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(8), 0, dp(16))
         }
-
-        colorTileViews.clear()
-        val currentAccent = preferences.accentColor
-        val palette = KeyboardColors.LUMIA_PALETTE
-        val numColumns = 5
-
-        for (rowIdx in 0 until (palette.size + numColumns - 1) / numColumns) {
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(0, 0, 0, dp(8))
+        val options = listOf("AUTO" to "Auto", "QWERTY" to "QWERTY", "AZERTY" to "AZERTY", "QWERTZ" to "QWERTZ")
+        options.forEach { (code, labelText) ->
+            val isCurrent = preferences.layoutOverride == code
+            val btn = Button(this).apply {
+                text = labelText
+                isAllCaps = false
+                textSize = 12f
+                setTextColor(if (isCurrent) Color.BLACK else KeyboardColors.foreground)
+                background = GradientDrawable().apply {
+                    setColor(if (isCurrent) preferences.accentColor else KeyboardColors.key)
+                    cornerRadius = 0f
+                }
+                setOnClickListener {
+                    preferences.layoutOverride = code
+                    Toast.makeText(this@SettingsActivity, "$labelText seleccionado", Toast.LENGTH_SHORT).show()
+                    recreate()
                 }
             }
-
-            for (colIdx in 0 until numColumns) {
-                val itemIndex = rowIdx * numColumns + colIdx
-                if (itemIndex < palette.size) {
-                    val item = palette[itemIndex]
-                    val tile = View(this).apply {
-                        val size = dp(46)
-                        layoutParams = LinearLayout.LayoutParams(0, size, 1f).apply {
-                            setMargins(dp(3), 0, dp(3), 0)
-                        }
-                        background = createTileDrawable(item.color, item.color == currentAccent)
-                        contentDescription = item.name
-                        setOnClickListener {
-                            preferences.accentColor = item.color
-                            KeyboardColors.accent = item.color
-                            status.setTextColor(item.color)
-                            updateColorTileSelections(item.color)
-                            accentColorLabel.text = getString(R.string.accent_color_title) + ": " + item.name
-                        }
-                    }
-                    colorTileViews.add(item.color to tile)
-                    row.addView(tile)
-                } else {
-                    val spacer = View(this).apply {
-                        layoutParams = LinearLayout.LayoutParams(0, dp(46), 1f).apply {
-                            setMargins(dp(3), 0, dp(3), 0)
-                        }
-                    }
-                    row.addView(spacer)
-                }
-            }
-            grid.addView(row)
+            row.addView(btn, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
         }
-        return grid
-    }
-
-    private fun createTileDrawable(color: Int, isSelected: Boolean): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            if (isSelected) {
-                setStroke(dp(3), Color.WHITE)
-            } else {
-                setStroke(dp(1), Color.rgb(60, 60, 60))
-            }
-        }
-    }
-
-    private fun updateColorTileSelections(selectedColor: Int) {
-        colorTileViews.forEach { (color, view) ->
-            view.background = createTileDrawable(color, color == selectedColor)
-        }
+        return row
     }
 
     private fun createHeightScaleSelector(): View {
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(6), 0, dp(14))
+            setPadding(0, dp(8), 0, dp(16))
         }
-        val currentScale = preferences.heightScale
-        val scales = listOf(
-            0.85f to getString(R.string.height_small),
-            1.00f to getString(R.string.height_normal),
-            1.15f to getString(R.string.height_tall)
-        )
-        val buttons = mutableListOf<Button>()
-
-        fun updateScaleButtonStyles(activeScale: Float) {
-            buttons.forEachIndexed { i, btn ->
-                val scaleValue = scales[i].first
-                val isActive = Math.abs(scaleValue - activeScale) < 0.05f
-                btn.setTextColor(if (isActive) Color.BLACK else Color.WHITE)
-                btn.setBackgroundColor(if (isActive) Color.WHITE else KeyboardColors.key)
-            }
-        }
-
-        scales.forEach { (scale, labelText) ->
+        val options = listOf("COMPACT" to "Compacto", "NORMAL" to "Normal", "TALL" to "Alto")
+        options.forEach { (mode, title) ->
+            val isCurrent = preferences.heightMode == mode
             val btn = Button(this).apply {
-                text = labelText
-                textSize = 12f
+                text = title
                 isAllCaps = false
-                layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
+                textSize = 13f
+                setTextColor(if (isCurrent) Color.BLACK else KeyboardColors.foreground)
+                background = GradientDrawable().apply {
+                    setColor(if (isCurrent) preferences.accentColor else KeyboardColors.key)
+                    cornerRadius = 0f
                 }
                 setOnClickListener {
-                    preferences.heightScale = scale
-                    updateScaleButtonStyles(scale)
+                    preferences.heightMode = mode
+                    recreate()
                 }
             }
-            buttons.add(btn)
-            row.addView(btn)
+            row.addView(btn, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
         }
-        updateScaleButtonStyles(currentScale)
         return row
     }
 
+    private fun createThemeSelector(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(8), 0, dp(16))
+        }
+        val options = listOf("DARK" to "Oscuro", "LIGHT" to "Claro", "SYSTEM" to "Sistema")
+        options.forEach { (code, title) ->
+            val isCurrent = preferences.theme == code
+            val btn = Button(this).apply {
+                text = title
+                isAllCaps = false
+                textSize = 13f
+                setTextColor(if (isCurrent) Color.BLACK else KeyboardColors.foreground)
+                background = GradientDrawable().apply {
+                    setColor(if (isCurrent) preferences.accentColor else KeyboardColors.key)
+                    cornerRadius = 0f
+                }
+                setOnClickListener {
+                    preferences.theme = code
+                    val isSystemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                    KeyboardColors.setTheme(code, isSystemDark)
+                    Toast.makeText(this@SettingsActivity, "$title seleccionado", Toast.LENGTH_SHORT).show()
+                    recreate()
+                }
+            }
+            row.addView(btn, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
+        }
+        return row
+    }
+
+    private fun createOneHandedSelector(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(8), 0, dp(16))
+        }
+        val options = listOf("OFF" to "Desactivado", "LEFT" to "Izquierda", "RIGHT" to "Derecha")
+        options.forEach { (code, title) ->
+            val isCurrent = preferences.oneHandedMode == code
+            val btn = Button(this).apply {
+                text = title
+                isAllCaps = false
+                textSize = 12f
+                setTextColor(if (isCurrent) Color.BLACK else KeyboardColors.foreground)
+                background = GradientDrawable().apply {
+                    setColor(if (isCurrent) preferences.accentColor else KeyboardColors.key)
+                    cornerRadius = 0f
+                }
+                setOnClickListener {
+                    preferences.oneHandedMode = code
+                    Toast.makeText(this@SettingsActivity, "$title seleccionado", Toast.LENGTH_SHORT).show()
+                    recreate()
+                }
+            }
+            row.addView(btn, LinearLayout.LayoutParams(0, dp(42), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
+        }
+        return row
+    }
+
+    private fun createSoundVolumeSelector(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(4), 0, dp(14))
+        }
+        val volumes = listOf(0.35f to "Bajo", 0.70f to "Medio", 1.0f to "Alto")
+        volumes.forEach { (vol, label) ->
+            val isCurrent = kotlin.math.abs(preferences.soundVolume - vol) < 0.15f
+            val btn = Button(this).apply {
+                text = label
+                isAllCaps = false
+                textSize = 13f
+                setTextColor(if (isCurrent) Color.BLACK else KeyboardColors.foreground)
+                background = GradientDrawable().apply {
+                    setColor(if (isCurrent) preferences.accentColor else KeyboardColors.key)
+                    cornerRadius = 0f
+                }
+                setOnClickListener {
+                    preferences.soundVolume = vol
+                    recreate()
+                }
+            }
+            row.addView(btn, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
+        }
+        return row
+    }
+
+    private fun createHapticStrengthSelector(): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(4), 0, dp(14))
+        }
+        val strengths = listOf("LIGHT" to "Suave", "MEDIUM" to "Media", "STRONG" to "Fuerte")
+        strengths.forEach { (key, label) ->
+            val isCurrent = preferences.hapticStrength.equals(key, ignoreCase = true)
+            val btn = Button(this).apply {
+                text = label
+                isAllCaps = false
+                textSize = 13f
+                setTextColor(if (isCurrent) Color.BLACK else KeyboardColors.foreground)
+                background = GradientDrawable().apply {
+                    setColor(if (isCurrent) preferences.accentColor else KeyboardColors.key)
+                    cornerRadius = 0f
+                }
+                setOnClickListener {
+                    preferences.hapticStrength = key
+                    recreate()
+                }
+            }
+            row.addView(btn, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                setMargins(dp(2), 0, dp(2), 0)
+            })
+        }
+        return row
+    }
+
+    private fun createColorPicker(): View {
+        val grid = GridLayout(this).apply {
+            columnCount = 5
+            setPadding(0, dp(8), 0, dp(16))
+        }
+        colorTileViews.clear()
+
+        val tileWidth = (resources.displayMetrics.widthPixels - dp(48)) / 5
+        KeyboardColors.LUMIA_PALETTE.forEach { accent ->
+            val isSelected = accent.color == preferences.accentColor
+            val tile = View(this).apply {
+                background = GradientDrawable().apply {
+                    setColor(accent.color)
+                    if (isSelected) setStroke(dp(3), Color.WHITE)
+                    cornerRadius = 0f
+                }
+                setOnClickListener {
+                    preferences.accentColor = accent.color
+                    KeyboardColors.accent = accent.color
+                    accentColorLabel.text = getString(R.string.accent_color_title) + ": ${accent.name}"
+                    updateColorSelection(accent.color)
+                }
+            }
+            colorTileViews.add(accent.color to tile)
+            grid.addView(tile, GridLayout.LayoutParams().apply {
+                width = tileWidth - dp(6)
+                height = dp(46)
+                setMargins(dp(3), dp(3), dp(3), dp(3))
+            })
+        }
+        return grid
+    }
+
+    private fun updateColorSelection(selectedColor: Int) {
+        colorTileViews.forEach { (color, view) ->
+            val isSelected = color == selectedColor
+            (view.background as? GradientDrawable)?.apply {
+                if (isSelected) setStroke(dp(3), Color.WHITE)
+                else setStroke(0, Color.TRANSPARENT)
+            }
+        }
+    }
+
+    private fun showLearnedWordsDialog() {
+        val words = personalDict.getAllWords(preferences.language)
+        if (words.isEmpty()) {
+            Toast.makeText(this, "No hay palabras aprendidas aún", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val items = words.map { "${it.word} (${it.frequency})" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.view_learned_words)
+            .setItems(items) { _, which ->
+                val selected = words[which]
+                AlertDialog.Builder(this)
+                    .setTitle("Eliminar palabra")
+                    .setMessage("¿Deseas eliminar '${selected.word}' del diccionario?")
+                    .setPositiveButton("Eliminar") { _, _ ->
+                        personalDict.remove(selected.word, preferences.language)
+                        Toast.makeText(this, "Palabra eliminada", Toast.LENGTH_SHORT).show()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
     private fun exportSettings() {
-        val json = preferences.exportJson()
+        val words = personalDict.getAllWords(preferences.language).map { it.word }
+        val json = preferences.exportJson(words)
         val clipboard = getSystemService(ClipboardManager::class.java)
-        clipboard?.setPrimaryClip(ClipData.newPlainText("wkb_settings", json))
+        clipboard?.setPrimaryClip(ClipData.newPlainText("MetroBoard Settings", json))
         Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
     }
 
     private fun showImportDialog() {
         val input = EditText(this).apply {
-            hint = "{\n  \"settings\": {\n  ...\n  }\n}"
-            setHintTextColor(KeyboardColors.muted)
+            hint = "Pega aquí el JSON"
             setTextColor(Color.WHITE)
-            setBackgroundColor(KeyboardColors.key)
-            minLines = 6
-            gravity = Gravity.TOP or Gravity.START
+            setBackgroundColor(Color.parseColor("#222222"))
             setPadding(dp(12), dp(12), dp(12), dp(12))
         }
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(this)
             .setTitle(R.string.import_settings)
             .setView(input)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 val text = input.text.toString().trim()
                 if (text.isNotEmpty()) {
                     try {
-                        preferences.importJson(text)
-                        Toast.makeText(this, R.string.settings_imported, Toast.LENGTH_SHORT).show()
+                        val (words, settings) = preferences.importJson(text)
+                        personalDict.importJson(text)
+                        Toast.makeText(this, "$settings ajustes y $words palabras importadas", Toast.LENGTH_SHORT).show()
                         recreate()
                     } catch (_: Exception) {
-                        Toast.makeText(this, R.string.invalid_json, Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, R.string.invalid_json, Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -451,77 +686,60 @@ class SettingsActivity : Activity() {
     }
 
     private fun showResetDialog() {
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        AlertDialog.Builder(this)
             .setTitle(R.string.reset_settings)
-            .setMessage(R.string.reset_settings)
+            .setMessage("¿Restablecer todos los ajustes a los valores iniciales de Windows Phone 8.1?")
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 preferences.resetToDefaults()
-                KeyboardColors.accent = KeyboardPreferences.DEFAULT_ACCENT_COLOR
-                Toast.makeText(this, R.string.reset_done, Toast.LENGTH_SHORT).show()
+                personalDict.clear()
                 recreate()
+                Toast.makeText(this, R.string.reset_done, Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun label(resource: Int, size: Float, color: Int = Color.WHITE) = TextView(this).apply {
-        setText(resource)
-        textSize = size
-        setTextColor(color)
-        setPadding(0, dp(10), 0, dp(14))
+    private fun makePageScrollView(content: View): View {
+        return ScrollView(this).apply {
+            addView(content)
+            layoutParams = LinearLayout.LayoutParams(resources.displayMetrics.widthPixels, LinearLayout.LayoutParams.MATCH_PARENT)
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+    }
+
+    private fun label(resId: Int, size: Float, color: Int = KeyboardColors.foreground) = TextView(this).apply {
+        setText(resId); textSize = size; setTextColor(color)
+        setPadding(0, dp(12), 0, dp(4))
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
     }
 
-    private fun action(resource: Int, callback: () -> Unit) = Button(this).apply {
-        setText(resource)
-        isAllCaps = false
-        setTextColor(Color.WHITE)
-        background = KeyboardColors.keyBackground()
-        layoutParams = LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(10) }
-        setOnClickListener { callback() }
+    private fun label(text: String, size: Float, color: Int = KeyboardColors.foreground) = TextView(this).apply {
+        this.text = text; textSize = size; setTextColor(color)
+        setPadding(0, dp(12), 0, dp(4))
+        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
     }
 
-    private fun toggle(resource: Int, enabled: Boolean, callback: (Boolean) -> Unit) = Switch(this).apply {
-        setText(resource)
-        setTextColor(Color.WHITE)
-        isChecked = enabled
-        minHeight = dp(52)
-        setOnCheckedChangeListener { _, value -> callback(value) }
+    private fun toggle(titleRes: Int, checked: Boolean, onToggle: (Boolean) -> Unit) = Switch(this).apply {
+        setText(titleRes); isChecked = checked
+        textSize = 15f; setTextColor(KeyboardColors.foreground)
+        setPadding(0, dp(8), 0, dp(8))
+        setOnCheckedChangeListener { _, isChecked -> onToggle(isChecked) }
     }
 
-    private fun testField(hintResource: Int, type: Int) = EditText(this).apply {
-        setHint(hintResource)
-        inputType = type
-        setTextColor(Color.WHITE)
-        setHintTextColor(KeyboardColors.muted)
-        minHeight = dp(64)
-        isSaveEnabled = false
-        importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        val manager = getSystemService(InputMethodManager::class.java)
-        val id = ComponentName(this, WordFlowImeService::class.java)
-        val selected = ComponentName.unflattenFromString(
-            Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD).orEmpty()
-        ) == id
-        val enabled = manager?.enabledInputMethodList?.any {
-            it.packageName == packageName && it.serviceName == WordFlowImeService::class.java.name
-        } == true
-        status.setTextColor(preferences.accentColor)
-        status.setText(when {
-            selected -> R.string.keyboard_active
-            enabled -> R.string.keyboard_enabled
-            else -> R.string.keyboard_disabled
-        })
+    private fun action(titleRes: Int, onClick: () -> Unit) = Button(this).apply {
+        setText(titleRes); isAllCaps = false
+        gravity = Gravity.START or Gravity.CENTER_VERTICAL
+        setTextColor(KeyboardColors.foreground); textSize = 16f
+        background = ColorDrawable(Color.TRANSPARENT)
+        setPadding(0, dp(12), 0, dp(12))
+        setOnClickListener { onClick() }
     }
 }
 
 class PivotHorizontalScrollView(context: Context) : HorizontalScrollView(context) {
     var onPageSelected: ((Int) -> Unit)? = null
-    var pageCount = 5
+    var pageCount = 8
     var currentPage = 0
         private set
 
@@ -609,7 +827,6 @@ class PivotHorizontalScrollView(context: Context) : HorizontalScrollView(context
         rectangle: android.graphics.Rect,
         immediate: Boolean
     ): Boolean {
-        // Prevent child views (like EditText gaining focus) from disrupting page snapping!
         return false
     }
 }

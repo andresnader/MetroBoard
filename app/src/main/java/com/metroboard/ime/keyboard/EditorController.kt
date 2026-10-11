@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.keyboard
 
 import com.metroboard.ime.prediction.SuggestionEngine
@@ -128,6 +136,13 @@ class EditorController(
         if (!policy.suggestions) return emptyList()
         val prefix = prefix()
         if (prefix == null) {
+            val twoWords = previousTwoWords()
+            if (twoWords != null) {
+                val trigrams = engine.suggestNextTrigram(twoWords.first, twoWords.second)
+                if (trigrams.isNotEmpty()) {
+                    return trigrams.take(3).map { formatCandidate(it, false) }
+                }
+            }
             val prev = previousWord() ?: return emptyList()
             return engine.suggestNext(prev).take(3).map { formatCandidate(it, false) }
         }
@@ -176,6 +191,29 @@ class EditorController(
         }
     }
 
+    fun deleteWords(count: Int = 1) {
+        cancelSequence()
+        editor.beginBatch()
+        try {
+            for (i in 0 until count) {
+                val context = editor.beforeCursor(64)
+                if (context.isEmpty()) break
+                val trailingWs = context.takeLastWhile { it.isWhitespace() }.length
+                if (trailingWs > 0) {
+                    editor.deleteBeforeCursor(trailingWs)
+                }
+                val remaining = editor.beforeCursor(64)
+                val wordLen = remaining.takeLastWhile { !it.isWhitespace() }.length
+                if (wordLen > 0) {
+                    editor.deleteBeforeCursor(wordLen)
+                }
+            }
+        } finally {
+            editor.endBatch()
+        }
+        shift.onCursorMoved(autoCaps())
+    }
+
     private fun prefix(): String? {
         if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
         val context = editor.beforeCursor(49)
@@ -190,6 +228,21 @@ class EditorController(
         val trimmed = context.trimEnd()
         val word = trimmed.takeLastWhile(Char::isLetter)
         return word.takeIf { it.isNotEmpty() && it.length <= 48 }
+    }
+
+    private fun previousTwoWords(): Pair<String, String>? {
+        if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
+        val context = editor.beforeCursor(99)
+        if (context.isEmpty() || !context.last().isWhitespace()) return null
+        val tokens = context.trimEnd().split(Regex("\\s+")).filter { it.isNotEmpty() && it.all(Char::isLetter) }
+        if (tokens.size >= 2) {
+            val w1 = tokens[tokens.size - 2]
+            val w2 = tokens[tokens.size - 1]
+            if (w1.length <= 48 && w2.length <= 48) {
+                return w1 to w2
+            }
+        }
+        return null
     }
 
     private fun autoCaps() = policy.automaticCapitalization && editor.shouldCapitalize()

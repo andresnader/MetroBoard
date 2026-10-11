@@ -1,121 +1,100 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.prediction
 
+import android.content.Context
 import com.metroboard.ime.dictionary.DisabledPersonalDictionary
+import com.metroboard.ime.dictionary.LanguageDictionaryRegistry
 import com.metroboard.ime.dictionary.PersonalDictionary
 import java.util.Locale
-import kotlin.math.abs
 
 class LocalSuggestionEngine(
     private val personal: PersonalDictionary = DisabledPersonalDictionary,
-    language: String = "es",
+    private val context: Context? = null,
+    var activeLanguage: String = "es"
 ) : SuggestionEngine {
 
-    private var pack: LanguagePack = LanguagePacks.forCode(language)
-
     override fun setLanguage(language: String) {
-        pack = LanguagePacks.forCode(language)
+        activeLanguage = language
     }
 
-    override fun suggest(prefix: String): List<String> {
+    override fun suggest(prefix: String): List<String> = suggest(prefix, activeLanguage)
+
+    fun suggest(prefix: String, language: String): List<String> {
         if (prefix.isBlank()) return emptyList()
         val normalized = prefix.lowercase(Locale.ROOT)
+        val dict = LanguageDictionaryRegistry.get(language, context)
         val result = LinkedHashSet<String>()
 
-        pack.corrections[normalized]?.let { result.add(it) }
+        // 1. Direct typo or contraction match of the ACTIVE language only
+        //    (e.g. es: "tambien" -> "también"; en: "dont" -> "don't").
+        dict.autoCorrect(normalized)?.let {
+            if (it != normalized) result.add(it)
+        }
 
+        // 2. Personal dictionary exact prefix matches (highest priority user preference)
         personal.wordsWithPrefix(normalized)
-            .filter { it != normalized }
+            .filter { it.lowercase(Locale.ROOT) != normalized }
+            .take(2)
             .forEach { result.add(it) }
 
-        pack.words.asSequence()
-            .filter { it.startsWith(normalized) && it != normalized }
-            .forEach {
-                if (result.size < 3) result.add(it)
-            }
-
-        if (result.size < 3 && normalized.length >= 3) {
-            val fuzzy = pack.words.asSequence()
-                .filter { it !in result && it != normalized && abs(it.length - normalized.length) <= 1 }
-                .map { word -> word to proximityDamerauLevenshtein(normalized, word) }
-                .filter { (_, distance) -> distance <= 1.4 }
-                .sortedBy { (_, distance) -> distance }
-                .map { it.first }
-            for (word in fuzzy) {
-                if (result.size >= 3) break
-                result.add(word)
+        // 3. Language dictionary prefix matches (ranked by frequency, strictly for active language)
+        val dictPrefixMatches = dict.wordsWithPrefix(normalized, 5)
+        for (w in dictPrefixMatches) {
+            if (result.size >= 3) break
+            if (w.lowercase(Locale.ROOT) != normalized) {
+                result.add(w)
             }
         }
-        return result.take(3)
+
+        // 4. Fuzzy distance with keyboard adjacency (for active language)
+        if (result.size < 3 && normalized.length >= 3) {
+            val fuzzy = dict.searchFuzzy(normalized, 3)
+            for (w in fuzzy) {
+                if (result.size >= 3) break
+                if (w.lowercase(Locale.ROOT) != normalized) {
+                    result.add(w)
+                }
+            }
+        }
+
+        return result.take(3).toList()
     }
 
-    override fun suggestNext(previousWord: String): List<String> {
+    override fun suggestNext(previousWord: String): List<String> = suggestNext(previousWord, activeLanguage)
+
+    fun suggestNext(previousWord: String, language: String): List<String> {
         if (previousWord.isBlank()) return emptyList()
-        return pack.bigrams[previousWord.lowercase(Locale.ROOT)] ?: emptyList()
+        val dict = LanguageDictionaryRegistry.get(language, context)
+        return dict.getBigramSuggestions(previousWord).take(3)
     }
 
-    override fun autoCorrect(word: String): String? {
-        if (word.isBlank()) return null
-        val normalized = word.lowercase(Locale.ROOT)
-        pack.corrections[normalized]?.let { return it }
+    override fun suggestNextTrigram(word1: String, word2: String): List<String> =
+        suggestNextTrigram(word1, word2, activeLanguage)
 
-        if (pack.words.contains(normalized) || personal.wordsWithPrefix(normalized).contains(normalized)) {
+    fun suggestNextTrigram(word1: String, word2: String, language: String): List<String> {
+        if (word1.isBlank() || word2.isBlank()) return emptyList()
+        val dict = LanguageDictionaryRegistry.get(language, context)
+        return dict.getTrigramSuggestions(word1, word2).take(3)
+    }
+
+    override fun autoCorrect(word: String): String? = autoCorrect(word, activeLanguage)
+
+    fun autoCorrect(word: String, language: String): String? {
+        if (word.isBlank()) return null
+        val dict = LanguageDictionaryRegistry.get(language, context)
+
+        // NEVER autocorrect if word is already valid in language dictionary or personal dictionary
+        if (dict.contains(word) || personal.wordsWithPrefix(word).any { it.equals(word, ignoreCase = true) }) {
             return null
         }
 
-        if (normalized.length >= 3) {
-            return pack.words.asSequence()
-                .filter { abs(it.length - normalized.length) <= 1 }
-                .map { candidate -> candidate to proximityDamerauLevenshtein(normalized, candidate) }
-                .filter { (_, distance) -> distance <= 0.8 }
-                .minByOrNull { it.second }
-                ?.first
-        }
-        return null
-    }
-
-    companion object {
-        private val ADJACENT_KEYS: Map<Char, Set<Char>> = mapOf(
-            'q' to setOf('w', 'a', 's'), 'w' to setOf('q', 'e', 'a', 's', 'd'),
-            'e' to setOf('w', 'r', 's', 'd', 'f'), 'r' to setOf('e', 't', 'd', 'f', 'g'),
-            't' to setOf('r', 'y', 'f', 'g', 'h'), 'y' to setOf('t', 'u', 'g', 'h', 'j'),
-            'u' to setOf('y', 'i', 'h', 'j', 'k'), 'i' to setOf('u', 'o', 'j', 'k', 'l'),
-            'o' to setOf('i', 'p', 'k', 'l'), 'p' to setOf('o', 'l', 'ñ'),
-            'a' to setOf('q', 'w', 's', 'z'), 's' to setOf('w', 'e', 'a', 'd', 'z', 'x'),
-            'd' to setOf('e', 'r', 's', 'f', 'x', 'c'), 'f' to setOf('r', 't', 'd', 'g', 'c', 'v'),
-            'g' to setOf('t', 'y', 'f', 'h', 'v', 'b'), 'h' to setOf('y', 'u', 'g', 'j', 'b', 'n'),
-            'j' to setOf('u', 'i', 'h', 'k', 'n', 'm'), 'k' to setOf('i', 'o', 'j', 'l', 'm'),
-            'l' to setOf('o', 'p', 'k', 'ñ'), 'ñ' to setOf('l', 'p'),
-            'z' to setOf('a', 's', 'x'), 'x' to setOf('z', 's', 'd', 'c'),
-            'c' to setOf('x', 'd', 'f', 'v'), 'v' to setOf('c', 'f', 'g', 'b'),
-            'b' to setOf('v', 'g', 'h', 'n'), 'n' to setOf('b', 'h', 'j', 'm'),
-            'm' to setOf('n', 'j', 'k')
-        )
-
-        fun proximityDamerauLevenshtein(s1: String, s2: String): Double {
-            val dp = Array(s1.length + 1) { DoubleArray(s2.length + 1) }
-            for (i in 0..s1.length) dp[i][0] = i.toDouble()
-            for (j in 0..s2.length) dp[0][j] = j.toDouble()
-            for (i in 1..s1.length) {
-                val c1 = s1[i - 1]
-                for (j in 1..s2.length) {
-                    val c2 = s2[j - 1]
-                    val cost = when {
-                        c1 == c2 -> 0.0
-                        ADJACENT_KEYS[c1]?.contains(c2) == true -> 0.6
-                        else -> 1.0
-                    }
-                    var best = minOf(
-                        dp[i - 1][j] + 1.0,
-                        dp[i][j - 1] + 1.0,
-                        dp[i - 1][j - 1] + cost,
-                    )
-                    if (i > 1 && j > 1 && c1 == s2[j - 2] && s1[i - 2] == c2) {
-                        best = minOf(best, dp[i - 2][j - 2] + 0.8)
-                    }
-                    dp[i][j] = best
-                }
-            }
-            return dp[s1.length][s2.length]
-        }
+        return dict.autoCorrect(word)
     }
 }

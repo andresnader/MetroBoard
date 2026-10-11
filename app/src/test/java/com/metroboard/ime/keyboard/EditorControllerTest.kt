@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.keyboard
 
 import com.metroboard.ime.prediction.LocalSuggestionEngine
@@ -37,8 +45,11 @@ class EditorControllerTest {
         override fun beginBatch() { batches++ }
         override fun endBatch() { batches-- }
     }
-    private fun controller(editor: MemoryEditor, policy: EditingPolicy = EditingPolicy()) =
-        EditorController(editor, LocalSuggestionEngine()).also { it.start(policy) }
+    private fun controller(
+        editor: MemoryEditor,
+        policy: EditingPolicy = EditingPolicy(),
+        language: String = "es",
+    ) = EditorController(editor, LocalSuggestionEngine(activeLanguage = language)).also { it.start(policy) }
 
     @Test fun typingAtStartCapitalizesOnlyFirstLetter() {
         val editor = MemoryEditor()
@@ -148,11 +159,18 @@ class EditorControllerTest {
     }
     @Test fun autoCorrectOnSpaceReplacesMisspelledWord() {
         val editor = MemoryEditor()
-        val controller = controller(editor)
+        val controller = controller(editor, language = "en")
         controller.text("t"); controller.text("e"); controller.text("h")
         assertEquals("Teh", editor.value)
         controller.space(1000)
         assertEquals("The ", editor.value)
+    }
+    @Test fun autoCorrectDoesNotApplyEnglishTyposInSpanish() {
+        val editor = MemoryEditor()
+        val controller = controller(editor, language = "es")
+        controller.text("t"); controller.text("e"); controller.text("h")
+        controller.space(1000)
+        assertEquals("Teh ", editor.value)
     }
     @Test fun nextWordSuggestionsAppearAfterSpace() {
         val editor = MemoryEditor("gracias ")
@@ -190,5 +208,26 @@ class EditorControllerTest {
         val controller = controller(editor)
         controller.commitWordFlow("gracias")
         assertEquals("Gracias ", editor.value)
+    }
+
+    @Test fun swipeToDeleteRemovesSingleWord() {
+        val editor = MemoryEditor("Hola mundo maravilloso")
+        val controller = controller(editor)
+        controller.deleteWords(1)
+        assertEquals("Hola mundo ", editor.value)
+    }
+
+    @Test fun swipeToDeleteRemovesMultipleWords() {
+        val editor = MemoryEditor("Hola mundo maravilloso")
+        val controller = controller(editor)
+        controller.deleteWords(2)
+        assertEquals("Hola ", editor.value)
+    }
+
+    @Test fun trigramContextPrioritizedAfterTwoWords() {
+        val editor = MemoryEditor("muchas gracias ")
+        val controller = controller(editor)
+        val suggestions = controller.suggestions()
+        assertTrue("Expected trigram prediction 'por' for 'muchas gracias ', got: $suggestions", suggestions.contains("por"))
     }
 }

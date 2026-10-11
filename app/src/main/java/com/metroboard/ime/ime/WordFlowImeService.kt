@@ -1,11 +1,29 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.ime
 
+import android.app.AlertDialog
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.SystemClock
+import android.view.KeyEvent
 import android.view.View
+import android.view.Window
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import com.metroboard.ime.R
+import com.metroboard.ime.dictionary.LocalPersonalDictionary
 import com.metroboard.ime.haptics.HapticFeedback
 import com.metroboard.ime.keyboard.*
 import com.metroboard.ime.prediction.LocalSuggestionEngine
@@ -17,9 +35,11 @@ import com.metroboard.ime.util.KeyboardColors
 class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private lateinit var preferences: KeyboardPreferences
     private lateinit var sound: KeySound
+    private lateinit var personalDict: LocalPersonalDictionary
     private val haptics = HapticFeedback()
     private val editor = InputConnectionEditor { currentInputConnection }
-    private val controller = EditorController(editor, LocalSuggestionEngine())
+    private lateinit var suggestionEngine: LocalSuggestionEngine
+    private lateinit var controller: EditorController
     private var keyboard: KeyboardView? = null
     private var page = KeyboardPage.LETTERS
     private var policy = EditorPolicy.from(EditorInfo(), false)
@@ -28,12 +48,35 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         super.onCreate()
         preferences = KeyboardPreferences(this)
         sound = KeySound(this)
+        personalDict = LocalPersonalDictionary(this)
+        suggestionEngine = LocalSuggestionEngine(personalDict, this, preferences.language)
+        controller = EditorController(editor, suggestionEngine)
+    }
+
+    override fun onConfigureWindow(win: Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
+        super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        // Complete legal Edge-to-edge IME window setup
+        if (Build.VERSION.SDK_INT >= 30) {
+            win.setDecorFitsSystemWindows(false)
+        } else {
+            @Suppress("DEPRECATION")
+            win.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+        }
+        if (Build.VERSION.SDK_INT < 35) {
+            @Suppress("DEPRECATION")
+            win.navigationBarColor = Color.TRANSPARENT
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            win.isNavigationBarContrastEnforced = false
+        }
+        win.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        win.decorView.setBackgroundColor(Color.TRANSPARENT)
     }
 
     override fun onCreateInputView(): View = KeyboardView(this, this).also {
         keyboard = it
         KeyboardColors.accent = preferences.accentColor
-        it.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
+        applyKeyboardLayout(it)
         render()
     }
 
@@ -42,10 +85,10 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         KeyboardColors.accent = preferences.accentColor
         policy = EditorPolicy.from(attribute, preferences)
         editor.start(attribute, policy)
-        controller.setLanguage(preferences.language)
         controller.start(policy.editing)
         page = KeyboardPage.LETTERS
-        keyboard?.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
+        suggestionEngine.activeLanguage = preferences.language
+        keyboard?.let { applyKeyboardLayout(it) }
         render()
     }
 
@@ -53,13 +96,33 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         super.onStartInputView(info, restarting)
         KeyboardColors.accent = preferences.accentColor
         policy = EditorPolicy.from(info, preferences)
-        controller.setLanguage(preferences.language)
         controller.start(policy.editing)
-        keyboard?.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
+        suggestionEngine.activeLanguage = preferences.language
+        keyboard?.let { applyKeyboardLayout(it) }
         render()
     }
 
-    // Keep the host editor visible in landscape instead of a full-screen extract UI.
+    private fun applyKeyboardLayout(kb: KeyboardView) {
+        val layoutType = when (preferences.layoutOverride.uppercase()) {
+            "QWERTY" -> KeyboardLayoutType.QWERTY
+            "AZERTY" -> KeyboardLayoutType.AZERTY
+            "QWERTZ" -> KeyboardLayoutType.QWERTZ
+            else -> KeyboardLayout.defaultLayoutFor(preferences.language)
+        }
+        kb.setLayout(
+            page = page,
+            policy = policy,
+            numberRow = preferences.numberRow,
+            heightScale = preferences.heightScale,
+            language = preferences.language,
+            wordFlow = preferences.wordFlow,
+            tintKeys = preferences.tintKeys,
+            layoutOverride = layoutType,
+            theme = preferences.theme,
+            oneHandedMode = preferences.oneHandedMode
+        )
+    }
+
     override fun onEvaluateFullscreenMode(): Boolean = false
 
     override fun onEvaluateInputViewShown(): Boolean {
@@ -67,8 +130,10 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         return true
     }
 
-    override fun onUpdateSelection(oldSelStart: Int, oldSelEnd: Int, newSelStart: Int,
-        newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int) {
+    override fun onUpdateSelection(
+        oldSelStart: Int, oldSelEnd: Int, newSelStart: Int,
+        newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int
+    ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
         if (editor.selectionChanged(newSelStart, newSelEnd)) {
             keyboard?.dismissPopups()
@@ -79,8 +144,9 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
 
     override fun onKey(key: KeySpec) {
         val now = SystemClock.uptimeMillis()
-        keyboard?.let { haptics.play(it, preferences.vibration) }
-        sound.play(preferences.sound, key.action)
+        keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
+        sound.play(preferences.sound, key.action, preferences.soundVolume)
+
         when (key.action) {
             KeyAction.TEXT -> if (key.label.isNotEmpty()) controller.text(key.label)
             KeyAction.SHIFT -> controller.tapShift(now)
@@ -91,6 +157,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
             KeyAction.MORE_SYMBOLS -> changePage(KeyboardPage.MORE_SYMBOLS)
             KeyAction.LETTERS -> changePage(KeyboardPage.LETTERS)
             KeyAction.EMOJI -> keyboard?.showEmoticons()
+            KeyAction.CLIPBOARD -> onClipboardPasteRequested()
         }
         render()
     }
@@ -98,30 +165,106 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private fun changePage(next: KeyboardPage) {
         controller.cancelSequence()
         page = next
-        keyboard?.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
+        keyboard?.let { applyKeyboardLayout(it) }
     }
 
     override fun onSuggestion(word: String) {
         controller.chooseSuggestion(word)
-        keyboard?.let { haptics.play(it, preferences.vibration) }
-        sound.play(preferences.sound)
+        keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
+        sound.play(preferences.sound, KeyAction.TEXT, preferences.soundVolume)
+
+        // Learn word in personal dictionary if text field is not a password or sensitive field
+        if (policy.editing.autoCorrect && policy.kind == FieldKind.TEXT) {
+            personalDict.learn(word, preferences.language)
+        }
         render()
     }
 
     override fun onWordFlow(word: String, candidates: List<String>) {
-        keyboard?.let { haptics.play(it, preferences.vibration) }
-        sound.play(preferences.sound, KeyAction.TEXT)
+        keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
+        sound.play(preferences.sound, KeyAction.TEXT, preferences.soundVolume)
         controller.commitWordFlow(word)
         render()
     }
 
     override fun onLanguageToggled() {
-        val nextLang = if (preferences.language == "es") "en" else "es"
-        preferences.language = nextLang
-        controller.setLanguage(nextLang)
-        keyboard?.let { haptics.play(it, preferences.vibration) }
-        keyboard?.setLayout(page, policy, preferences.numberRow, preferences.heightScale, preferences.language, preferences.wordFlow)
+        onSpacebarLongPressed()
+    }
+
+    override fun onSpacebarCursorMoved(step: Int) {
+        val ic = currentInputConnection ?: return
+        keyboard?.let { haptics.play(it, preferences.vibration, "LIGHT") }
+        sound.play(preferences.sound, KeyAction.SPACE, preferences.soundVolume * 0.6f)
+
+        // Try moving cursor by DPAD key event or selection
+        val keyCode = if (step > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
+        val count = kotlin.math.abs(step)
+        for (i in 0 until count) {
+            sendDownUpKeyEvents(keyCode)
+        }
+    }
+
+    override fun onSpacebarLongPressed() {
+        keyboard?.dismissPopups()
+        val languages = arrayOf(
+            getString(R.string.lang_es) + if (preferences.language == "es") " ✓" else "",
+            getString(R.string.lang_en) + if (preferences.language == "en") " ✓" else "",
+            getString(R.string.lang_fr) + if (preferences.language == "fr") " ✓" else "",
+            getString(R.string.lang_de) + if (preferences.language == "de") " ✓" else "",
+            getString(R.string.select_system_ime)
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.language_title)
+            .setItems(languages) { dialog, which ->
+                dialog.dismiss()
+                when (which) {
+                    0 -> switchLanguage("es")
+                    1 -> switchLanguage("en")
+                    2 -> switchLanguage("fr")
+                    3 -> switchLanguage("de")
+                    4 -> onSwitchKeyboard()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun switchLanguage(newLang: String) {
+        preferences.language = newLang
+        suggestionEngine.activeLanguage = newLang
+        keyboard?.let { applyKeyboardLayout(it) }
         render()
+        Toast.makeText(this, newLang.uppercase(), Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDoubleTapWordDetected() {
+        val ic = currentInputConnection ?: return
+        val before = ic.getTextBeforeCursor(50, 0)?.toString() ?: ""
+        val after = ic.getTextAfterCursor(50, 0)?.toString() ?: ""
+
+        val wordBefore = before.takeLastWhile { it.isLetterOrDigit() }
+        val wordAfter = after.takeWhile { it.isLetterOrDigit() }
+        val totalWord = wordBefore + wordAfter
+
+        if (totalWord.isNotEmpty()) {
+            // Select whole word
+            val startDelta = -wordBefore.length
+            val endDelta = wordAfter.length
+            // Move cursor / selection
+            ic.setSelection(before.length - wordBefore.length, before.length + wordAfter.length)
+        }
+    }
+
+    override fun onClipboardPasteRequested() {
+        val clip = getSystemService(ClipboardManager::class.java)?.primaryClip
+        if (clip != null && clip.itemCount > 0) {
+            val text = clip.getItemAt(0)?.coerceToText(this)?.toString()
+            if (!text.isNullOrEmpty()) {
+                controller.text(text)
+                render()
+            }
+        }
     }
 
     override fun onSwitchKeyboard() {
@@ -130,7 +273,53 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
     }
 
-    override fun onAlternativesOpened() { controller.cancelSequence() }
+    override fun onAlternativesOpened() {
+        controller.cancelSequence()
+    }
+
+    override fun onSwipeToDelete(wordsCount: Int) {
+        keyboard?.let { haptics.play(it, preferences.vibration, "MEDIUM") }
+        sound.play(preferences.sound, KeyAction.DELETE, preferences.soundVolume)
+        controller.deleteWords(wordsCount)
+        render()
+    }
+
+    override fun onOneHandedToggled(newMode: String) {
+        preferences.oneHandedMode = newMode
+        keyboard?.let { applyKeyboardLayout(it) }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) {
+            return super.onKeyDown(keyCode, event)
+        }
+        when (keyCode) {
+            KeyEvent.KEYCODE_DEL -> {
+                controller.backspace()
+                render()
+                return true
+            }
+            KeyEvent.KEYCODE_SPACE -> {
+                controller.space(SystemClock.uptimeMillis())
+                render()
+                return true
+            }
+            KeyEvent.KEYCODE_ENTER -> {
+                controller.enter()
+                render()
+                return true
+            }
+            else -> {
+                val unicode = event.unicodeChar
+                if (unicode > 0 && !Character.isISOControl(unicode)) {
+                    controller.text(unicode.toChar().toString())
+                    render()
+                    return true
+                }
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         keyboard?.dismissPopups()
@@ -150,12 +339,17 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     override fun onDestroy() {
         keyboard?.dismissPopups()
         keyboard = null
+        sound.release()
         super.onDestroy()
     }
 
     private fun render() {
-        keyboard?.render(controller.shift.state, policy.editing.forceUppercase,
-            controller.suggestions(), enterLabel())
+        keyboard?.render(
+            controller.shift.state,
+            policy.editing.forceUppercase,
+            controller.suggestions(),
+            enterLabel()
+        )
     }
 
     private fun enterLabel(): String {

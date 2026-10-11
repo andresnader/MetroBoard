@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.gestures
 
 import org.junit.Assert.*
@@ -133,5 +141,14 @@ class ShapeWritingDecoderTest {
         val results = decoder.decode(path, "en")
         assertFalse("Expected to decode English word", results.isEmpty())
         assertEquals("the", results.first())
+    }
+
+    @Test
+    fun dtwDistanceMatchesElasticPointsWithHighAccuracy() {
+        val lineA = listOf(0, 1, 2, 3, 4).map { GesturePoint(it * 10f, 0f, 0L) }
+        // Exact same path with elastic stutter/pause
+        val lineB = listOf(0, 0, 1, 2, 2, 3, 4, 4).map { GesturePoint(it * 10f, 0f, 0L) }
+        val dist = WordFlowShapeDecoder.dtwDistance(lineA, lineB, window = 4)
+        assertEquals(0.0, dist, 0.001)
     }
 }
