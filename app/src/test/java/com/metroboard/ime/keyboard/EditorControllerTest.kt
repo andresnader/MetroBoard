@@ -133,7 +133,7 @@ class EditorControllerTest {
         val controller = controller(editor)
         assertTrue(controller.suggestions().contains("Hola"))
         controller.chooseSuggestion("Hola")
-        assertEquals("Hola", editor.value)
+        assertEquals("Hola ", editor.value) // a chosen suggestion adds its trailing space
         assertEquals(0, editor.batches)
     }
     @Test fun doesNotSuggestInMiddleOfWord() {
@@ -178,7 +178,7 @@ class EditorControllerTest {
         val suggestions = controller.suggestions()
         assertTrue(suggestions.contains("por"))
         controller.chooseSuggestion("por")
-        assertEquals("gracias por", editor.value)
+        assertEquals("gracias por ", editor.value) // a chosen suggestion adds its trailing space
     }
     @Test fun pressingShiftAtEndOfWordCapitalizesFirstLetter() {
         val editor = MemoryEditor("hola")

@@ -20,12 +20,20 @@ class EditorController(
     var policy = EditingPolicy()
         private set
 
+    /** The last automatic correction, kept only until the next unrelated input so Backspace can undo it. */
+    private data class AppliedCorrection(val original: String, val applied: String)
+    private var lastCorrection: AppliedCorrection? = null
+
+    /** Words whose correction the user undid; never corrected again in this session. */
+    private val rejectedCorrections = HashSet<String>()
+
     fun setLanguage(language: String) {
         engine.setLanguage(language)
     }
 
     fun start(policy: EditingPolicy) {
         this.policy = policy
+        lastCorrection = null
         spaces.reset()
         shift.reset(autoCaps())
     }
@@ -66,6 +74,7 @@ class EditorController(
     }
 
     fun cancelSequence() {
+        lastCorrection = null
         spaces.reset()
         shift.breakTapSequence()
     }
@@ -89,22 +98,31 @@ class EditorController(
 
     fun space(now: Long) {
         shift.breakTapSequence()
-        val lastWord = if (policy.suggestions && policy.autoCorrect) prefix() else null
-        val correction = if (lastWord != null) engine.autoCorrect(lastWord) else null
+        lastCorrection = null
+        // Sensitive / no-learning fields must never have their text read.
+        val lastWord = if (policy.suggestions || policy.learnWords) prefix() else null
+        val correction = if (lastWord != null && policy.suggestions && policy.autoCorrect && mayAutoCorrect(lastWord)) {
+            engine.autoCorrect(lastWord)
+        } else null
+        var applied: AppliedCorrection? = null
         if (correction != null && lastWord != null && correction != lastWord) {
             val formattedCorrection = formatCandidate(correction, lastWord.first().isUpperCase())
             editor.beginBatch()
             try {
                 if (editor.deleteBeforeCursor(lastWord.codePointCount(0, lastWord.length)) && editor.commit(formattedCorrection)) {
                     shift.onLetterCommitted()
+                    applied = AppliedCorrection(lastWord, formattedCorrection)
                 }
             } finally {
                 editor.endBatch()
             }
+        } else if (lastWord != null) {
+            learnIfAllowed(lastWord)
         }
         if (!policy.doubleSpace) {
             spaces.reset()
             editor.commit(" ")
+            lastCorrection = applied
             return
         }
         val replace = spaces.shouldReplace(now, editor.beforeCursor(3), editor.hasSelection())
@@ -117,16 +135,61 @@ class EditorController(
         } else {
             if (!editor.commit(" ")) spaces.reset()
             shift.updateAutomatic(autoCaps())
+            lastCorrection = applied
         }
     }
 
+    /** Proper nouns, acronyms and words the user already rejected are left exactly as typed. */
+    private fun mayAutoCorrect(word: String): Boolean {
+        if (word.lowercase(Locale.ROOT) in rejectedCorrections) return false
+        if (word.drop(1).any(Char::isUpperCase)) return false // acronyms, camelCase, ALL CAPS
+        if (word.first().isUpperCase() && !startsSentence(word)) return false // probable proper noun
+        return true
+    }
+
+    private fun startsSentence(word: String): Boolean {
+        val before = editor.beforeCursor(word.length + 6).dropLast(word.length)
+        if (before.isEmpty() || before.endsWith("\n")) return true
+        val last = before.trimEnd(' ').lastOrNull() ?: return true
+        return last in ".!?\u2026\u00bf\u00a1\n"
+    }
+
+    private fun learnIfAllowed(word: String) {
+        if (policy.learnWords && word.any(Char::isLetter)) engine.learn(word)
+    }
+
+    /** Backspace right after an automatic correction restores what the user typed. */
+    private fun undoLastCorrection(): Boolean {
+        val correction = lastCorrection ?: return false
+        if (editor.hasSelection()) return false
+        val expected = correction.applied + " "
+        if (editor.beforeCursor(expected.length) != expected) return false
+        editor.beginBatch()
+        try {
+            if (!editor.deleteBeforeCursor(expected.codePointCount(0, expected.length))) return false
+            editor.commit(correction.original)
+        } finally {
+            editor.endBatch()
+        }
+        rejectedCorrections.add(correction.original.lowercase(Locale.ROOT))
+        learnIfAllowed(correction.original) // the user insisted on this exact word
+        lastCorrection = null
+        return true
+    }
+
     fun backspace() {
+        if (undoLastCorrection()) {
+            spaces.reset()
+            shift.onCursorMoved(autoCaps())
+            return
+        }
         cancelSequence()
         if (editor.hasSelection()) editor.commit("") else editor.deleteBeforeCursor(1)
         shift.onCursorMoved(autoCaps())
     }
 
     fun enter() {
+        if (policy.learnWords) prefix()?.let { learnIfAllowed(it) }
         cancelSequence()
         editor.enter()
         shift.updateAutomatic(autoCaps())
@@ -162,12 +225,14 @@ class EditorController(
         cancelSequence()
         editor.beginBatch()
         try {
+            // One trailing space, unless the text already continues with whitespace.
+            val trailing = if (editor.afterCursor(1).firstOrNull()?.isWhitespace() == true) "" else " "
             if (prefix != null) {
-                if (editor.deleteBeforeCursor(prefix.codePointCount(0, prefix.length)) && editor.commit(candidate)) {
+                if (editor.deleteBeforeCursor(prefix.codePointCount(0, prefix.length)) && editor.commit(candidate + trailing)) {
                     shift.onLetterCommitted()
                 }
             } else {
-                if (editor.commit(candidate)) {
+                if (editor.commit(candidate + trailing)) {
                     shift.onLetterCommitted()
                 }
             }
@@ -214,10 +279,15 @@ class EditorController(
         shift.onCursorMoved(autoCaps())
     }
 
+    /** Letters, plus an apostrophe between letters ("don't", "c'est", "l'ami"). */
+    private fun lastWordOf(context: String): String {
+        val raw = context.takeLastWhile { it.isLetter() || it == '\'' || it == '\u2019' }.trimStart('\'', '\u2019')
+        return if (raw.endsWith('\'') || raw.endsWith('\u2019')) "" else raw
+    }
+
     private fun prefix(): String? {
         if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
-        val context = editor.beforeCursor(49)
-        val word = context.takeLastWhile(Char::isLetter)
+        val word = lastWordOf(editor.beforeCursor(49))
         return word.takeIf { it.isNotEmpty() && it.length <= 48 }
     }
 
@@ -225,8 +295,7 @@ class EditorController(
         if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
         val context = editor.beforeCursor(49)
         if (context.isEmpty() || !context.last().isWhitespace()) return null
-        val trimmed = context.trimEnd()
-        val word = trimmed.takeLastWhile(Char::isLetter)
+        val word = lastWordOf(context.trimEnd())
         return word.takeIf { it.isNotEmpty() && it.length <= 48 }
     }
 
@@ -234,7 +303,8 @@ class EditorController(
         if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
         val context = editor.beforeCursor(99)
         if (context.isEmpty() || !context.last().isWhitespace()) return null
-        val tokens = context.trimEnd().split(Regex("\\s+")).filter { it.isNotEmpty() && it.all(Char::isLetter) }
+        val tokens = context.trimEnd().split(Regex("\\s+"))
+            .filter { it.isNotEmpty() && it.all { ch -> ch.isLetter() || ch == '\'' || ch == '\u2019' } }
         if (tokens.size >= 2) {
             val w1 = tokens[tokens.size - 2]
             val w2 = tokens[tokens.size - 1]

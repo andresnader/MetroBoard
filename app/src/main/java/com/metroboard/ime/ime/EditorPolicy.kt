@@ -63,6 +63,8 @@ data class EditorPolicy(
                     forceUppercase = normal && type and InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS != 0,
                     autoCorrect = normal && !noSuggestions && suggestionsEnabled && autoCorrectEnabled,
                     shiftWordCasing = shiftWordCasingEnabled,
+                    // Never in sensitive/address fields, nor when the editor opts out of personalised learning.
+                    learnWords = normal && !noSuggestions && suggestionsEnabled,
                 ),
                 kind = when (typeClass) {
                     InputType.TYPE_CLASS_NUMBER -> FieldKind.NUMBER

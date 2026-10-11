@@ -28,4 +28,6 @@ data class EditingPolicy(
     val forceUppercase: Boolean = false,
     val autoCorrect: Boolean = true,
     val shiftWordCasing: Boolean = true,
+    /** Remember new words the user types. Off for sensitive fields and no-personalized-learning editors. */
+    val learnWords: Boolean = false,
 )

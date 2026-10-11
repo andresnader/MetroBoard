@@ -607,9 +607,11 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             }
         }
 
-        // Render suggestion bar: left, center (bold), right
+        // Render suggestion bar: left, center (bold), right. The engine ranks best first; the best
+        // candidate goes in the emphasised centre slot, the runner-up on its left.
+        val slots = listOf(candidates.getOrNull(1), candidates.getOrNull(0), candidates.getOrNull(2))
         suggestionButtons.forEachIndexed { index, view ->
-            val value = candidates.getOrNull(index).orEmpty()
+            val value = slots.getOrNull(index).orEmpty()
             view.text = value
             view.isEnabled = value.isNotEmpty()
             view.contentDescription = if (value.isEmpty()) null else
@@ -618,7 +620,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
                 else View.IMPORTANT_FOR_ACCESSIBILITY_YES
 
             // Primary candidate emphasis
-            if (index == 1 || (candidates.size == 1 && index == 0)) {
+            if (index == 1) {
                 view.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 view.setTextColor(if (value.isNotEmpty()) KeyboardColors.foreground else KeyboardColors.muted)
             } else {

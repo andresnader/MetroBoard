@@ -173,10 +173,6 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
         sound.play(preferences.sound, KeyAction.TEXT, preferences.soundVolume)
 
-        // Learn word in personal dictionary if text field is not a password or sensitive field
-        if (policy.editing.autoCorrect && policy.kind == FieldKind.TEXT) {
-            personalDict.learn(word, preferences.language)
-        }
         render()
     }
 
