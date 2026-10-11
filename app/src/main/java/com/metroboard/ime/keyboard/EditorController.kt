@@ -24,6 +24,14 @@ class EditorController(
     private data class AppliedCorrection(val original: String, val applied: String)
     private var lastCorrection: AppliedCorrection? = null
 
+    /**
+     * The word a swipe has just written and the other words the swipe could have meant. Offered in the
+     * suggestion bar so a wrong guess is fixed with one tap, and kept only while the text before the cursor
+     * is still exactly that word and a space.
+     */
+    private data class SwipeCommit(val word: String, val alternatives: List<String>)
+    private var lastSwipe: SwipeCommit? = null
+
     /** Words whose correction the user undid; never corrected again in this session. */
     private val rejectedCorrections = HashSet<String>()
 
@@ -86,11 +94,13 @@ class EditorController(
 
     fun cancelSequence() {
         lastCorrection = null
+        lastSwipe = null
         spaces.reset()
         shift.breakTapSequence()
     }
 
     fun cursorMoved() {
+        lastSwipe = null
         spaces.reset()
         shift.onCursorMoved(autoCaps())
     }
@@ -123,6 +133,7 @@ class EditorController(
     fun space(now: Long) {
         shift.breakTapSequence()
         lastCorrection = null
+        lastSwipe = null
         // Sensitive / no-learning fields must never have their text read.
         val lastWord = (if (policy.suggestions || policy.learnWords) prefix() else null)
             ?.takeUnless { inUrlOrEmailToken() }
@@ -231,8 +242,17 @@ class EditorController(
         shift.updateAutomatic(autoCaps())
     }
 
+    /** The swipe alternatives, if the swiped word is still right before the cursor; otherwise null. */
+    private fun currentSwipe(): SwipeCommit? {
+        val swipe = lastSwipe ?: return null
+        if (editor.hasSelection()) return null
+        val expected = swipe.word + " "
+        return if (editor.beforeCursor(expected.length) == expected) swipe else null
+    }
+
     fun suggestions(): List<String> {
         if (!policy.suggestions) return emptyList()
+        currentSwipe()?.let { return it.alternatives }
         // A word the editor has selected (the user double-tapped it in the host app): offer replacements.
         // An IME cannot see taps inside another app's text field, but it does see the resulting selection.
         if (editor.hasSelection()) {
@@ -263,6 +283,10 @@ class EditorController(
     /** Re-read/revalidate the prefix on tap; do not replace stale or partial words. */
     fun chooseSuggestion(candidate: String) {
         if (!policy.suggestions || candidate !in suggestions()) return
+        currentSwipe()?.let { swipe ->
+            replaceSwipedWord(swipe, candidate)
+            return
+        }
         if (editor.hasSelection()) {
             // Replace exactly the selection: no trailing space, nothing else is touched.
             cancelSequence()
@@ -287,8 +311,13 @@ class EditorController(
         } finally { editor.endBatch() }
     }
 
-    fun commitWordFlow(candidate: String) {
-        val word = formatCandidate(candidate, shift.isUppercase)
+    /**
+     * Writes the swiped word and a space. [alternatives] are the decoder's other candidates, best first; they
+     * go to the suggestion bar so the user can swap the word without retyping it.
+     */
+    fun commitWordFlow(candidate: String, alternatives: List<String> = emptyList()) {
+        val capitalize = shift.isUppercase
+        val word = formatCandidate(candidate, capitalize)
         val prefix = prefix()
         cancelSequence()
         editor.beginBatch()
@@ -298,6 +327,24 @@ class EditorController(
             }
             if (editor.commit("$word ")) {
                 shift.onLetterCommitted()
+                val others = alternatives.map { formatCandidate(it, capitalize) }.filter { it != word }.distinct()
+                lastSwipe = if (others.isEmpty()) null else SwipeCommit(word, (listOf(word) + others).take(3))
+            }
+        } finally {
+            editor.endBatch()
+        }
+    }
+
+    /** Swaps the word the last swipe wrote for another candidate, keeping the single space after it. */
+    private fun replaceSwipedWord(swipe: SwipeCommit, candidate: String) {
+        if (candidate == swipe.word) return
+        val old = swipe.word + " "
+        editor.beginBatch()
+        try {
+            if (editor.deleteBeforeCursor(old.codePointCount(0, old.length)) && editor.commit("$candidate ")) {
+                shift.onLetterCommitted()
+                // Keep the alternatives, now with the new word in place, so the user can change their mind.
+                lastSwipe = SwipeCommit(candidate, swipe.alternatives)
             }
         } finally {
             editor.endBatch()

@@ -51,6 +51,17 @@ Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además e
   Reglas de privacidad en `docs/privacy.md`: texto ≤ 2.000 caracteres, nada marcado como sensible, sin fijar solo en memoria y
   con caducidad de 1 h, sin historial sobre campos de contraseña, desactivable en Ajustes (y al desactivarlo se borra todo).
   **Cambia lo que decía la documentación anterior** («no se lee en segundo plano»). Activado por defecto: decisión del propietario.
+- **Word Flow: elegir la palabra correcta tras deslizar.** Antes, el trazo escribía la primera candidata y descartaba las demás;
+  la barra pasaba a sugerir la *siguiente* palabra. Ahora las alternativas del trazo (hasta 3, la elegida en negrita al centro)
+  quedan en la barra y tocar una **sustituye** la palabra recién escrita, con un solo espacio; se puede volver a cambiar. Solo se
+  ofrecen mientras el texto antes del cursor sea exactamente esa palabra más un espacio: escribir, borrar, espacio, mover el
+  cursor o una edición de la app anfitriona las descartan. 7 pruebas nuevas (`EditorControllerTest`) y comprobado en el
+  emulador con un trazo real de varios segmentos («Tiene» → «Truene» → «Tiene»).
+- **Popup de acentos con el tema y el acento del teclado.** Tenía colores fijos oscuros (en tema claro era un bloque negro y
+  solo el borde seguía al acento). Ahora usa fondo, teclas y texto del tema, borde de acento y ficha pulsada en acento.
+  Verificado en claro + verde y oscuro + magenta.
+- **Medición de latencia por pulsación** (`KeystrokeLatencyTest`): sugerencias p95 0,8–1,6 ms y autocorrección p95 1,1–1,7 ms
+  en JVM de portátil. **No es una medida en teléfono**; ver `docs/0.3/qa-report.md`.
 - **Bloqueo de pantalla.** Una revisión de seguridad automática señaló (solo con títulos, sin detalle) fuga de información con
   el dispositivo bloqueado. El panel de clips, el pegado y el acceso a Ajustes ahora no hacen nada mientras
   `KeyguardManager.isKeyguardLocked` sea verdadero. Comprobado desbloqueado; el caso bloqueado no se ejercitó.

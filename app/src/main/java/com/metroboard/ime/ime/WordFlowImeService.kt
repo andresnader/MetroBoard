@@ -224,7 +224,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     override fun onWordFlow(word: String, candidates: List<String>) {
         keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
         sound.play(preferences.sound, KeyAction.TEXT, preferences.soundVolume)
-        controller.commitWordFlow(word)
+        controller.commitWordFlow(word, candidates)
         render()
     }
 

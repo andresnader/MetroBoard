@@ -7,10 +7,10 @@ Todo lo de aquí sale de ejecuciones reales de esta rama. Lo que no se ejecutó 
 | | |
 |---|---|
 | Build | `./gradlew clean test assembleDebug lintDebug` → **BUILD SUCCESSFUL** (1 min 26 s, JDK 25 de Android Studio) |
-| Pruebas unitarias (JVM) | **265 en total, 0 fallos, 1 omitida** (la omitida es la de calibración de Word Flow, que exige `METROBOARD_CALIBRATE=1`) |
+| Pruebas unitarias (JVM) | **274 en total, 0 fallos, 1 omitida** (la omitida es la de calibración de Word Flow, que exige `METROBOARD_CALIBRATE=1`) |
 | Pruebas instrumentadas | **39, 0 fallos** (ejecutadas antes de los cambios de Ajustes e idioma; **no se volvieron a ejecutar**: la prueba de preferencias cambió y no se ha corrido), `connectedDebugAndroidTest` en AVD `Medium_Phone_API_37.0` (Android 17, API 37, arm64) |
 | Lint (`lintDebug`) | **0 errores, 14 avisos** (sin comparación con una línea base) |
-| APK | `app/build/outputs/apk/debug/app-debug.apk`, 2.419.236 bytes, **debug** (no firmado para publicación) |
+| APK | `app/build/outputs/apk/debug/app-debug.apk`, 2.420.468 bytes, **debug** (no firmado para publicación) |
 | Dispositivo | Solo el emulador. **Ningún dispositivo físico.** |
 
 ## Qué cubre cada grupo del prompt
@@ -69,6 +69,23 @@ Trazo = polilínea por los centros de tecla, corte de esquinas y ruido gaussiano
 Robustez (N = 200, Top-3): ruido del 35 % de tecla → 82 / 71 / 77 / 76 %; ruido del 50 % → 59 / 47,5 / 55,5 / 50 %.
 Garabatos aleatorios que se convierten en palabra: **1,0 / 2,0 / 1,0 / 1,5 %** (antes del filtro de confianza: 51–69 %).
 (Una ejecución anterior con N = 1.200 dio 87,8–94,0 % Top-1 y 98,6–99,3 % Top-3; la diferencia es de muestreo.)
+
+### Latencia por pulsación — `KeystrokeLatencyTest` (JVM en un portátil, **no un teléfono**)
+
+Lo que se ejecuta en el hilo de la interfaz tras cada tecla, con los diccionarios reales de 60.000 palabras. Prefijos de 1 a 8
+letras de las 1.500 palabras más frecuentes; autocorrección con 1.000 erratas por idioma (dos letras intercambiadas).
+
+| Idioma | Sugerir p50 / p95 / máx (ms) | Autocorregir al pulsar espacio p50 / p95 / máx (ms) |
+|---|---|---|
+| es | 0,003 / 0,82 / 13,4 | 0,65 / 1,06 / 8,4 |
+| en | 0,002 / 1,58 / 11,7 | 1,06 / 1,72 / 9,8 |
+| fr | 0,002 / 1,04 / 3,9 | 0,88 / 1,35 / 2,3 |
+| de | 0,001 / 0,95 / 4,5 | 0,74 / 1,19 / 38,0 |
+
+Las cotas de la prueba (p95 < 16 ms) son un resguardo contra regresiones, no una promesa para ningún teléfono: un móvil de
+gama media puede ser varias veces más lento y **no se midió en uno**. El máximo de 38 ms (de) es un valor aislado; no se
+investigó su causa (calentamiento del JIT o recolección de basura son lo más probable, sin comprobar). Lo que sí se midió en el
+emulador es la carga en frío de la tabla siguiente, que es el tramo más lento y ocurre en segundo plano.
 
 ### Rendimiento en dispositivo — `DictionaryLoadBenchmarkTest` (emulador)
 

@@ -27,7 +27,7 @@ ver [wp-design-guidelines-analysis.md](wp-design-guidelines-analysis.md). Es una
 |---|---|---|
 | B001 | Doble espacio → `. ` + mayúscula (Confirmado) | ✔ Implementado y probado (también tras `. `, `? `, `! `) |
 | B002 | Shift sobre palabra seleccionada: Palabra → PALABRA (Confirmado) | ✔ **Nuevo en 0.3**, mantiene la selección; sobre la palabra recién escrita ya existía |
-| B003 | Shape writing (Confirmado) | ✔ Rehecho (todo el léxico, geometría real). Precisión solo medida con trazos sintéticos |
+| B003 | Shape writing (Confirmado) | ✔ Rehecho (todo el léxico, geometría real). Las alternativas del trazo quedan en la barra y se pueden elegir. Precisión solo medida con trazos sintéticos |
 | B004 | Autoespacio tras shape writing (Confirmado) | ✔ |
 | B005 | Sugerencias de emoticonos por contexto (Confirmado) | ✘ No implementado |
 | B006 | Mantener `.` → puntuación extendida (Confirmado) | ✔ (heredado; no auditado en 0.3) |

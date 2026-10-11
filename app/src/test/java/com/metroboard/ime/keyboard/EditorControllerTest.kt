@@ -67,6 +67,70 @@ class EditorControllerTest {
         assertEquals("x mixed Case 123", editor.value)
     }
 
+    // --- Word Flow: the other words a swipe could have meant stay in the bar -----------------------------
+
+    private fun swiped(initial: String = "hola ", cands: List<String> = listOf("tiene", "tienes", "tiende")) =
+        MemoryEditor(initial).let { editor ->
+            editor to controller(editor).also { it.commitWordFlow(cands.first(), cands) }
+        }
+
+    @Test fun swipeWritesTheBestWordAndOffersTheAlternatives() {
+        val (editor, controller) = swiped()
+        assertEquals("hola tiene ", editor.value)
+        assertEquals(listOf("tiene", "tienes", "tiende"), controller.suggestions())
+    }
+
+    @Test fun tappingAnAlternativeReplacesTheSwipedWordKeepingOneSpace() {
+        val (editor, controller) = swiped()
+        controller.chooseSuggestion("tienes")
+        assertEquals("hola tienes ", editor.value)
+    }
+
+    @Test fun theUserCanChangeTheirMindAgainAfterSwapping() {
+        val (editor, controller) = swiped()
+        controller.chooseSuggestion("tiende")
+        assertEquals("hola tiende ", editor.value)
+        assertEquals(listOf("tiene", "tienes", "tiende"), controller.suggestions())
+        controller.chooseSuggestion("tiene")
+        assertEquals("hola tiene ", editor.value)
+    }
+
+    @Test fun alternativesFollowTheCapitalisationOfTheSwipe() {
+        val editor = MemoryEditor("")
+        val controller = controller(editor)
+        assertTrue(controller.shift.isUppercase) // start of the field
+        controller.commitWordFlow("hola", listOf("hola", "hoja"))
+        assertEquals("Hola ", editor.value)
+        assertEquals(listOf("Hola", "Hoja"), controller.suggestions())
+        controller.chooseSuggestion("Hoja")
+        assertEquals("Hoja ", editor.value)
+    }
+
+    @Test fun anySubsequentEditDropsTheAlternatives() {
+        val (_, typed) = swiped(); typed.text("a")
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), typed.suggestions())
+        val (_, spaced) = swiped(); spaced.space(1_000)
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), spaced.suggestions())
+        val (_, deleted) = swiped(); deleted.backspace()
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), deleted.suggestions())
+        val (_, moved) = swiped(); moved.cursorMoved()
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), moved.suggestions())
+    }
+
+    @Test fun staleAlternativesAreNeverOfferedWhenTheTextChangedBehindOurBack() {
+        val (editor, controller) = swiped()
+        editor.value = "otro texto "; editor.start = editor.value.length; editor.end = editor.start // host app edited
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), controller.suggestions())
+        controller.chooseSuggestion("tienes")
+        assertEquals("a stale tap must not touch the text", "otro texto ", editor.value)
+    }
+
+    @Test fun aSwipeWithNoAlternativesOffersNothingExtra() {
+        val (editor, controller) = swiped(cands = listOf("tiene"))
+        assertEquals("hola tiene ", editor.value)
+        assertFalse(controller.suggestions().contains("tienes"))
+    }
+
     @Test fun typingAtStartCapitalizesOnlyFirstLetter() {
         val editor = MemoryEditor()
         val controller = controller(editor)
