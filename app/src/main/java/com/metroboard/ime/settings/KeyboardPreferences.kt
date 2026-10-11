@@ -65,6 +65,11 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         get() = preferences.getBoolean(KEY_AUTOCORRECT, true)
         set(value) { preferences.edit().putBoolean(KEY_AUTOCORRECT, value).apply() }
 
+    /** Remember new words the user types (never in sensitive fields). Opt-out; "Ver palabras aprendidas" shows them. */
+    var learnWords: Boolean
+        get() = preferences.getBoolean(KEY_LEARN_WORDS, true)
+        set(value) { preferences.edit().putBoolean(KEY_LEARN_WORDS, value).apply() }
+
     var autoCapitalization: Boolean
         get() = preferences.getBoolean(KEY_AUTOCAP, true)
         set(value) { preferences.edit().putBoolean(KEY_AUTOCAP, value).apply() }
@@ -144,7 +149,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
     fun exportSettingsMap(): Map<String, Any> = linkedMapOf(
         KEY_SOUND to sound, KEY_SOUND_VOLUME to soundVolume.toDouble(), KEY_HAPTIC to vibration,
         KEY_HAPTIC_STRENGTH_LEVEL to hapticStrength, KEY_SUGGESTIONS to suggestions, KEY_AUTOCORRECT to autoCorrect,
-        KEY_AUTOCAP to autoCapitalization, KEY_DOUBLE_SPACE_PERIOD to doubleSpacePeriod,
+        KEY_AUTOCAP to autoCapitalization, KEY_LEARN_WORDS to learnWords, KEY_DOUBLE_SPACE_PERIOD to doubleSpacePeriod,
         KEY_SHIFT_WORD_CASING to shiftWordCasing, KEY_SHOW_NUMBER_ROW to numberRow, KEY_ACCENT_COLOR to accentColor,
         KEY_TINT_KEYS to tintKeys, KEY_HEIGHT_MODE to heightMode, KEY_HEIGHT_SCALE to heightScale.toDouble(),
         KEY_WORDFLOW to wordFlow, KEY_SPACEBAR_CURSOR to spacebarCursor, KEY_LONG_PRESS_SPACE to longPressSpace,
@@ -166,6 +171,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         bool(KEY_SUGGESTIONS) { suggestions = it }
         bool(KEY_AUTOCORRECT) { autoCorrect = it }
         bool(KEY_AUTOCAP) { autoCapitalization = it }
+        bool(KEY_LEARN_WORDS) { learnWords = it }
         bool(KEY_DOUBLE_SPACE_PERIOD) { doubleSpacePeriod = it }
         bool(KEY_SHIFT_WORD_CASING) { shiftWordCasing = it }
         bool(KEY_SHOW_NUMBER_ROW) { numberRow = it }
@@ -198,6 +204,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
     fun resetToDefaults() {
         preferences.edit()
             .remove(KEY_SOUND).remove(KEY_LEGACY_SOUND)
+            .remove(KEY_LEARN_WORDS)
             .remove(KEY_SOUND_VOLUME)
             .remove(KEY_HAPTIC).remove(KEY_LEGACY_VIBRATION)
             .remove(KEY_HAPTIC_STRENGTH_LEVEL)
@@ -238,6 +245,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         const val KEY_SUGGESTIONS = "pref_suggestions"
         const val KEY_AUTOCORRECT = "pref_autocorrect"
         const val KEY_AUTOCAP = "pref_autocap"
+        const val KEY_LEARN_WORDS = "pref_learn_words"
         const val KEY_DOUBLE_SPACE_PERIOD = "pref_double_space_period"
         const val KEY_SHIFT_WORD_CASING = "pref_shift_word_casing"
         const val KEY_SHOW_NUMBER_ROW = "pref_show_number_row"

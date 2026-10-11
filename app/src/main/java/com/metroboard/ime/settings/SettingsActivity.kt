@@ -204,6 +204,7 @@ class SettingsActivity : Activity() {
 
         content.addView(toggle(R.string.suggestions, preferences.suggestions) { preferences.suggestions = it })
         content.addView(toggle(R.string.autocorrect, preferences.autoCorrect) { preferences.autoCorrect = it })
+        content.addView(toggle(R.string.learn_words, preferences.learnWords) { preferences.learnWords = it })
         content.addView(toggle(R.string.autocap, preferences.autoCapitalization) { preferences.autoCapitalization = it })
         content.addView(toggle(R.string.double_space_period, preferences.doubleSpacePeriod) { preferences.doubleSpacePeriod = it })
         content.addView(toggle(R.string.shift_word_casing, preferences.shiftWordCasing) { preferences.shiftWordCasing = it })

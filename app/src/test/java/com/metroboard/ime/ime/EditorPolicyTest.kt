@@ -77,4 +77,49 @@ class EditorPolicyTest {
         assertFalse(policy.editing.suggestions)
         assertFalse(policy.editing.autoCorrect)
     }
+
+    // ---- learning of new words ---------------------------------------------
+
+    private fun textInfo(variation: Int = InputType.TYPE_TEXT_VARIATION_NORMAL, imeOptions: Int = 0) = EditorInfo().apply {
+        inputType = InputType.TYPE_CLASS_TEXT or variation
+        this.imeOptions = imeOptions
+    }
+
+    @Test
+    fun learningIsOnInNormalTextFields() {
+        val policy = EditorPolicy.from(textInfo())
+        assertTrue(policy.editing.learnWords)
+    }
+
+    @Test
+    fun theUserCanTurnLearningOffAndSuggestionsStayOn() {
+        val policy = EditorPolicy.from(textInfo(), learningEnabled = false)
+        assertFalse(policy.editing.learnWords)
+        assertTrue(policy.editing.suggestions)
+    }
+
+    @Test
+    fun noPersonalizedLearningFlagDisablesLearning() {
+        val policy = EditorPolicy.from(textInfo(imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING))
+        assertFalse(policy.editing.learnWords)
+    }
+
+    @Test
+    fun passwordsEmailsAndUrlsNeverLearnAndPasswordsAreNeverRead() {
+        for (variation in listOf(
+            InputType.TYPE_TEXT_VARIATION_PASSWORD, InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
+            InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD, InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+            InputType.TYPE_TEXT_VARIATION_URI,
+        )) {
+            val policy = EditorPolicy.from(textInfo(variation))
+            assertFalse("variation $variation", policy.editing.learnWords)
+        }
+        assertTrue(EditorPolicy.from(textInfo(InputType.TYPE_TEXT_VARIATION_PASSWORD)).editing.sensitive)
+    }
+
+    @Test
+    fun learningNeverTurnsOnWhenSuggestionsAreOff() {
+        val policy = EditorPolicy.from(textInfo(), suggestionsEnabled = false)
+        assertFalse(policy.editing.learnWords)
+    }
 }

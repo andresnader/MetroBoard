@@ -32,6 +32,7 @@ data class EditorPolicy(
             autoCapEnabled: Boolean = true,
             doubleSpaceEnabled: Boolean = true,
             shiftWordCasingEnabled: Boolean = true,
+            learningEnabled: Boolean = true,
         ): EditorPolicy {
             val type = info.inputType
             val typeClass = type and InputType.TYPE_MASK_CLASS
@@ -64,7 +65,7 @@ data class EditorPolicy(
                     autoCorrect = normal && !noSuggestions && suggestionsEnabled && autoCorrectEnabled,
                     shiftWordCasing = shiftWordCasingEnabled,
                     // Never in sensitive/address fields, nor when the editor opts out of personalised learning.
-                    learnWords = normal && !noSuggestions && suggestionsEnabled,
+                    learnWords = normal && !noSuggestions && suggestionsEnabled && learningEnabled,
                     sensitive = sensitive,
                 ),
                 kind = when (typeClass) {
@@ -87,6 +88,7 @@ data class EditorPolicy(
             autoCapEnabled = preferences.autoCapitalization,
             doubleSpaceEnabled = preferences.doubleSpacePeriod,
             shiftWordCasingEnabled = preferences.shiftWordCasing,
+            learningEnabled = preferences.learnWords,
         )
     }
 }

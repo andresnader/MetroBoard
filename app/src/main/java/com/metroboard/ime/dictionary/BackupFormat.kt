@@ -54,7 +54,7 @@ object BackupFormat {
     /** Setting key -> what is acceptable for it. Keys not listed here are ignored on import. */
     private val SETTINGS: Map<String, Rule> = mapOf(
         "pref_sound" to Bool, "pref_haptic" to Bool, "pref_suggestions" to Bool, "pref_autocorrect" to Bool,
-        "pref_autocap" to Bool, "pref_double_space_period" to Bool, "pref_shift_word_casing" to Bool,
+        "pref_autocap" to Bool, "pref_learn_words" to Bool, "pref_double_space_period" to Bool, "pref_shift_word_casing" to Bool,
         "pref_show_number_row" to Bool, "pref_tint_keys" to Bool, "pref_wordflow" to Bool,
         "pref_spacebar_cursor" to Bool, "pref_long_press_space" to Bool, "pref_show_key_popup" to Bool,
         "pref_sound_volume" to Real(0.0, 1.0),
