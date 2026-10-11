@@ -130,7 +130,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
 
 
     var language: String
-        get() = preferences.getString(KEY_LANGUAGE, "es") ?: "es"
+        get() = preferences.getString(KEY_LANGUAGE, null) ?: languageFor(java.util.Locale.getDefault().language)
         set(value) { preferences.edit().putString(KEY_LANGUAGE, value).apply() }
 
     var layoutOverride: String
@@ -232,6 +232,16 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
     }
 
     companion object {
+        /** Typing languages that have a dictionary and a layout. */
+        val SUPPORTED_LANGUAGES = listOf("es", "en", "fr", "de")
+
+        /**
+         * The typing language to start with, taken from the device language so a fresh install already
+         * types in the user's own language. A device language with no dictionary falls back to English.
+         */
+        fun languageFor(deviceLanguage: String): String =
+            deviceLanguage.lowercase(java.util.Locale.ROOT).takeIf { it in SUPPORTED_LANGUAGES } ?: "en"
+
         const val DEFAULT_ACCENT_COLOR: Int = 0xFF1BA1E2.toInt() // Windows Phone 8 "Cyan", the Lumia default (was a stray 0xFF00A49F mislabelled as 0xFF00A4EF)
         const val KEY_LEGACY_VIBRATION = "vibration"
         const val KEY_LEGACY_SOUND = "sound"

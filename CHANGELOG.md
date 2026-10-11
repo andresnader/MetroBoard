@@ -43,6 +43,16 @@ Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además e
   *borde a borde*, que no hacía nada.
 - **Tema claro:** el icono de cambio de teclado del sistema era blanco sobre blanco.
 - **Pantalla «Acerca de»** mostraba una versión fija y licencias de fuentes que nunca se usaron.
+- **Encabezado de Ajustes no circular, en negrita y en inglés.** (1) El pivote era un scroll lineal acotado: no se podía pasar de
+  la última sección a la primera ni al revés. Ahora es un carrusel (`MetroPivot`, `PivotMath`): al deslizar más allá del final se
+  vuelve al principio y viceversa; los letreros rotan con el contenido (el que se acaba de pasar sale por la izquierda y vuelve por
+  la derecha), tocar un letrero va por el camino más corto, y se conservan sección y scroll al girar. (2) La sección activa usaba
+  `Typeface.BOLD`: ahora todos los letreros son del mismo peso ligero y la activa se distingue solo por el color. (3) Los letreros
+  eran literales en inglés (`SOUND & HAPTICS`…) y varios textos de Ajustes estaban fijos en español: todo sale ahora de recursos.
+  `values/` pasa a inglés (idioma por defecto para cualquier idioma sin traducción) y se añaden `values-es`, `values-fr` y
+  `values-de`. El idioma de escritura inicial sigue al del dispositivo (inglés si no hay diccionario). 15 pruebas del anillo
+  (`PivotMathTest`) y 3 del idioma por defecto. Verificado en el emulador en en/es/fr/de, vertical y horizontal.
+  **Las traducciones fr/de son mías y no las ha revisado ningún hablante nativo.**
 - **Pantalla de Ajustes inconsistente y sin memoria de sección.** (1) Cada cambio de opción llamaba a `recreate()` y la pantalla
   volvía a *languages*; ahora los selectores y interruptores se actualizan en sitio, y el cambio de tema, acento, importación o
   restablecer reconstruye las páginas conservando la sección y el scroll de cada una (también al rotar o cuando Android recrea la

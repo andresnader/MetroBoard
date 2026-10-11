@@ -8,7 +8,6 @@
 
 package com.metroboard.ime.settings
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
@@ -21,7 +20,6 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings
-import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
@@ -41,35 +39,33 @@ class SettingsActivity : Activity() {
 
     private lateinit var preferences: KeyboardPreferences
     private lateinit var personalDict: LocalPersonalDictionary
-    private val pivotTabViews = mutableListOf<TextView>()
     private val pageScrolls = mutableListOf<ScrollView>()
-    private lateinit var lateralPager: PivotHorizontalScrollView
-    private lateinit var pivotHeaderScroll: HorizontalScrollView
+    private lateinit var pivot: MetroPivot
     private var currentPageIndex = 0
-    private var animateHeader = true
 
-    private val SECTIONS = listOf(
-        "LANGUAGES",
-        "TYPING",
-        "LAYOUT",
-        "APPEARANCE",
-        "SOUND & HAPTICS",
-        "GESTURES",
-        "PRIVACY",
-        "ABOUT"
+    /** Pivot labels, in page order. Resources, so they follow the system language. */
+    private val sectionTitles = listOf(
+        R.string.tab_languages,
+        R.string.tab_typing,
+        R.string.tab_layout,
+        R.string.tab_appearance,
+        R.string.tab_sound,
+        R.string.tab_gestures,
+        R.string.tab_privacy,
+        R.string.tab_about,
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         preferences = KeyboardPreferences(this)
         personalDict = LocalPersonalDictionary(this)
-        currentPageIndex = (savedInstanceState?.getInt(STATE_PAGE) ?: 0).coerceIn(0, SECTIONS.size - 1)
+        currentPageIndex = (savedInstanceState?.getInt(STATE_PAGE) ?: 0).coerceIn(0, sectionTitles.size - 1)
         buildUi(savedInstanceState?.getIntArray(STATE_SCROLLS))
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        outState.putInt(STATE_PAGE, currentPageIndex)
+        outState.putInt(STATE_PAGE, if (::pivot.isInitialized) pivot.currentPage else currentPageIndex)
         outState.putIntArray(STATE_SCROLLS, pageScrolls.map { it.scrollY }.toIntArray())
     }
 
@@ -121,103 +117,41 @@ class SettingsActivity : Activity() {
         }
         root.addView(appTitle)
 
-        // 2. Windows Phone Panoramic Pivot Header
-        root.addView(createPivotHeader())
-
-        // 3. Lateral Sliding Pages
+        // 2. The circular pivot: section labels on top, pages below
         pageScrolls.clear()
-        root.addView(createLateralPages(), LinearLayout.LayoutParams(-1, -1))
+        root.addView(createPivot(), LinearLayout.LayoutParams(-1, 0, 1f))
 
         restorePosition(root, scrolls)
     }
 
     /** Puts the pivot and each page's vertical scroll back once the new views have been laid out. */
     private fun restorePosition(root: View, scrolls: IntArray?) {
-        val page = currentPageIndex
         root.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-                if (lateralPager.width == 0) return
+                if (pivot.width == 0) return
                 root.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                animateHeader = false
-                lateralPager.snapToPage(page, smooth = false)
-                animateHeader = true
                 scrolls?.forEachIndexed { index, y -> pageScrolls.getOrNull(index)?.scrollTo(0, y) }
             }
         })
     }
 
-    private fun createPivotHeader(): View {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(24), dp(8), dp(24), dp(12))
-        }
-        pivotHeaderScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            overScrollMode = View.OVER_SCROLL_NEVER
-            addView(container)
-        }
-
-        pivotTabViews.clear()
-        SECTIONS.forEachIndexed { index, title ->
-            val tabView = TextView(this).apply {
-                text = title.lowercase()
-                setPadding(0, 0, dp(28), 0)
-                setOnClickListener { scrollToPage(index) }
-            }
-            pivotTabViews.add(tabView)
-            container.addView(tabView)
-        }
-        animateHeader = false
-        updatePivotHeaderStyles(currentPageIndex)
-        animateHeader = true
-        return pivotHeaderScroll
-    }
-
-    private fun updatePivotHeaderStyles(activeIndex: Int) {
-        currentPageIndex = activeIndex
-        pivotTabViews.forEachIndexed { index, tabView ->
-            val isActive = index == activeIndex
-            tabView.textSize = if (isActive) 32f else 24f
-            tabView.setTextColor(if (isActive) KeyboardColors.foreground else KeyboardColors.muted)
-            tabView.typeface = Typeface.create("sans-serif-light", if (isActive) Typeface.BOLD else Typeface.NORMAL)
-        }
-        val smooth = animateHeader
-        pivotTabViews.getOrNull(activeIndex)?.let { activeTab ->
-            pivotHeaderScroll.post {
-                val scrollTarget = (activeTab.left - dp(24)).coerceAtLeast(0)
-                if (smooth) pivotHeaderScroll.smoothScrollTo(scrollTarget, 0)
-                else pivotHeaderScroll.scrollTo(scrollTarget, 0)
-            }
-        }
-    }
-
-    private fun createLateralPages(): View {
-        val pagesContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-
-        pagesContainer.addView(createLanguagesPage())
-        pagesContainer.addView(createTypingPage())
-        pagesContainer.addView(createLayoutPage())
-        pagesContainer.addView(createAppearancePage())
-        pagesContainer.addView(createSoundHapticsPage())
-        pagesContainer.addView(createGesturesPage())
-        pagesContainer.addView(createPrivacyPage())
-        pagesContainer.addView(createAboutPage())
-
-        lateralPager = PivotHorizontalScrollView(this).apply {
-            pageCount = SECTIONS.size
-            addView(pagesContainer)
-            onPageSelected = { pageIndex ->
-                updatePivotHeaderStyles(pageIndex)
-            }
-        }
-        return lateralPager
-    }
-
-    private fun scrollToPage(index: Int) {
-        val safeIndex = index.coerceIn(0, SECTIONS.size - 1)
-        lateralPager.snapToPage(safeIndex)
+    private fun createPivot(): View {
+        val pages = listOf(
+            createLanguagesPage(),
+            createTypingPage(),
+            createLayoutPage(),
+            createAppearancePage(),
+            createSoundHapticsPage(),
+            createGesturesPage(),
+            createPrivacyPage(),
+            createAboutPage(),
+        )
+        // Metro headers are lower case; the language's own rules (Turkish dotless i) decide how.
+        val locale = resources.configuration.locales[0]
+        val titles = sectionTitles.map { getString(it).lowercase(locale) }
+        pivot = MetroPivot(this, titles, pages) { currentPageIndex = it }
+        pivot.showPage(currentPageIndex)
+        return pivot
     }
 
     // Pages ---------------------------------------------------------------------------------------------
@@ -246,19 +180,19 @@ class SettingsActivity : Activity() {
 
     // 1. LANGUAGES
     private fun createLanguagesPage() = page {
-        title("idioma activo")
+        title(getString(R.string.language_title))
         segmented(
             listOf("es" to "Español", "en" to "English", "fr" to "Français", "de" to "Deutsch"),
             preferences.language,
         ) { preferences.language = it }
 
-        title("distribución de teclas")
+        title(getString(R.string.layout_title))
         segmented(
-            listOf("AUTO" to "Auto", "QWERTY" to "QWERTY", "AZERTY" to "AZERTY", "QWERTZ" to "QWERTZ"),
+            listOf("AUTO" to getString(R.string.layout_auto_short), "QWERTY" to "QWERTY", "AZERTY" to "AZERTY", "QWERTZ" to "QWERTZ"),
             preferences.layoutOverride,
         ) { preferences.layoutOverride = it }
 
-        title("método de entrada")
+        title(getString(R.string.input_method_title))
         action(R.string.enable_keyboard) {
             try { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
             catch (_: ActivityNotFoundException) {
@@ -290,13 +224,21 @@ class SettingsActivity : Activity() {
     private fun createLayoutPage() = page {
         title(getString(R.string.one_handed_title))
         segmented(
-            listOf("OFF" to "Desactivado", "LEFT" to "Izquierda", "RIGHT" to "Derecha"),
+            listOf(
+                "OFF" to getString(R.string.one_handed_off),
+                "LEFT" to getString(R.string.one_handed_left),
+                "RIGHT" to getString(R.string.one_handed_right),
+            ),
             preferences.oneHandedMode,
         ) { preferences.oneHandedMode = it }
 
         title(getString(R.string.height_scale_title))
         segmented(
-            listOf("COMPACT" to "Compacto", "NORMAL" to "Normal", "TALL" to "Alto"),
+            listOf(
+                "COMPACT" to getString(R.string.height_small),
+                "NORMAL" to getString(R.string.height_normal),
+                "TALL" to getString(R.string.height_tall),
+            ),
             preferences.heightMode,
         ) { preferences.heightMode = it }
 
@@ -308,7 +250,11 @@ class SettingsActivity : Activity() {
     private fun createAppearancePage() = page {
         title(getString(R.string.theme_title))
         segmented(
-            listOf("DARK" to "Oscuro", "LIGHT" to "Claro", "SYSTEM" to "Sistema"),
+            listOf(
+                "DARK" to getString(R.string.theme_dark),
+                "LIGHT" to getString(R.string.theme_light),
+                "SYSTEM" to getString(R.string.theme_system),
+            ),
             preferences.theme,
         ) {
             preferences.theme = it
@@ -328,14 +274,22 @@ class SettingsActivity : Activity() {
         title(getString(R.string.sound_volume))
         val volumes = listOf(0.35f, 0.70f, 1.0f)
         segmented(
-            listOf("0" to "Bajo", "1" to "Medio", "2" to "Alto"),
+            listOf(
+                "0" to getString(R.string.volume_low),
+                "1" to getString(R.string.volume_medium),
+                "2" to getString(R.string.volume_high),
+            ),
             volumes.indexOfFirst { kotlin.math.abs(preferences.soundVolume - it) < 0.15f }.toString(),
         ) { preferences.soundVolume = volumes[it.toInt()] }
 
         toggle(R.string.vibration, preferences.vibration) { preferences.vibration = it }
         title(getString(R.string.haptic_strength))
         segmented(
-            listOf("LIGHT" to "Suave", "MEDIUM" to "Media", "STRONG" to "Fuerte"),
+            listOf(
+                "LIGHT" to getString(R.string.haptic_light),
+                "MEDIUM" to getString(R.string.haptic_medium),
+                "STRONG" to getString(R.string.haptic_strong),
+            ),
             preferences.hapticStrength.uppercase(),
         ) { preferences.hapticStrength = it }
     }
@@ -367,7 +321,7 @@ class SettingsActivity : Activity() {
         action(R.string.view_learned_words) { showLearnedWordsDialog() }
         action(R.string.clear_learned_words) {
             personalDict.clear()
-            Toast.makeText(this@SettingsActivity, "Diccionario personal borrado", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@SettingsActivity, R.string.dictionary_cleared, Toast.LENGTH_SHORT).show()
         }
         action(R.string.export_settings) { exportSettings() }
         action(R.string.import_settings) { showImportDialog() }
@@ -429,7 +383,7 @@ class SettingsActivity : Activity() {
     private fun showLearnedWordsDialog() {
         val words = personalDict.getAllWords(preferences.language)
         if (words.isEmpty()) {
-            Toast.makeText(this, "No hay palabras aprendidas aún", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.no_learned_words, Toast.LENGTH_SHORT).show()
             return
         }
         val items = words.map { "${it.word} (${it.frequency})" }.toTypedArray()
@@ -438,11 +392,11 @@ class SettingsActivity : Activity() {
             .setItems(items) { _, which ->
                 val selected = words[which]
                 dialog()
-                    .setTitle("Eliminar palabra")
-                    .setMessage("¿Deseas eliminar '${selected.word}' del diccionario?")
-                    .setPositiveButton("Eliminar") { _, _ ->
+                    .setTitle(R.string.delete_word_title)
+                    .setMessage(getString(R.string.delete_word_message, selected.word))
+                    .setPositiveButton(R.string.delete_word) { _, _ ->
                         personalDict.remove(selected.word, preferences.language)
-                        Toast.makeText(this, "Palabra eliminada", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, R.string.word_deleted, Toast.LENGTH_SHORT).show()
                     }
                     .setNegativeButton(android.R.string.cancel, null)
                     .show()
@@ -511,7 +465,7 @@ class SettingsActivity : Activity() {
     private fun showResetDialog() {
         dialog()
             .setTitle(R.string.reset_settings)
-            .setMessage("¿Restablecer todos los ajustes a los valores iniciales de Windows Phone 8.1?")
+            .setMessage(R.string.reset_confirm)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 preferences.resetToDefaults()
                 personalDict.clear()
@@ -526,7 +480,6 @@ class SettingsActivity : Activity() {
         return ScrollView(this).apply {
             pageScrolls += this
             addView(content)
-            layoutParams = LinearLayout.LayoutParams(resources.displayMetrics.widthPixels, LinearLayout.LayoutParams.MATCH_PARENT)
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
         }
@@ -549,99 +502,5 @@ class SettingsActivity : Activity() {
             @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility = flags
         }
-    }
-}
-
-class PivotHorizontalScrollView(context: Context) : HorizontalScrollView(context) {
-    var onPageSelected: ((Int) -> Unit)? = null
-    var pageCount = 8
-    var currentPage = 0
-        private set
-
-    private var initialX = 0f
-    private var initialY = 0f
-
-    init {
-        isHorizontalScrollBarEnabled = false
-        overScrollMode = View.OVER_SCROLL_NEVER
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        val w = measuredWidth
-        if (w > 0) {
-            val container = getChildAt(0) as? LinearLayout
-            container?.let {
-                for (i in 0 until it.childCount) {
-                    val child = it.getChildAt(i)
-                    if (child.layoutParams.width != w) {
-                        child.layoutParams.width = w
-                        child.requestLayout()
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                initialX = ev.x
-                initialY = ev.y
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = kotlin.math.abs(ev.x - initialX)
-                val dy = kotlin.math.abs(ev.y - initialY)
-                if (dx > dy && dx > 25) {
-                    parent?.requestDisallowInterceptTouchEvent(true)
-                    return true
-                }
-            }
-        }
-        return super.onInterceptTouchEvent(ev)
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    override fun onTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.actionMasked) {
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                val deltaX = ev.x - initialX
-                val pageWidth = width.takeIf { it > 0 } ?: 1
-                val threshold = pageWidth / 6
-                val targetPage = when {
-                    deltaX < -threshold -> (currentPage + 1).coerceAtMost(pageCount - 1)
-                    deltaX > threshold -> (currentPage - 1).coerceAtLeast(0)
-                    else -> currentPage
-                }
-                snapToPage(targetPage)
-                return true
-            }
-        }
-        return super.onTouchEvent(ev)
-    }
-
-    fun snapToPage(page: Int, smooth: Boolean = true) {
-        currentPage = page.coerceIn(0, pageCount - 1)
-        if (width > 0) {
-            val targetX = currentPage * width
-            if (smooth) {
-                smoothScrollTo(targetX, 0)
-            } else {
-                scrollTo(targetX, 0)
-            }
-            onPageSelected?.invoke(currentPage)
-        } else {
-            post {
-                snapToPage(currentPage, smooth)
-            }
-        }
-    }
-
-    override fun requestChildRectangleOnScreen(
-        child: View,
-        rectangle: android.graphics.Rect,
-        immediate: Boolean
-    ): Boolean {
-        return false
     }
 }

@@ -714,7 +714,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         KeyAction.LETTERS -> context.getString(R.string.letters)
         KeyAction.MORE_SYMBOLS -> context.getString(R.string.more_symbols)
         KeyAction.EMOJI -> context.getString(R.string.emoji)
-        KeyAction.CLIPBOARD -> "Clipboard"
+        KeyAction.CLIPBOARD -> context.getString(R.string.clipboard)
         KeyAction.TEXT -> if (spec.label == ".") context.getString(R.string.punctuation) else spec.label
     }
 }

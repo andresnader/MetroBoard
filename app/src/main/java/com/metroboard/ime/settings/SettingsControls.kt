@@ -25,6 +25,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.metroboard.ime.R
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.dp
 
@@ -34,6 +35,7 @@ import com.metroboard.ime.util.dp
  * type size and flat Metro look. Nothing here is a stock Material widget.
  */
 internal object MetroType {
+    const val PIVOT = 30f
     const val TITLE = 22f
     const val BODY = 16f
     const val SEGMENT = 15f
@@ -160,7 +162,7 @@ internal fun Context.metroToggle(title: CharSequence, checked: Boolean, onToggle
 
     fun describe() {
         if (Build.VERSION.SDK_INT >= 30) {
-            row.stateDescription = if (switch.on) "Activado" else "Desactivado"
+            row.stateDescription = getString(if (switch.on) R.string.state_on else R.string.state_off)
         }
     }
     describe()

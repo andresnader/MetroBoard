@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="setup_subtitle">MetroBoard · Word-Flow-8.1-Erlebnis</string>
+    <string name="enable_keyboard">1  Tastatur aktivieren</string>
+    <string name="select_keyboard">2  Tastatur auswählen</string>
+    <string name="select_system_ime">System-Tastatur wechseln…</string>
+
+    <string name="tab_languages">Sprachen</string>
+    <string name="tab_typing">Eingabe</string>
+    <string name="tab_layout">Layout</string>
+    <string name="tab_appearance">Darstellung</string>
+    <string name="tab_sound">Ton</string>
+    <string name="tab_gestures">Gesten</string>
+    <string name="tab_privacy">Datenschutz</string>
+    <string name="tab_about">Info</string>
+
+    <string name="language_title">Tastatursprache</string>
+    <string name="layout_title">Tastenbelegung</string>
+    <string name="layout_auto_short">Auto</string>
+    <string name="input_method_title">Eingabemethode</string>
+
+    <string name="suggestions">Textvorhersage</string>
+    <string name="autocorrect">Automatische Rechtschreibkorrektur</string>
+    <string name="autocap">Automatischer Großbuchstabe am Satzanfang</string>
+    <string name="double_space_period">Punkt per Doppel-Leertaste</string>
+    <string name="shift_word_casing">Groß-/Kleinschreibung mit Umschalttaste</string>
+    <string name="shift_word_casing_summary">Umschalttaste am Wortende antippen: Anfangsbuchstabe groß → GROSSBUCHSTABEN → Kleinbuchstaben</string>
+    <string name="learn_words">Neue Wörter lernen</string>
+    <string name="view_learned_words">Gelernte Wörter anzeigen</string>
+    <string name="try_title">Ausprobieren</string>
+    <string name="test_hint">Hier tippen, um die Tastatur zu testen…</string>
+
+    <string name="height_scale_title">Tastaturhöhe</string>
+    <string name="height_small">Kompakt</string>
+    <string name="height_normal">Normal</string>
+    <string name="height_tall">Hoch</string>
+    <string name="show_number_row">Zahlenreihe oben</string>
+    <string name="key_popup">Tasten-Popups (langes Drücken)</string>
+    <string name="one_handed_title">Einhandmodus</string>
+    <string name="one_handed_off">Aus</string>
+    <string name="one_handed_left">Links</string>
+    <string name="one_handed_right">Rechts</string>
+
+    <string name="theme_title">Tastaturdesign</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_system">System</string>
+    <string name="accent_color_title">Lumia-Akzentfarbe</string>
+    <string name="tint_keys">Tasten mit Akzentfarbe tönen</string>
+
+    <string name="sound">Tippton (trockener WP8.1-Klick)</string>
+    <string name="sound_volume">Lautstärke des Tons</string>
+    <string name="volume_low">Leise</string>
+    <string name="volume_medium">Mittel</string>
+    <string name="volume_high">Laut</string>
+    <string name="vibration">Haptische Vibration</string>
+    <string name="haptic_strength">Vibrationsstärke</string>
+    <string name="haptic_light">Leicht</string>
+    <string name="haptic_medium">Mittel</string>
+    <string name="haptic_strong">Stark</string>
+
+    <string name="wordflow">Wischeingabe (Word Flow)</string>
+    <string name="wordflow_summary">Mit dem Finger über die Tasten wischen und mit fließender Spur schreiben</string>
+    <string name="swipe_delete_title">Wischen zum Löschen</string>
+    <string name="swipe_delete_summary">Von der Löschtaste nach links wischen, um ganze Wörter zu löschen</string>
+    <string name="spacebar_cursor">Cursorsteuerung über die Leertaste</string>
+    <string name="spacebar_cursor_summary">Horizontal über die Leertaste wischen, um den Cursor zu bewegen</string>
+    <string name="long_press_space">Langes Drücken der Leertaste</string>
+    <string name="long_press_space_summary">Öffnet die Sprach- und Tastaturauswahl</string>
+
+    <string name="offline_indicator" formatted="false">100 % offline · Keine Internetberechtigung</string>
+    <string name="privacy_note">Es wird keine Internetberechtigung angefordert. Keine Telemetrie, Analysen oder Tastenprotokollierung. In Passwortfeldern ist das Lernen strikt deaktiviert.</string>
+    <string name="import_android_dict">Aus persönlichem Android-Wörterbuch importieren</string>
+    <string name="import_android_dict_done">%1$d Wörter aus dem System-Wörterbuch importiert</string>
+    <string name="clear_learned_words">Persönliches Wörterbuch löschen</string>
+    <string name="export_settings">Einstellungen und Wörter exportieren (JSON)</string>
+    <string name="import_settings">Einstellungen und Wörter importieren (JSON)</string>
+    <string name="reset_settings">Standardwerte wiederherstellen</string>
+    <string name="reset_confirm">Alle Einstellungen auf die Anfangswerte von Windows Phone 8.1 zurücksetzen?</string>
+    <string name="reset_done">Einstellungen auf Standard zurückgesetzt</string>
+    <string name="dictionary_cleared">Persönliches Wörterbuch gelöscht</string>
+    <string name="no_learned_words">Noch keine gelernten Wörter</string>
+    <string name="delete_word_title">Wort löschen</string>
+    <string name="delete_word_message">„%1$s“ aus dem Wörterbuch löschen?</string>
+    <string name="delete_word">Löschen</string>
+    <string name="word_deleted">Wort gelöscht</string>
+    <string name="backup_saved">Sicherung gespeichert</string>
+    <string name="backup_failed">Sicherung konnte nicht gespeichert werden</string>
+    <string name="backup_imported">%1$d Einstellungen und %2$d Wörter importiert</string>
+    <string name="invalid_json">Ungültiges oder inkompatibles JSON</string>
+    <string name="settings_unavailable">Öffnen Sie die Sprach- und Tastatureinstellungen des Geräts.</string>
+
+    <string name="about_version">MetroBoard Version %1$s</string>
+    <string name="about_legal">Eigene, unabhängige Implementierung, inspiriert von der Word-Flow-Tastatur von Windows Phone 8.1. Ohne proprietären Code, Schriftarten, Töne oder Ressourcen von Microsoft oder Chiflow.</string>
+    <string name="about_licenses">Code: AGPL-3.0-or-later. Wörterbücher: Wortgültigkeit mit Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL); Häufigkeiten aus OpenSubtitles 2018 über hermitdave/FrequencyWords (CC BY-SA 4.0). Details in ATTRIBUTION.md.</string>
+
+    <string name="state_on">An</string>
+    <string name="state_off">Aus</string>
+
+    <string name="suggestion_description">Vorschlag einfügen: %1$s</string>
+    <string name="shift_lower">Umschalt: Kleinbuchstaben</string>
+    <string name="shift_auto">Umschalt: automatischer Großbuchstabe</string>
+    <string name="shift_once">Umschalt: nächster Buchstabe groß</string>
+    <string name="shift_locked">Umschalt: Feststelltaste</string>
+    <string name="space">Leertaste. Lang drücken für Sprachauswahl</string>
+    <string name="backspace">Löschen</string>
+    <string name="punctuation">Punkt. Lang drücken für mehr Satzzeichen</string>
+    <string name="emoji">Emoticon- und Emoji-Auswahl</string>
+    <string name="symbols">Zahlen und Symbole</string>
+    <string name="letters">Zurück zu Buchstaben</string>
+    <string name="more_symbols">Weitere Symbole</string>
+    <string name="enter">Eingabe</string>
+    <string name="action_done">fertig</string>
+    <string name="action_next">weiter</string>
+    <string name="action_previous">zurück</string>
+    <string name="action_search">suchen</string>
+    <string name="action_go">los</string>
+    <string name="action_send">senden</string>
+    <string name="clipboard">Zwischenablage</string>
+</resources>

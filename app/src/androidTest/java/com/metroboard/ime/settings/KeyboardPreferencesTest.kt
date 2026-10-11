@@ -40,7 +40,7 @@ class KeyboardPreferencesTest {
         assertFalse(preferences.numberRow)
         assertEquals(KeyboardPreferences.DEFAULT_ACCENT_COLOR, preferences.accentColor)
         assertEquals(1.0f, preferences.heightScale, 0.001f)
-        assertEquals("es", preferences.language)
+        assertEquals(KeyboardPreferences.languageFor(java.util.Locale.getDefault().language), preferences.language)
     }
 
     @Test

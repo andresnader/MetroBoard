@@ -17,6 +17,7 @@ ver [wp-design-guidelines-analysis.md](wp-design-guidelines-analysis.md). Es una
 | Mayúsculas | Auto-shift y estados visibles correctos | Sin cambios visuales; se corrigió la capitalización tras `.` sin espacio |
 | Ajustes | Pivotes languages/typing/layout/appearance/sound/gestures/privacy/about | Se quitó «Borde a borde» (no hacía nada); 3 interruptores ahora funcionan; se añadió «Aprender palabras nuevas» |
 | Ajustes: coherencia | Tres estilos de control, campo «pruébalo» oscuro en tema claro, selección de acento invisible en claro, la pantalla volvía a la primera sección con cada cambio | Un solo conjunto de controles Metro, texto del segmento por contraste con el acento, diálogos con el tema del teclado, sección y scroll conservados (también al rotar). Verificado en el emulador (oscuro/claro, vertical/horizontal), **sin TalkBack ni fuente aumentada** |
+| Ajustes: encabezado | Los letreros no daban la vuelta al llegar al final, la sección activa iba en negrita y los textos estaban en inglés/español fijos | Pivote circular (los letreros rotan), peso ligero uniforme (la activa se distingue por color), textos por recurso en en/es/fr/de según el idioma del sistema. Emulador; **sin TalkBack, fuente aumentada ni revisión nativa de fr/de** |
 | About | «versión 0.2.0» fija y licencias de fuentes no usadas | Versión real (0.3.0) y fuentes reales |
 
 ## 2. Corpus histórico: estado de cada comportamiento
