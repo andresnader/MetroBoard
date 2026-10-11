@@ -82,12 +82,17 @@ class DictionaryAndPersonalDictTest {
 
         // Create a new instance pointing to same directory to test persistence
         val reloadedDict = LocalPersonalDictionary(storageDir)
-        // A word used once is protected from autocorrect but not yet suggested (could be a typo).
-        assertTrue(reloadedDict.knows("Chevere", "es"))
+        // A word used once may be a typo: neither protected from autocorrect nor suggested.
+        assertFalse(reloadedDict.knows("Chevere", "es"))
         assertTrue(reloadedDict.wordsWithPrefix("che", "es").isEmpty())
         reloadedDict.learn("Chevere", "es")
+        assertTrue(reloadedDict.knows("Chevere", "es"))
         assertEquals(listOf("Chevere"), reloadedDict.wordsWithPrefix("che", "es"))
         assertFalse(reloadedDict.knows("Chevere", "en"))
+
+        // An explicit insistence (undoing an autocorrection) counts immediately.
+        reloadedDict.keep("Quitoo", "es")
+        assertTrue(reloadedDict.knows("Quitoo", "es"))
 
         // Test JSON Import on fresh dictionary
         val freshStorage = tempFolder.newFolder("dict_import_test")

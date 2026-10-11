@@ -39,10 +39,11 @@ class EditorControllerPredictionTest {
     ) : SuggestionEngine {
         val autoCorrectCalls = mutableListOf<String>()
         val learned = mutableListOf<String>()
+        val kept = mutableListOf<String>()
         override fun suggest(prefix: String) = suggestions[prefix.lowercase()] ?: emptyList()
         override fun suggestNext(previousWord: String) = next[previousWord.lowercase()] ?: emptyList()
         override fun autoCorrect(word: String): String? { autoCorrectCalls += word; return corrections[word.lowercase()] }
-        override fun learn(word: String) { learned += word }
+        override fun learn(word: String, explicit: Boolean) { if (explicit) kept += word else learned += word }
     }
 
     private fun controller(editor: MemoryEditor, engine: SuggestionEngine, learn: Boolean = false) =
@@ -160,6 +161,6 @@ class EditorControllerPredictionTest {
         c.type("tecldao"); c.space(1000)
         assertTrue("the typo must not be learned", engine.learned.isEmpty())
         c.backspace() // the user explicitly insists on what they typed
-        assertEquals(listOf("tecldao"), engine.learned)
+        assertEquals(listOf("tecldao"), engine.kept)
     }
 }

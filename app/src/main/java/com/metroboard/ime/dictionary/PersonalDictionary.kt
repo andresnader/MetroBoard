@@ -20,8 +20,17 @@ interface PersonalDictionary {
     fun learn(word: String, language: String) = learn(word)
 
     /**
-     * True when the user has kept [word] in [language]; such a word is never auto-corrected,
-     * even before it has been used often enough to be suggested.
+     * The user explicitly insisted on [word] (for example by undoing an autocorrection): it
+     * counts as already used often enough to be protected and suggested.
+     */
+    fun keep(word: String, language: String) {
+        learn(word, language)
+        learn(word, language)
+    }
+
+    /**
+     * True when [word] is established in [language] (used repeatedly or explicitly kept); such a
+     * word is never auto-corrected. A word seen once may just be a typo and stays unprotected.
      */
     fun knows(word: String, language: String): Boolean =
         wordsWithPrefix(word, language).any { it.equals(word, ignoreCase = true) }

@@ -154,8 +154,8 @@ class EditorController(
         return last in ".!?\u2026\u00bf\u00a1\n"
     }
 
-    private fun learnIfAllowed(word: String) {
-        if (policy.learnWords && word.any(Char::isLetter)) engine.learn(word)
+    private fun learnIfAllowed(word: String, explicit: Boolean = false) {
+        if (policy.learnWords && word.any(Char::isLetter)) engine.learn(word, explicit)
     }
 
     /** Backspace right after an automatic correction restores what the user typed. */
@@ -172,7 +172,7 @@ class EditorController(
             editor.endBatch()
         }
         rejectedCorrections.add(correction.original.lowercase(Locale.ROOT))
-        learnIfAllowed(correction.original) // the user insisted on this exact word
+        learnIfAllowed(correction.original, explicit = true) // the user insisted on this exact word
         lastCorrection = null
         return true
     }

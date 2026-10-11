@@ -110,12 +110,12 @@ class LocalSuggestionEngine(
         return dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY)
     }
 
-    override fun learn(word: String) {
+    override fun learn(word: String, explicit: Boolean) {
         val typed = word.trim()
         if (typed.length < 2 || typed.any { !it.isLetter() && it != '\'' && it != '\u2019' }) return
         // Dictionary words need no learning; only genuinely new words are worth keeping.
         if (dictionaryFor(activeLanguage).contains(typed.lowercase(Locale.ROOT))) return
-        personal.learn(typed, activeLanguage)
+        if (explicit) personal.keep(typed, activeLanguage) else personal.learn(typed, activeLanguage)
     }
 
     override fun isKnownWord(word: String): Boolean {

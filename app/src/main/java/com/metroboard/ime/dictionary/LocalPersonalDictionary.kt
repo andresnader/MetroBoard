@@ -29,7 +29,7 @@ class LocalPersonalDictionary(
     private val wordMap = HashMap<String, MutableMap<String, LearnedWord>>() // language -> (lowercaseWord -> LearnedWord)
 
     companion object {
-        /** Uses before a learned word is offered as a suggestion (it is protected from autocorrect from the first use). */
+        /** Uses before a learned word is protected from autocorrect and offered as a suggestion. */
         const val MIN_USES_TO_SUGGEST = 2
     }
 
@@ -42,7 +42,7 @@ class LocalPersonalDictionary(
 
     @Synchronized
     override fun knows(word: String, language: String): Boolean =
-        wordMap[language.lowercase(Locale.ROOT)]?.containsKey(word.trim().lowercase(Locale.ROOT)) == true
+        (wordMap[language.lowercase(Locale.ROOT)]?.get(word.trim().lowercase(Locale.ROOT))?.frequency ?: 0) >= MIN_USES_TO_SUGGEST
 
     @Synchronized
     override fun wordsWithPrefix(prefix: String, language: String): List<String> {
@@ -50,8 +50,7 @@ class LocalPersonalDictionary(
         val langMap = wordMap[language.lowercase(Locale.ROOT)] ?: return emptyList()
         val norm = prefix.lowercase(Locale.ROOT)
         return langMap.values
-            // A word seen once may be a typo: it is protected from autocorrect (see knows) but
-            // only suggested once the user has typed it again.
+            // A word seen once may be a typo: it is neither suggested nor protected until reused.
             .filter { it.frequency >= MIN_USES_TO_SUGGEST }
             .filter { it.word.lowercase(Locale.ROOT).startsWith(norm) }
             .sortedByDescending { it.frequency }
