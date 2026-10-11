@@ -6,7 +6,7 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 > **Aviso de Inspiración y Código Abierto**:
 > MetroBoard es un proyecto independiente de **software libre y código abierto (Open Source)** licenciado bajo la **GNU Affero General Public License v3 (AGPL-3.0)**.
-> Este proyecto está inspirado en múltiples proyectos y trabajos pioneros, en particular el diseño visual Metro y la ergonomía del teclado Word Flow de Windows Phone 8.1, el teclado comunitario ChiBoard (ChiApps), los diccionarios Hunspell de LibreOffice (RLA-ES, SCOWL, Grammalecte, igerman98), las frecuencias de FrequencyWords/OpenSubtitles y el Android Open Source Project (AOSP).
+> Este proyecto está inspirado en múltiples proyectos y trabajos pioneros, en particular el diseño visual Metro y la ergonomía del teclado Word Flow de Windows Phone 8.1, el teclado comunitario ChiBoard (ChiApps), los diccionarios Hunspell de LibreOffice (RLA-ES de Santiago Bosio y colaboradores, [sbosio/rla-es](https://github.com/sbosio/rla-es); SCOWL, Grammalecte, igerman98), la wordlist en español de Xavier Hernández (`xavier-hernandez/spanish-wordlist`, AGPL-3.0; usada en versiones anteriores y retirada en 0.3), las frecuencias de FrequencyWords/OpenSubtitles y el Android Open Source Project (AOSP).
 > Expresamos nuestro sincero agradecimiento a cada uno de sus autores y comunidades por mantener vivos recursos libres e inspiradores.
 > Para más detalles, consulta [ATTRIBUTION.md](ATTRIBUTION.md) y [LICENSE](LICENSE).
 
