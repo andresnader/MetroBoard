@@ -166,4 +166,5 @@
     <string name="dict_edit_hint">Bearbeiten</string>
     <string name="about_credit">Eine Entwicklung von Ameizin — Andrés Nader · info@ameizin.ec</string>
     <string name="preview_suggestions">Hallo|Hi|Hey</string>
+    <string name="clip_suggestion_description">Kopierten Text einfügen: %1$s</string>
 </resources>

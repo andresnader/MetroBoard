@@ -64,6 +64,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         fun onLanguageSelected(code: String) = Unit
         /** The word typed just before a swipe, so the decoder can favour the words that usually follow it. */
         fun previousWordForSwipe(): String? = null
+        /** The chip with what was just copied was tapped: paste it. */
+        fun onClipSuggestionTapped() = Unit
     }
 
     private val suggestionButtons = mutableListOf<TextView>()
@@ -261,7 +263,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 }
                 setOnClickListener {
-                    if (text.isNotEmpty()) listener.onSuggestion(text.toString())
+                    if (clipChipShown && index == 1) listener.onClipSuggestionTapped()
+                    else if (text.isNotEmpty()) listener.onSuggestion(text.toString())
                 }
             }
             suggestionButtons += button
@@ -807,7 +810,20 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         }
     }
 
-    fun render(state: ShiftState, forceUppercase: Boolean, candidates: List<String>, enterLabel: String) {
+    /** True while the centre slot of the suggestion bar shows what was just copied instead of a word. */
+    private var clipChipShown = false
+
+    /**
+     * [clipSuggestion]: a short preview of what was just copied. It takes the centre slot only when there are no
+     * words to suggest (an empty field), so it never gets in the way of the prediction.
+     */
+    fun render(
+        state: ShiftState,
+        forceUppercase: Boolean,
+        candidates: List<String>,
+        enterLabel: String,
+        clipSuggestion: String? = null,
+    ) {
         uppercase = state != ShiftState.LOWERCASE || forceUppercase
         keys.forEach { (spec, key) ->
             if (spec.action == KeyAction.TEXT && spec.label.any(Char::isLetter)) {
@@ -836,20 +852,40 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         // Render suggestion bar: left, center (bold), right. The engine ranks best first; the best
         // candidate goes in the emphasised centre slot, the runner-up on its left.
         if (toolbarOpen && candidates.isNotEmpty()) setToolbarOpen(false)
-        val slots = listOf(candidates.getOrNull(1), candidates.getOrNull(0), candidates.getOrNull(2))
+        val showChip = candidates.isEmpty() && !clipSuggestion.isNullOrEmpty()
+        clipChipShown = showChip
+        val slots = if (showChip) listOf(null, clipSuggestion, null)
+            else listOf(candidates.getOrNull(1), candidates.getOrNull(0), candidates.getOrNull(2))
         suggestionButtons.forEachIndexed { index, view ->
             val value = slots.getOrNull(index).orEmpty()
+            val chip = showChip && index == 1
             view.text = value
             view.isEnabled = value.isNotEmpty()
-            view.contentDescription = if (value.isEmpty()) null else
-                context.getString(R.string.suggestion_description, value)
+            view.contentDescription = when {
+                value.isEmpty() -> null
+                chip -> context.getString(R.string.clip_suggestion_description, value)
+                else -> context.getString(R.string.suggestion_description, value)
+            }
+            view.textSize = if (chip) 15f else 18f // the preview is longer than a word and shares the centre slot
+            if (chip) {
+                val icon = context.getDrawable(R.drawable.ic_clipboard)?.mutate()?.apply {
+                    setTint(KeyboardColors.accent)
+                    setBounds(0, 0, context.dp(16), context.dp(16))
+                }
+                view.setCompoundDrawablesRelative(icon, null, null, null)
+                view.compoundDrawablePadding = context.dp(6)
+            } else {
+                view.setCompoundDrawablesRelative(null, null, null, null)
+            }
             view.importantForAccessibility = if (value.isEmpty()) View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 else View.IMPORTANT_FOR_ACCESSIBILITY_YES
 
             // Primary candidate emphasis
             if (index == 1) {
                 view.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-                view.setTextColor(if (value.isNotEmpty()) KeyboardColors.foreground else KeyboardColors.muted)
+                view.setTextColor(
+                    if (chip) KeyboardColors.accent else if (value.isNotEmpty()) KeyboardColors.foreground else KeyboardColors.muted,
+                )
             } else {
                 view.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
                 view.setTextColor(KeyboardColors.muted)

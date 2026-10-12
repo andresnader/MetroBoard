@@ -26,6 +26,8 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import com.metroboard.ime.R
+import com.metroboard.ime.clipboard.ClipSuggestion
+import com.metroboard.ime.clipboard.ClipSuggestions
 import com.metroboard.ime.clipboard.ClipboardHistories
 import com.metroboard.ime.clipboard.ClipboardHistory
 import com.metroboard.ime.dictionary.LanguageDictionaryRegistry
@@ -55,7 +57,13 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private var page = KeyboardPage.LETTERS
     private var policy = EditorPolicy.from(EditorInfo(), false)
     private lateinit var clipboardHistory: ClipboardHistory
-    private val primaryClipListener = ClipboardManager.OnPrimaryClipChangedListener { recordPrimaryClip() }
+    private val primaryClipListener = ClipboardManager.OnPrimaryClipChangedListener {
+        recordPrimaryClip()
+        ui.post { if (::controller.isInitialized) render() } // what was just copied may now be offered on the bar
+    }
+
+    /** [Clip.copiedAt] of the copy that was last pasted from the suggestion bar; it is not offered again. */
+    private var usedClipAt = 0L
 
     // The dictionary search for the suggestion bar runs on its own thread, so a slow lookup (tens of ms for a
     // misspelt word) never holds up the next key press. Results from an older keystroke are dropped.
@@ -455,7 +463,28 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     }
 
     private fun draw() = LatencyProbe.time("draw") {
-        keyboard?.render(controller.shift.state, policy.editing.forceUppercase, candidates, enterLabel())
+        val chip = if (candidates.isEmpty()) currentClipSuggestion()?.preview else null
+        keyboard?.render(controller.shift.state, policy.editing.forceUppercase, candidates, enterLabel(), chip)
+    }
+
+    /**
+     * What was copied in the last minute, if it may be offered here: the clipboard history is on, the field is a text
+     * field that is not a password, and the device is unlocked. The cheap in-memory checks run first.
+     */
+    private fun currentClipSuggestion(): ClipSuggestion? {
+        if (!preferences.clipboardHistory || policy.sensitive) return null
+        if (policy.kind == FieldKind.NUMBER || policy.kind == FieldKind.PHONE || policy.kind == FieldKind.DATETIME) return null
+        val now = System.currentTimeMillis()
+        val fresh = ClipSuggestions.fresh(clipboardHistory.clips(now), now, usedClipAt) ?: return null
+        return if (deviceLocked()) null else fresh
+    }
+
+    override fun onClipSuggestionTapped() {
+        val offered = currentClipSuggestion() ?: return
+        usedClipAt = offered.copiedAt
+        keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
+        controller.paste(offered.text)
+        render()
     }
 
     private fun enterLabel(): String {
