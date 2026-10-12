@@ -8,7 +8,6 @@
 
 package com.metroboard.ime.ime
 
-import android.app.AlertDialog
 import android.app.KeyguardManager
 import android.content.ClipDescription
 import android.content.ClipboardManager
@@ -247,28 +246,12 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
 
     override fun onSpacebarLongPressed() {
         keyboard?.dismissPopups()
-        val languages = arrayOf(
-            getString(R.string.lang_es) + if (preferences.language == "es") " ✓" else "",
-            getString(R.string.lang_en) + if (preferences.language == "en") " ✓" else "",
-            getString(R.string.lang_fr) + if (preferences.language == "fr") " ✓" else "",
-            getString(R.string.lang_de) + if (preferences.language == "de") " ✓" else "",
-            getString(R.string.select_system_ime)
-        )
+        keyboard?.showLanguagePanel(preferences.language)
+    }
 
-        AlertDialog.Builder(this)
-            .setTitle(R.string.language_title)
-            .setItems(languages) { dialog, which ->
-                dialog.dismiss()
-                when (which) {
-                    0 -> switchLanguage("es")
-                    1 -> switchLanguage("en")
-                    2 -> switchLanguage("fr")
-                    3 -> switchLanguage("de")
-                    4 -> onSwitchKeyboard()
-                }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+    override fun onLanguageSelected(code: String) {
+        keyboard?.closePanel()
+        switchLanguage(code)
     }
 
     private fun switchLanguage(newLang: String) {

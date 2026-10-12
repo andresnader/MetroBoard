@@ -59,6 +59,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         fun onClipInsert(text: String) = Unit
         fun onSettingsRequested() = Unit
         fun onHeightModeChanged(mode: String) = Unit
+        fun onLanguageSelected(code: String) = Unit
     }
 
     private val suggestionButtons = mutableListOf<TextView>()
@@ -315,6 +316,18 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             history = history,
             clock = { System.currentTimeMillis() },
             onInsert = { text -> listener.onClipInsert(text) },
+            onClose = { closePanel() },
+        ))
+    }
+
+    /** Shows the language chooser in place of the keys. A dialog cannot be used from an IME: it has no window token. */
+    fun showLanguagePanel(current: String) {
+        setToolbarOpen(false)
+        showPanel(LanguagePanelView(
+            context = context,
+            current = current,
+            onSelect = { code -> listener.onLanguageSelected(code) },
+            onSystemKeyboard = { listener.onSwitchKeyboard() },
             onClose = { closePanel() },
         ))
     }
