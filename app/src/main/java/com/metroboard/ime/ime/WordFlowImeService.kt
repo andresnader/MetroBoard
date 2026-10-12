@@ -36,6 +36,7 @@ import com.metroboard.ime.haptics.HapticFeedback
 import com.metroboard.ime.keyboard.*
 import com.metroboard.ime.prediction.LocalSuggestionEngine
 import com.metroboard.ime.settings.KeyboardPreferences
+import com.metroboard.ime.settings.ClipboardManagerActivity
 import com.metroboard.ime.settings.SettingsActivity
 import com.metroboard.ime.sound.KeySound
 import com.metroboard.ime.ui.KeyboardView
@@ -341,6 +342,17 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         controller.paste(text)
         keyboard?.closePanel()
         render()
+    }
+
+    override fun onClipEditRequested(id: Long) {
+        if (deviceLocked()) return
+        keyboard?.dismissPopups()
+        startActivity(
+            Intent(this, ClipboardManagerActivity::class.java)
+                .putExtra(ClipboardManagerActivity.EXTRA_EDIT_ID, id)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        requestHideSelf(0)
     }
 
     override fun onSettingsRequested() {

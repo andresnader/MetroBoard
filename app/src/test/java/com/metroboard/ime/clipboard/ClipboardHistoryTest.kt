@@ -112,4 +112,68 @@ class ClipboardHistoryTest {
         h.delete(h.clips(2).single().id)
         assertEquals(3, calls)
     }
+
+    // ---- editing what was saved ------------------------------------------------
+
+    @Test fun editingChangesTheTextAndKeepsPinAndPlace() {
+        val h = history()
+        h.record("old", 1, false); h.record("other", 2, false)
+        val id = h.clips(3).first { it.text == "old" }.id
+        h.setPinned(id, true)
+        assertTrue(h.edit(id, "new text", 3))
+        val edited = h.clips(4).first { it.id == id }
+        assertEquals("new text", edited.text)
+        assertTrue(edited.pinned)
+        assertEquals("the copy time is not reset, so it is not offered as freshly copied", 1L, edited.copiedAt)
+    }
+
+    @Test fun anEditedPinnedClipIsWrittenToTheStore() {
+        val store = MemoryStore()
+        val h = history(store)
+        h.record("keep", 1, false)
+        val id = h.clips(2).single().id
+        h.setPinned(id, true)
+        h.edit(id, "kept and changed", 3)
+        assertEquals(listOf("kept and changed"), store.saved.map { it.text })
+    }
+
+    @Test fun editingFollowsTheSameRulesAsCopying() {
+        val h = history()
+        h.record("a", 1, false)
+        val id = h.clips(2).single().id
+        assertFalse(h.edit(id, "   \n ", 3))
+        assertFalse(h.edit(id, "x".repeat(ClipboardHistory.DEFAULT_MAX_CHARS + 1), 3))
+        assertFalse(h.edit(999L, "no such clip", 3))
+        assertEquals(listOf("a"), h.texts(4))
+        assertTrue(h.edit(id, "x".repeat(ClipboardHistory.DEFAULT_MAX_CHARS), 3))
+    }
+
+    @Test fun editingATextIntoAnotherClipMergesThemAndKeepsAnyPin() {
+        val h = history()
+        h.record("first", 1, false); h.record("second", 2, false)
+        val first = h.clips(3).first { it.text == "first" }.id
+        val second = h.clips(3).first { it.text == "second" }.id
+        h.setPinned(first, true)
+        assertTrue(h.edit(second, "first", 3))
+        val all = h.clips(4)
+        assertEquals(1, all.size)
+        assertEquals("first", all.single().text)
+        assertTrue("the pin of either clip survives the merge", all.single().pinned)
+    }
+
+    @Test fun editingNotifiesTheListeners() {
+        val h = history()
+        h.record("a", 1, false)
+        var notified = 0
+        h.addListener { notified++ }
+        h.edit(h.clips(2).single().id, "b", 3)
+        assertEquals(1, notified)
+    }
+
+    @Test fun anUnchangedTextIsAValidEditThatChangesNothing() {
+        val h = history()
+        h.record("same", 1, false)
+        assertTrue(h.edit(h.clips(2).single().id, "same", 3))
+        assertEquals(listOf("same"), h.texts(4))
+    }
 }

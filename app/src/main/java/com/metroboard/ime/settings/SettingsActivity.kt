@@ -451,6 +451,7 @@ class SettingsActivity : Activity() {
             if (!it) ClipboardHistories.shared(this@SettingsActivity).clearAll()
         }
         help(getString(R.string.clipboard_history_summary))
+        action(R.string.clipboard_manage) { startActivity(Intent(this@SettingsActivity, ClipboardManagerActivity::class.java)) }
         action(R.string.clear_clipboard) {
             ClipboardHistories.shared(this@SettingsActivity).clearAll()
             Toast.makeText(this@SettingsActivity, R.string.clipboard_cleared, Toast.LENGTH_SHORT).show()

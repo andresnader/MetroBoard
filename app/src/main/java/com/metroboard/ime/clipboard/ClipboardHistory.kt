@@ -67,6 +67,30 @@ class ClipboardHistory(
             items.filter { !it.pinned }.sortedByDescending { it.copiedAt }
     }
 
+    /**
+     * Changes the text of a saved clip, keeping its pin and its place (its copy time is not reset, so an edited clip
+     * is not offered as freshly copied). The same rules as for copying apply: not blank, at most [maxChars]. When the
+     * new text equals another clip the two merge into this one and the merged clip is pinned if either was. False,
+     * and nothing changes, when the clip does not exist or the text is not acceptable.
+     */
+    fun edit(id: Long, newText: String, now: Long): Boolean {
+        expire(now)
+        val index = items.indexOfFirst { it.id == id }
+        if (index < 0 || newText.isBlank() || newText.length > maxChars) return false
+        val current = items[index]
+        if (current.text == newText) return true
+        val twin = items.indexOfFirst { it.id != id && it.text == newText }
+        var pinned = current.pinned
+        if (twin >= 0) {
+            pinned = pinned || items[twin].pinned
+            items.removeAt(twin)
+        }
+        val at = items.indexOfFirst { it.id == id }
+        items[at] = current.copy(text = newText, pinned = pinned)
+        persistAndNotify(pinsChanged = pinned || current.pinned)
+        return true
+    }
+
     fun setPinned(id: Long, pinned: Boolean) {
         val index = items.indexOfFirst { it.id == id }
         if (index < 0 || items[index].pinned == pinned) return

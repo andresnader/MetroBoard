@@ -62,6 +62,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         /** The clipboard button. The service decides: show the history, or (in a password field) paste directly. */
         fun onClipboardPanelRequested() = Unit
         fun onClipInsert(text: String) = Unit
+        fun onClipEditRequested(id: Long) = Unit
         fun onSettingsRequested() = Unit
         fun onHeightModeChanged(mode: String) = Unit
         fun onLanguageSelected(code: String) = Unit
@@ -348,6 +349,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             history = history,
             clock = { System.currentTimeMillis() },
             onInsert = { text -> listener.onClipInsert(text) },
+            onEdit = { id -> listener.onClipEditRequested(id) },
             onClose = { closePanel() },
         ))
     }

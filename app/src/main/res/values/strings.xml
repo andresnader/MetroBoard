@@ -217,4 +217,9 @@
     <string name="speed_slow">Slow</string>
     <string name="speed_fast">Fast</string>
     <string name="backspace_summary">Holding Backspace deletes one character at a time, gently at first and then faster. A longer wait or a slower speed deletes less by accident.</string>
+    <string name="clipboard_manage">Manage clipboard</string>
+    <string name="clipboard_edit_title">Edit clip</string>
+    <string name="clipboard_clear_unpinned">Clear unpinned</string>
+    <string name="clipboard_invalid">A clip cannot be empty or longer than 2,000 characters</string>
+    <string name="clipboard_manage_hint">Tap a clip to edit it. Pinned clips are kept when the keyboard restarts; the rest are forgotten after an hour. In the keyboard, long-press a clip to edit it.</string>
 </resources>

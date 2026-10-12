@@ -196,4 +196,9 @@
     <string name="speed_slow">Lente</string>
     <string name="speed_fast">Rapide</string>
     <string name="backspace_summary">Maintenir Retour arrière supprime un caractère à la fois, doucement au début puis plus vite. Une attente plus longue ou une vitesse plus lente supprime moins par accident.</string>
+    <string name="clipboard_manage">Gérer le presse-papiers</string>
+    <string name="clipboard_edit_title">Modifier le clip</string>
+    <string name="clipboard_clear_unpinned">Effacer les non épinglés</string>
+    <string name="clipboard_invalid">Un clip ne peut pas être vide ni dépasser 2 000 caractères</string>
+    <string name="clipboard_manage_hint">Touchez un clip pour le modifier. Les clips épinglés sont conservés au redémarrage du clavier ; les autres sont oubliés après une heure. Dans le clavier, maintenez un clip pour le modifier.</string>
 </resources>

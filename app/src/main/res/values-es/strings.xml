@@ -196,4 +196,9 @@
     <string name="speed_slow">Lenta</string>
     <string name="speed_fast">Rápida</string>
     <string name="backspace_summary">Mantener Retroceso borra un carácter cada vez, con suavidad al principio y luego más rápido. Una espera más larga o una velocidad más lenta borra menos por accidente.</string>
+    <string name="clipboard_manage">Gestionar portapapeles</string>
+    <string name="clipboard_edit_title">Editar clip</string>
+    <string name="clipboard_clear_unpinned">Borrar no fijados</string>
+    <string name="clipboard_invalid">Un clip no puede estar vacío ni tener más de 2.000 caracteres</string>
+    <string name="clipboard_manage_hint">Toca un clip para editarlo. Los clips fijados se conservan cuando el teclado se reinicia; el resto se olvida pasada una hora. En el teclado, mantén pulsado un clip para editarlo.</string>
 </resources>

@@ -39,6 +39,8 @@ class ClipboardPanelView(
     private val history: ClipboardHistory,
     private val clock: () -> Long,
     private val onInsert: (String) -> Unit,
+    /** Long press on a clip: edit it (done in Settings, since a keyboard has no text field of its own). */
+    private val onEdit: (Long) -> Unit = {},
     private val onClose: () -> Unit,
 ) : LinearLayout(context) {
     private val grid = GridLayout(context).apply { columnCount = 2 }
@@ -140,6 +142,7 @@ class ClipboardPanelView(
             // A pinned tile carries an accent edge; the rest are plain key-coloured tiles.
             background = tileBackground(clip.pinned)
             setOnClickListener { onInsert(clip.text) }
+            setOnLongClickListener { onEdit(clip.id); true }
             addView(body, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f).apply { gravity = Gravity.CENTER_VERTICAL })
             addView(actions, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
         }

@@ -260,3 +260,53 @@ internal fun android.app.Activity.syncSystemBarAppearance() {
         window.decorView.systemUiVisibility = flags
     }
 }
+
+/**
+ * The window every full-screen Settings screen shares: theme and accent from the preferences, system bars that
+ * match, insets, and an empty vertical root to fill. Used by the personal dictionary and clipboard screens.
+ */
+internal fun android.app.Activity.metroScaffold(preferences: com.metroboard.ime.settings.KeyboardPreferences): LinearLayout {
+    KeyboardColors.accent = preferences.accentColor
+    val systemDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+        android.content.res.Configuration.UI_MODE_NIGHT_YES
+    KeyboardColors.setTheme(preferences.theme, systemDark)
+    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(KeyboardColors.background))
+    @Suppress("DEPRECATION")
+    run {
+        window.statusBarColor = KeyboardColors.background
+        window.navigationBarColor = KeyboardColors.background
+    }
+    val root = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setBackgroundColor(KeyboardColors.background)
+        setPadding(dp(16), 0, dp(16), 0)
+        setOnApplyWindowInsetsListener { view, insets ->
+            @Suppress("DEPRECATION")
+            view.setPadding(
+                dp(16) + insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
+                dp(16) + insets.systemWindowInsetRight, insets.systemWindowInsetBottom,
+            )
+            insets
+        }
+    }
+    setContentView(root)
+    syncSystemBarAppearance()
+    return root
+}
+
+/** The title row of a full-screen Settings screen: a back arrow and the title. */
+internal fun Context.metroBackHeader(title: CharSequence, backDescription: CharSequence, onBack: () -> Unit): View =
+    LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(android.widget.ImageView(context).apply {
+            setImageResource(R.drawable.ic_back)
+            contentDescription = backDescription
+            scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+            setColorFilter(KeyboardColors.foreground)
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            isClickable = true
+            setOnClickListener { onBack() }
+        }, LinearLayout.LayoutParams(dp(48), dp(48)))
+        addView(metroLabel(title, MetroType.TITLE).apply { setPadding(dp(4), 0, 0, 0) })
+    }

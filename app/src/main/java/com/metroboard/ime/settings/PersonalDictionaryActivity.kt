@@ -60,33 +60,9 @@ class PersonalDictionaryActivity : Activity() {
     }
 
     private fun buildUi() {
-        KeyboardColors.accent = preferences.accentColor
-        val systemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        KeyboardColors.setTheme(preferences.theme, systemDark)
-        window.setBackgroundDrawable(ColorDrawable(KeyboardColors.background))
-        @Suppress("DEPRECATION")
-        run {
-            window.statusBarColor = KeyboardColors.background
-            window.navigationBarColor = KeyboardColors.background
-        }
+        val root = metroScaffold(preferences)
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(KeyboardColors.background)
-            setPadding(dp(16), 0, dp(16), 0)
-            setOnApplyWindowInsetsListener { view, insets ->
-                @Suppress("DEPRECATION")
-                view.setPadding(
-                    dp(16) + insets.systemWindowInsetLeft, insets.systemWindowInsetTop,
-                    dp(16) + insets.systemWindowInsetRight, insets.systemWindowInsetBottom,
-                )
-                insets
-            }
-        }
-        setContentView(root)
-        syncSystemBarAppearance()
-
-        root.addView(header())
+        root.addView(metroBackHeader(getString(R.string.personal_dictionary_title), getString(R.string.dict_back)) { finish() })
         root.addView(metroSegmented(
             LanguagePacks.all.map { it.code to languageName(it.code) },
             language,
@@ -113,21 +89,6 @@ class PersonalDictionaryActivity : Activity() {
             addView(list)
         }, LinearLayout.LayoutParams(-1, 0, 1f).apply { topMargin = dp(8) })
         refresh()
-    }
-
-    private fun header(): View = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        addView(ImageView(this@PersonalDictionaryActivity).apply {
-            setImageResource(R.drawable.ic_back)
-            contentDescription = getString(R.string.dict_back)
-            scaleType = ImageView.ScaleType.CENTER_INSIDE
-            setColorFilter(KeyboardColors.foreground)
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            isClickable = true
-            setOnClickListener { finish() }
-        }, LinearLayout.LayoutParams(dp(48), dp(48)))
-        addView(metroLabel(getString(R.string.personal_dictionary_title), MetroType.TITLE).apply { setPadding(dp(4), 0, 0, 0) })
     }
 
     /** The field and its button. The field never learns or suggests from what is typed into it. */

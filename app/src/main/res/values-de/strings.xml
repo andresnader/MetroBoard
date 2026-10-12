@@ -196,4 +196,9 @@
     <string name="speed_slow">Langsam</string>
     <string name="speed_fast">Schnell</string>
     <string name="backspace_summary">Die gehaltene Rücktaste löscht Zeichen für Zeichen, anfangs sanft, dann schneller. Eine längere Wartezeit oder langsamere Geschwindigkeit löscht weniger aus Versehen.</string>
+    <string name="clipboard_manage">Zwischenablage verwalten</string>
+    <string name="clipboard_edit_title">Clip bearbeiten</string>
+    <string name="clipboard_clear_unpinned">Nicht angeheftete löschen</string>
+    <string name="clipboard_invalid">Ein Clip darf nicht leer sein und höchstens 2.000 Zeichen haben</string>
+    <string name="clipboard_manage_hint">Tippen Sie auf einen Clip, um ihn zu bearbeiten. Angeheftete Clips bleiben beim Neustart der Tastatur erhalten, die übrigen werden nach einer Stunde vergessen. In der Tastatur: Clip lange drücken zum Bearbeiten.</string>
 </resources>
