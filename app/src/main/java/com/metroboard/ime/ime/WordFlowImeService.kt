@@ -197,6 +197,9 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
             spacebarCursor = preferences.spacebarCursor,
             longPressSpace = preferences.longPressSpace,
             keyPopups = preferences.keyPopup,
+            longPressDelay = preferences.longPressDelay,
+            backspaceDelay = preferences.backspaceDelay,
+            backspaceSpeedSetting = preferences.backspaceSpeed,
         )
         syncSystemBarAppearance()
     }

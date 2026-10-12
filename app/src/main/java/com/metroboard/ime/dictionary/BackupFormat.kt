@@ -66,6 +66,9 @@ object BackupFormat {
         "pref_layout_override" to OneOf(setOf("AUTO", "QWERTY", "AZERTY", "QWERTZ")),
         "pref_theme" to OneOf(setOf("DARK", "LIGHT", "SYSTEM")),
         "pref_one_handed_mode" to OneOf(setOf("OFF", "LEFT", "RIGHT")),
+        "pref_long_press_delay" to OneOf(setOf("SHORT", "NORMAL", "LONG", "VERY_LONG")),
+        "pref_backspace_delay" to OneOf(setOf("SHORT", "NORMAL", "LONG")),
+        "pref_backspace_speed" to OneOf(setOf("SLOW", "NORMAL", "FAST")),
     )
 
     fun write(settings: Map<String, Any>, dictionaries: Map<String, List<LearnedWord>>): String {

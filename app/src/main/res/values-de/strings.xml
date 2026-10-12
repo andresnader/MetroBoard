@@ -185,4 +185,15 @@
     <string name="diagnostics_clear">Löschen</string>
     <string name="diagnostics_copied">Bericht kopiert</string>
     <string name="diagnostics_cleared">Gelöscht</string>
+    <string name="long_press_delay_title">Verzögerung beim langen Drücken</string>
+    <string name="delay_short">Kurz</string>
+    <string name="delay_normal">Normal</string>
+    <string name="delay_long">Lang</string>
+    <string name="delay_very_long">Sehr lang</string>
+    <string name="long_press_delay_summary">Wie lange Sie eine Taste halten, bis ihre Akzente (oder die Sprachauswahl auf der Leertaste) erscheinen.</string>
+    <string name="backspace_delay_title">Rücktaste: Wartezeit bis zur Wiederholung</string>
+    <string name="backspace_speed_title">Rücktaste: Wiederholgeschwindigkeit</string>
+    <string name="speed_slow">Langsam</string>
+    <string name="speed_fast">Schnell</string>
+    <string name="backspace_summary">Die gehaltene Rücktaste löscht Zeichen für Zeichen, anfangs sanft, dann schneller. Eine längere Wartezeit oder langsamere Geschwindigkeit löscht weniger aus Versehen.</string>
 </resources>

@@ -185,4 +185,15 @@
     <string name="diagnostics_clear">Borrar</string>
     <string name="diagnostics_copied">Informe copiado</string>
     <string name="diagnostics_cleared">Borrado</string>
+    <string name="long_press_delay_title">retardo de pulsación larga</string>
+    <string name="delay_short">Corto</string>
+    <string name="delay_normal">Normal</string>
+    <string name="delay_long">Largo</string>
+    <string name="delay_very_long">Muy largo</string>
+    <string name="long_press_delay_summary">Cuánto mantienes una tecla antes de que aparezcan sus acentos (o el selector de idioma en Espacio).</string>
+    <string name="backspace_delay_title">retroceso: espera antes de repetir</string>
+    <string name="backspace_speed_title">retroceso: velocidad al repetir</string>
+    <string name="speed_slow">Lenta</string>
+    <string name="speed_fast">Rápida</string>
+    <string name="backspace_summary">Mantener Retroceso borra un carácter cada vez, con suavidad al principio y luego más rápido. Una espera más larga o una velocidad más lenta borra menos por accidente.</string>
 </resources>

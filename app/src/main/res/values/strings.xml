@@ -206,4 +206,15 @@
     <string name="diagnostics_clear">Clear</string>
     <string name="diagnostics_copied">Report copied</string>
     <string name="diagnostics_cleared">Cleared</string>
+    <string name="long_press_delay_title">long-press delay</string>
+    <string name="delay_short">Short</string>
+    <string name="delay_normal">Normal</string>
+    <string name="delay_long">Long</string>
+    <string name="delay_very_long">Very long</string>
+    <string name="long_press_delay_summary">How long you hold a key before its accents (or the language picker on Space) appear.</string>
+    <string name="backspace_delay_title">backspace: wait before repeating</string>
+    <string name="backspace_speed_title">backspace: speed once it repeats</string>
+    <string name="speed_slow">Slow</string>
+    <string name="speed_fast">Fast</string>
+    <string name="backspace_summary">Holding Backspace deletes one character at a time, gently at first and then faster. A longer wait or a slower speed deletes less by accident.</string>
 </resources>

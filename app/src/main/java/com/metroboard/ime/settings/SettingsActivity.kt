@@ -410,6 +410,34 @@ class SettingsActivity : Activity() {
 
         toggle(R.string.long_press_space, preferences.longPressSpace) { preferences.longPressSpace = it }
         help(getString(R.string.long_press_space_summary))
+
+        title(getString(R.string.long_press_delay_title))
+        segmented(
+            listOf(
+                "SHORT" to getString(R.string.delay_short), "NORMAL" to getString(R.string.delay_normal),
+                "LONG" to getString(R.string.delay_long), "VERY_LONG" to getString(R.string.delay_very_long),
+            ),
+            preferences.longPressDelay,
+        ) { preferences.longPressDelay = it }
+        help(getString(R.string.long_press_delay_summary))
+
+        title(getString(R.string.backspace_delay_title))
+        segmented(
+            listOf(
+                "SHORT" to getString(R.string.delay_short), "NORMAL" to getString(R.string.delay_normal),
+                "LONG" to getString(R.string.delay_long),
+            ),
+            preferences.backspaceDelay,
+        ) { preferences.backspaceDelay = it }
+        title(getString(R.string.backspace_speed_title))
+        segmented(
+            listOf(
+                "SLOW" to getString(R.string.speed_slow), "NORMAL" to getString(R.string.delay_normal),
+                "FAST" to getString(R.string.speed_fast),
+            ),
+            preferences.backspaceSpeed,
+        ) { preferences.backspaceSpeed = it }
+        help(getString(R.string.backspace_summary))
     }
 
     // 7. PRIVACY

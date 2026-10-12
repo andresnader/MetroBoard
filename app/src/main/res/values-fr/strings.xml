@@ -185,4 +185,15 @@
     <string name="diagnostics_clear">Effacer</string>
     <string name="diagnostics_copied">Rapport copié</string>
     <string name="diagnostics_cleared">Effacé</string>
+    <string name="long_press_delay_title">délai d’appui long</string>
+    <string name="delay_short">Court</string>
+    <string name="delay_normal">Normal</string>
+    <string name="delay_long">Long</string>
+    <string name="delay_very_long">Très long</string>
+    <string name="long_press_delay_summary">Combien de temps vous maintenez une touche avant que ses accents (ou le sélecteur de langue sur Espace) apparaissent.</string>
+    <string name="backspace_delay_title">retour arrière : attente avant répétition</string>
+    <string name="backspace_speed_title">retour arrière : vitesse de répétition</string>
+    <string name="speed_slow">Lente</string>
+    <string name="speed_fast">Rapide</string>
+    <string name="backspace_summary">Maintenir Retour arrière supprime un caractère à la fois, doucement au début puis plus vite. Une attente plus longue ou une vitesse plus lente supprime moins par accident.</string>
 </resources>

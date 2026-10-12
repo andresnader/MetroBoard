@@ -128,4 +128,13 @@ class BackupFormatTest {
         assertTrue("height is either dropped or finite and in range", h == null || (h as Number).toDouble() in 0.7..1.4)
         assertEquals(0.0, (back.settings["pref_sound_volume"] as Number).toDouble(), 0.0)
     }
+
+    @Test fun gestureTimingSettingsSurviveABackupAndBadValuesAreDropped() {
+        val good = mapOf("pref_long_press_delay" to "LONG", "pref_backspace_delay" to "SHORT", "pref_backspace_speed" to "SLOW")
+        val parsed = BackupFormat.parse(BackupFormat.write(good, emptyMap()))
+        assertEquals(good, parsed.settings)
+        val bad = mapOf("pref_long_press_delay" to "FOREVER", "pref_backspace_speed" to "TURBO", "pref_backspace_delay" to 400)
+        val parsedBad = BackupFormat.parse(BackupFormat.write(bad, emptyMap()))
+        assertTrue("nothing invalid may be kept: ${parsedBad.settings}", parsedBad.settings.isEmpty())
+    }
 }

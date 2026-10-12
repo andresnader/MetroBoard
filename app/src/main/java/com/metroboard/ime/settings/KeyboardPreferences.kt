@@ -150,6 +150,21 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         get() = preferences.getString(KEY_THEME, "DARK") ?: "DARK"
         set(value) { preferences.edit().putString(KEY_THEME, value).apply() }
 
+    /** How long a key is held before its long-press action: SHORT, NORMAL, LONG or VERY_LONG (see GestureTimings). */
+    var longPressDelay: String
+        get() = preferences.getString(KEY_LONG_PRESS_DELAY, "NORMAL") ?: "NORMAL"
+        set(value) { preferences.edit().putString(KEY_LONG_PRESS_DELAY, value).apply() }
+
+    /** How long Backspace is held before it repeats: SHORT, NORMAL or LONG. */
+    var backspaceDelay: String
+        get() = preferences.getString(KEY_BACKSPACE_DELAY, "NORMAL") ?: "NORMAL"
+        set(value) { preferences.edit().putString(KEY_BACKSPACE_DELAY, value).apply() }
+
+    /** How fast a held Backspace repeats once it has started: SLOW, NORMAL or FAST. */
+    var backspaceSpeed: String
+        get() = preferences.getString(KEY_BACKSPACE_SPEED, "NORMAL") ?: "NORMAL"
+        set(value) { preferences.edit().putString(KEY_BACKSPACE_SPEED, value).apply() }
+
     /** Record response times for the diagnostics report. Off by default; not part of a backup (it is per device). */
     var diagnostics: Boolean
         get() = preferences.getBoolean(KEY_DIAGNOSTICS, false)
@@ -169,6 +184,7 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         KEY_WORDFLOW to wordFlow, KEY_SPACEBAR_CURSOR to spacebarCursor, KEY_LONG_PRESS_SPACE to longPressSpace,
         KEY_SHOW_KEY_POPUP to keyPopup, KEY_LANGUAGE to language, KEY_LAYOUT_OVERRIDE to layoutOverride,
         KEY_THEME to theme, KEY_ONE_HANDED_MODE to oneHandedMode,
+        KEY_LONG_PRESS_DELAY to longPressDelay, KEY_BACKSPACE_DELAY to backspaceDelay, KEY_BACKSPACE_SPEED to backspaceSpeed,
     )
 
     /**
@@ -200,6 +216,9 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         text(KEY_LAYOUT_OVERRIDE) { layoutOverride = it }
         text(KEY_THEME) { theme = it }
         text(KEY_ONE_HANDED_MODE) { oneHandedMode = it }
+        text(KEY_LONG_PRESS_DELAY) { longPressDelay = it }
+        text(KEY_BACKSPACE_DELAY) { backspaceDelay = it }
+        text(KEY_BACKSPACE_SPEED) { backspaceSpeed = it }
         (settings[KEY_SOUND_VOLUME] as? Number)?.let { soundVolume = it.toFloat(); applied++ }
         (settings[KEY_ACCENT_COLOR] as? Number)?.let { accentColor = it.toInt(); applied++ }
         (settings[KEY_HEIGHT_SCALE] as? Number)?.let { heightScale = it.toFloat(); applied++ }
@@ -289,5 +308,8 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         const val KEY_THEME = "pref_theme"
         const val KEY_ONE_HANDED_MODE = "pref_one_handed_mode"
         const val KEY_DIAGNOSTICS = "pref_diagnostics"
+        const val KEY_LONG_PRESS_DELAY = "pref_long_press_delay"
+        const val KEY_BACKSPACE_DELAY = "pref_backspace_delay"
+        const val KEY_BACKSPACE_SPEED = "pref_backspace_speed"
     }
 }

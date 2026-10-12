@@ -34,6 +34,7 @@ import com.metroboard.ime.gestures.KeyCenter
 import com.metroboard.ime.gestures.TouchInputListener
 import com.metroboard.ime.gestures.TouchInputStateMachine
 import com.metroboard.ime.gestures.TouchInteractionState
+import com.metroboard.ime.gestures.GestureTimings
 import com.metroboard.ime.gestures.WordFlowShapeDecoder
 import com.metroboard.ime.ime.EditorPolicy
 import com.metroboard.ime.ime.FieldKind
@@ -176,7 +177,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         listener = touchListener,
         swipeStartDistance = context.dp(24).toFloat(),
         swipeStartTimeMinMs = 45L,
-        longPressTimeoutMs = 350L,
+        longPressTimeoutMs = GestureTimings.longPressMs("NORMAL"),
         spaceCursorThreshold = context.dp(16).toFloat(),
         touchSlop = context.dp(12).toFloat(),
         wordFlowEnabled = true
@@ -184,11 +185,16 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var repeatingKey: KeySpec? = null
+    // Settings > Gestures: how long a key is held before its long press, and how a held Backspace repeats.
+    private var longPressDelayMs = GestureTimings.longPressMs("NORMAL")
+    private var backspaceStartMs = GestureTimings.backspaceInitialDelayMs("NORMAL")
+    private var backspaceSpeed = "NORMAL"
+    private var repeatCount = 0
     private val repeatRunnable = object : Runnable {
         override fun run() {
             repeatingKey?.let {
                 listener.onKey(it)
-                mainHandler.postDelayed(this, 60)
+                mainHandler.postDelayed(this, GestureTimings.backspaceIntervalMs(repeatCount++, backspaceSpeed))
             }
         }
     }
@@ -476,7 +482,14 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         spacebarCursor: Boolean = true,
         longPressSpace: Boolean = true,
         keyPopups: Boolean = true,
+        longPressDelay: String = "NORMAL",
+        backspaceDelay: String = "NORMAL",
+        backspaceSpeedSetting: String = "NORMAL",
     ) {
+        longPressDelayMs = GestureTimings.longPressMs(longPressDelay)
+        stateMachine.longPressTimeoutMs = longPressDelayMs
+        backspaceStartMs = GestureTimings.backspaceInitialDelayMs(backspaceDelay)
+        backspaceSpeed = backspaceSpeedSetting
         stateMachine.spaceCursorEnabled = spacebarCursor
         stateMachine.spaceLongPressEnabled = longPressSpace
         stateMachine.keyPopupsEnabled = keyPopups
@@ -610,9 +623,10 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
 
                 if (key?.action == KeyAction.DELETE) {
                     repeatingKey = key
-                    mainHandler.postDelayed(repeatRunnable, 400)
+                    repeatCount = 0
+                    mainHandler.postDelayed(repeatRunnable, backspaceStartMs)
                 } else if (key?.alternatives?.isNotEmpty() == true || key?.action == KeyAction.SPACE) {
-                    mainHandler.postDelayed(longPressTimerRunnable, 350)
+                    mainHandler.postDelayed(longPressTimerRunnable, longPressDelayMs)
                 }
                 return true
             }
