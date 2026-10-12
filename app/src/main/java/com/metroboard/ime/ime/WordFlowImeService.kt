@@ -160,12 +160,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     }
 
     private fun applyKeyboardLayout(kb: KeyboardView) {
-        val layoutType = when (preferences.layoutOverride.uppercase()) {
-            "QWERTY" -> KeyboardLayoutType.QWERTY
-            "AZERTY" -> KeyboardLayoutType.AZERTY
-            "QWERTZ" -> KeyboardLayoutType.QWERTZ
-            else -> KeyboardLayout.defaultLayoutFor(preferences.language)
-        }
+        val layoutType = KeyboardLayout.resolve(preferences.layoutOverride, preferences.language)
         kb.setLayout(
             page = page,
             policy = policy,

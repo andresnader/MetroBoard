@@ -165,4 +165,5 @@
     <string name="dict_back">Retour</string>
     <string name="dict_edit_hint">Modifier</string>
     <string name="about_credit">Un développement d’Ameizin — Andrés Nader · info@ameizin.ec</string>
+    <string name="preview_suggestions">Bonjour|Salut|Coucou</string>
 </resources>

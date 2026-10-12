@@ -76,6 +76,14 @@ object KeyboardLayout {
         else -> KeyboardLayoutType.QWERTY
     }
 
+    /** The layout to use: the user's explicit choice (QWERTY, AZERTY, QWERTZ), otherwise the language's own. */
+    fun resolve(override: String, language: String): KeyboardLayoutType = when (override.uppercase()) {
+        "QWERTY" -> KeyboardLayoutType.QWERTY
+        "AZERTY" -> KeyboardLayoutType.AZERTY
+        "QWERTZ" -> KeyboardLayoutType.QWERTZ
+        else -> defaultLayoutFor(language)
+    }
+
     fun rows(
         page: KeyboardPage,
         numberRow: Boolean = false,

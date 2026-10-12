@@ -20,13 +20,21 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings
+import android.text.InputType
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import com.metroboard.ime.R
 import com.metroboard.ime.clipboard.ClipboardHistories
 import com.metroboard.ime.dictionary.BackupFormat
 import com.metroboard.ime.dictionary.LocalPersonalDictionary
+import com.metroboard.ime.ime.EditorPolicy
+import com.metroboard.ime.keyboard.KeySpec
+import com.metroboard.ime.keyboard.KeyboardLayout
+import com.metroboard.ime.keyboard.KeyboardPage
+import com.metroboard.ime.keyboard.ShiftState
+import com.metroboard.ime.ui.KeyboardView
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.dp
 
@@ -274,25 +282,90 @@ class SettingsActivity : Activity() {
     }
 
     // 4. APPEARANCE
-    private fun createAppearancePage() = page {
-        title(getString(R.string.theme_title))
-        segmented(
-            listOf(
-                "DARK" to getString(R.string.theme_dark),
-                "LIGHT" to getString(R.string.theme_light),
-                "SYSTEM" to getString(R.string.theme_system),
-            ),
-            preferences.theme,
-        ) {
-            preferences.theme = it
-            refreshUi()
+    /**
+     * The appearance controls with the real keyboard pinned underneath, so every change (theme, accent, key tint)
+     * shows on the keyboard as it is made. The preview is for looking only: it does not type.
+     */
+    private fun createAppearancePage(): View {
+        val controls = page {
+            title(getString(R.string.theme_title))
+            segmented(
+                listOf(
+                    "DARK" to getString(R.string.theme_dark),
+                    "LIGHT" to getString(R.string.theme_light),
+                    "SYSTEM" to getString(R.string.theme_system),
+                ),
+                preferences.theme,
+            ) {
+                preferences.theme = it
+                refreshUi()
+            }
+
+            val activeName = KeyboardColors.LUMIA_PALETTE.find { it.color == preferences.accentColor }?.name ?: ""
+            title(getString(R.string.accent_color_title) + if (activeName.isNotEmpty()) ": $activeName" else "")
+            addView(createColorPicker())
+
+            toggle(R.string.tint_keys, preferences.tintKeys) {
+                preferences.tintKeys = it
+                keyboardPreview?.let(::applyPreview)
+            }
         }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(controls, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(createKeyboardPreview(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+        }
+    }
 
-        val activeName = KeyboardColors.LUMIA_PALETTE.find { it.color == preferences.accentColor }?.name ?: ""
-        title(getString(R.string.accent_color_title) + if (activeName.isNotEmpty()) ": $activeName" else "")
-        addView(createColorPicker())
+    private var keyboardPreview: KeyboardView? = null
 
-        toggle(R.string.tint_keys, preferences.tintKeys) { preferences.tintKeys = it }
+    private fun createKeyboardPreview(): View {
+        val keyboard = KeyboardView(this, object : KeyboardView.Listener {
+            override fun onKey(key: KeySpec) = Unit
+            override fun onSuggestion(word: String) = Unit
+            override fun onSwitchKeyboard() = Unit
+            override fun onAlternativesOpened() = Unit
+            override fun onWordFlow(word: String, candidates: List<String>) = Unit
+            override fun onLanguageToggled() = Unit
+            override fun onSpacebarCursorMoved(step: Int) = Unit
+            override fun onSpacebarLongPressed() = Unit
+            override fun onClipboardPasteRequested() = Unit
+        })
+        // The Settings window already pads for the system bars; the keyboard's own inset padding would double it.
+        keyboard.setOnApplyWindowInsetsListener { view, insets ->
+            view.setPadding(dp(3), 0, dp(3), dp(4))
+            insets
+        }
+        keyboardPreview = keyboard
+        applyPreview(keyboard)
+        // The frame takes every touch, so the preview is for looking at, not typing on. (A transparent overlay View
+        // would be wrong here: a MATCH_PARENT View under a wrapping parent grows to the whole screen.)
+        return object : FrameLayout(this) {
+            override fun onInterceptTouchEvent(ev: android.view.MotionEvent) = true
+        }.apply {
+            isClickable = true
+            addView(keyboard, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+        }
+    }
+
+    private fun applyPreview(keyboard: KeyboardView) {
+        val policy = EditorPolicy.from(EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }, preferences)
+        keyboard.setLayout(
+            page = KeyboardPage.LETTERS,
+            policy = policy,
+            numberRow = preferences.numberRow,
+            heightScale = preferences.heightScale,
+            language = preferences.language,
+            wordFlow = preferences.wordFlow,
+            tintKeys = preferences.tintKeys,
+            layoutOverride = KeyboardLayout.resolve(preferences.layoutOverride, preferences.language),
+            theme = preferences.theme,
+            oneHandedMode = preferences.oneHandedMode,
+            spacebarCursor = preferences.spacebarCursor,
+            longPressSpace = preferences.longPressSpace,
+            keyPopups = preferences.keyPopup,
+        )
+        keyboard.render(ShiftState.LOWERCASE, false, getString(R.string.preview_suggestions).split("|"), "")
     }
 
     // 5. SOUND & HAPTICS

@@ -185,4 +185,5 @@
     <string name="dict_back">Back</string>
     <string name="dict_edit_hint">Edit</string>
     <string name="about_credit">A development by Ameizin — Andrés Nader · info@ameizin.ec</string>
+    <string name="preview_suggestions">Hello|Hi|Hey</string>
 </resources>

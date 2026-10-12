@@ -203,5 +203,14 @@ class KeyboardLayoutTest {
         assertEquals("asdfghjkl", rows[1].map { it.label }.joinToString(""))
         assertEquals("leerzeichen", rows[3][2].label)
     }
-}
 
+    // One rule for "which layout" shared by the keyboard and the live preview in Settings.
+    @Test fun layoutOverrideWinsAndAutoFollowsTheLanguage() {
+        assertEquals(KeyboardLayoutType.AZERTY, KeyboardLayout.resolve("AZERTY", "es"))
+        assertEquals(KeyboardLayoutType.QWERTZ, KeyboardLayout.resolve("qwertz", "en"))
+        assertEquals(KeyboardLayoutType.QWERTY, KeyboardLayout.resolve("QWERTY", "fr"))
+        assertEquals(KeyboardLayoutType.AZERTY, KeyboardLayout.resolve("AUTO", "fr"))
+        assertEquals(KeyboardLayoutType.QWERTZ, KeyboardLayout.resolve("", "de"))
+        assertEquals(KeyboardLayoutType.QWERTY, KeyboardLayout.resolve("whatever", "es"))
+    }
+}
