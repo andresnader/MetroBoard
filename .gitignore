@@ -15,6 +15,7 @@ build/
 local.properties
 *.jks
 *.keystore
+keystore.properties
 
 # OS files
 .DS_Store
