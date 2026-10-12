@@ -241,3 +241,22 @@ internal fun Context.metroTextField(hintText: CharSequence): EditText = EditText
             ?.showSoftInput(this, InputMethodManager.SHOW_FORCED)
     }
 }
+
+/** Light theme needs dark status/navigation icons; otherwise the clock and battery are white on white. */
+internal fun android.app.Activity.syncSystemBarAppearance() {
+    val light = !KeyboardColors.isDarkTheme
+    if (Build.VERSION.SDK_INT >= 30) {
+        val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+            android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        window.insetsController?.setSystemBarsAppearance(if (light) mask else 0, mask)
+    } else {
+        @Suppress("DEPRECATION")
+        var flags = window.decorView.systemUiVisibility
+        val bits = if (Build.VERSION.SDK_INT >= 26)
+            View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        else View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        flags = if (light) flags or bits else flags and bits.inv()
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = flags
+    }
+}

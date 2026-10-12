@@ -25,7 +25,6 @@
     <string name="shift_word_casing">Groß-/Kleinschreibung mit Umschalttaste</string>
     <string name="shift_word_casing_summary">Umschalttaste am Wortende antippen: Anfangsbuchstabe groß → GROSSBUCHSTABEN → Kleinbuchstaben</string>
     <string name="learn_words">Neue Wörter lernen</string>
-    <string name="view_learned_words">Gelernte Wörter anzeigen</string>
     <string name="try_title">Ausprobieren</string>
     <string name="test_hint">Hier tippen, um die Tastatur zu testen…</string>
 
@@ -155,4 +154,14 @@
     <string name="clipboard_history_summary">Kopierter Text bleibt eine Stunde im Speicher; nur angeheftete Einträge werden auf diesem Gerät gespeichert. Was die App als sensibel markiert, wird nie behalten. In Passwortfeldern wird er nicht angezeigt.</string>
     <string name="clear_clipboard">Verlauf der Zwischenablage löschen</string>
     <string name="clipboard_cleared">Verlauf der Zwischenablage gelöscht</string>
+    <string name="personal_dictionary_title">Persönliches Wörterbuch</string>
+    <string name="dict_search_hint">Wörter suchen</string>
+    <string name="dict_add_hint">Neues Wort</string>
+    <string name="dict_add">Hinzufügen</string>
+    <string name="dict_edit_title">Wort bearbeiten</string>
+    <string name="dict_save">Speichern</string>
+    <string name="dict_invalid_word">Ein Wort hat 2 bis 40 Buchstaben, ohne Leerzeichen oder Ziffern</string>
+    <string name="dict_pending">Noch nicht vorgeschlagen</string>
+    <string name="dict_back">Zurück</string>
+    <string name="dict_edit_hint">Bearbeiten</string>
 </resources>

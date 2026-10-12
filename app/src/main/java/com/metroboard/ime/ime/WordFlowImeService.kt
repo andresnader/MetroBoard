@@ -60,7 +60,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         super.onCreate()
         preferences = KeyboardPreferences(this)
         sound = KeySound(this)
-        personalDict = LocalPersonalDictionary(this)
+        personalDict = LocalPersonalDictionary.shared(this)
         suggestionEngine = LocalSuggestionEngine(personalDict, this, preferences.language)
         controller = EditorController(editor, suggestionEngine)
         // Dictionaries load on a background thread; refresh the suggestion bar when one is ready.

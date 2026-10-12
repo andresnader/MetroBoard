@@ -59,7 +59,7 @@ class SettingsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         preferences = KeyboardPreferences(this)
-        personalDict = LocalPersonalDictionary(this)
+        personalDict = LocalPersonalDictionary.shared(this)
         currentPageIndex = (savedInstanceState?.getInt(STATE_PAGE) ?: 0).coerceIn(0, sectionTitles.size - 1)
         buildUi(savedInstanceState?.getIntArray(STATE_SCROLLS))
     }
@@ -241,7 +241,7 @@ class SettingsActivity : Activity() {
         toggle(R.string.shift_word_casing, preferences.shiftWordCasing) { preferences.shiftWordCasing = it }
         help(getString(R.string.shift_word_casing_summary))
 
-        action(R.string.view_learned_words) { showLearnedWordsDialog() }
+        action(R.string.personal_dictionary_title) { startActivity(Intent(this@SettingsActivity, PersonalDictionaryActivity::class.java)) }
 
         title(getString(R.string.try_title))
         addView(metroTextField(getString(R.string.test_hint)))
@@ -357,7 +357,7 @@ class SettingsActivity : Activity() {
             val count = personalDict.importFromSystemUserDictionary(this@SettingsActivity)
             Toast.makeText(this@SettingsActivity, getString(R.string.import_android_dict_done, count), Toast.LENGTH_LONG).show()
         }
-        action(R.string.view_learned_words) { showLearnedWordsDialog() }
+        action(R.string.personal_dictionary_title) { startActivity(Intent(this@SettingsActivity, PersonalDictionaryActivity::class.java)) }
         action(R.string.clear_learned_words) {
             personalDict.clear()
             Toast.makeText(this@SettingsActivity, R.string.dictionary_cleared, Toast.LENGTH_SHORT).show()
@@ -429,31 +429,6 @@ class SettingsActivity : Activity() {
         if (KeyboardColors.isDarkTheme) android.R.style.Theme_DeviceDefault_Dialog_Alert
         else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert,
     )
-
-    private fun showLearnedWordsDialog() {
-        val words = personalDict.getAllWords(preferences.language)
-        if (words.isEmpty()) {
-            Toast.makeText(this, R.string.no_learned_words, Toast.LENGTH_SHORT).show()
-            return
-        }
-        val items = words.map { "${it.word} (${it.frequency})" }.toTypedArray()
-        dialog()
-            .setTitle(R.string.view_learned_words)
-            .setItems(items) { _, which ->
-                val selected = words[which]
-                dialog()
-                    .setTitle(R.string.delete_word_title)
-                    .setMessage(getString(R.string.delete_word_message, selected.word))
-                    .setPositiveButton(R.string.delete_word) { _, _ ->
-                        personalDict.remove(selected.word, preferences.language)
-                        Toast.makeText(this, R.string.word_deleted, Toast.LENGTH_SHORT).show()
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
-            }
-            .setPositiveButton(android.R.string.ok, null)
-            .show()
-    }
 
     // Backup goes through the Storage Access Framework: the user picks the file, the app needs no
     // storage permission and nothing is placed on the system clipboard.
@@ -532,25 +507,6 @@ class SettingsActivity : Activity() {
             addView(content)
             isVerticalScrollBarEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
-        }
-    }
-
-    /** Light theme needs dark status/navigation icons; otherwise the clock and battery are white on white. */
-    private fun syncSystemBarAppearance() {
-        val light = !KeyboardColors.isDarkTheme
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            val mask = android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-                android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-            window.insetsController?.setSystemBarsAppearance(if (light) mask else 0, mask)
-        } else {
-            @Suppress("DEPRECATION")
-            var flags = window.decorView.systemUiVisibility
-            val bits = if (android.os.Build.VERSION.SDK_INT >= 26)
-                android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-            else android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            flags = if (light) flags or bits else flags and bits.inv()
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = flags
         }
     }
 }

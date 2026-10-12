@@ -31,6 +31,26 @@ class LocalPersonalDictionary(
     companion object {
         /** Uses before a learned word is protected from autocorrect and offered as a suggestion. */
         const val MIN_USES_TO_SUGGEST = 2
+
+        private val WORD = Regex("^\\p{L}[\\p{L}'\u2019-]*$")
+
+        /**
+         * The word as it will be stored, or null when it cannot be one: 2 to 40 characters, starting with a
+         * letter, made only of letters, apostrophes and hyphens (no spaces, digits or symbols).
+         */
+        fun clean(raw: String): String? = raw.trim().takeIf { it.length in 2..40 && WORD.matches(it) }
+
+        private val shared = HashMap<String, LocalPersonalDictionary>()
+
+        /**
+         * The one dictionary for [storageDir] in this process. Settings and the keyboard service must use the same
+         * object: with separate copies the stale one rewrites the file on its next save and undoes the other's edits.
+         */
+        @Synchronized
+        fun shared(storageDir: File): LocalPersonalDictionary =
+            shared.getOrPut(storageDir.canonicalPath) { LocalPersonalDictionary(storageDir) }
+
+        fun shared(context: Context): LocalPersonalDictionary = shared(context.filesDir)
     }
 
     init {
@@ -82,6 +102,40 @@ class LocalPersonalDictionary(
             langMap[key] = LearnedWord(trimmed, frequency = 1, language = lang)
         }
         saveToFile()
+    }
+
+    /**
+     * Adds a word the user typed by hand. It counts as already used often enough to be suggested and
+     * protected from autocorrect, keeps the capitalisation given, and fixes the spelling of an existing
+     * entry instead of duplicating it. False (nothing stored) when [raw] cannot be a word, see [clean].
+     */
+    @Synchronized
+    fun addWord(raw: String, language: String): Boolean {
+        val word = clean(raw) ?: return false
+        val lang = language.lowercase(Locale.ROOT)
+        val langMap = wordMap.getOrPut(lang) { HashMap() }
+        val key = word.lowercase(Locale.ROOT)
+        langMap[key] = LearnedWord(word, maxOf(langMap[key]?.frequency ?: 0, MIN_USES_TO_SUGGEST), lang)
+        saveToFile()
+        return true
+    }
+
+    /**
+     * Changes the spelling of [old]. It keeps its count; when [raw] already exists the two merge and the
+     * higher count wins. False, and nothing changes, when [old] is missing or [raw] cannot be a word.
+     */
+    @Synchronized
+    fun renameWord(old: String, raw: String, language: String): Boolean {
+        val word = clean(raw) ?: return false
+        val lang = language.lowercase(Locale.ROOT)
+        val langMap = wordMap[lang] ?: return false
+        val current = langMap[old.trim().lowercase(Locale.ROOT)] ?: return false
+        val key = word.lowercase(Locale.ROOT)
+        val count = maxOf(current.frequency, langMap[key]?.frequency ?: 0)
+        langMap.remove(old.trim().lowercase(Locale.ROOT))
+        langMap[key] = LearnedWord(word, count, lang)
+        saveToFile()
+        return true
     }
 
     @Synchronized

@@ -25,7 +25,6 @@
     <string name="shift_word_casing">Cambio de capitalización con Shift</string>
     <string name="shift_word_casing_summary">Al tocar Shift al final de una palabra: mayúscula inicial → MAYÚSCULAS → minúsculas</string>
     <string name="learn_words">Aprender palabras nuevas</string>
-    <string name="view_learned_words">Ver palabras aprendidas</string>
     <string name="try_title">pruébalo</string>
     <string name="test_hint">Escribe aquí para probar el teclado…</string>
 
@@ -155,4 +154,14 @@
     <string name="clipboard_history_summary">El texto copiado se guarda en memoria durante una hora; solo los clips fijados se guardan, en este dispositivo. Lo que la app marque como sensible nunca se conserva. No se muestra en campos de contraseña.</string>
     <string name="clear_clipboard">Borrar historial del portapapeles</string>
     <string name="clipboard_cleared">Historial del portapapeles borrado</string>
+    <string name="personal_dictionary_title">Diccionario personal</string>
+    <string name="dict_search_hint">Buscar palabras</string>
+    <string name="dict_add_hint">Nueva palabra</string>
+    <string name="dict_add">Añadir</string>
+    <string name="dict_edit_title">Editar palabra</string>
+    <string name="dict_save">Guardar</string>
+    <string name="dict_invalid_word">Una palabra tiene de 2 a 40 letras, sin espacios ni números</string>
+    <string name="dict_pending">Aún no se sugiere</string>
+    <string name="dict_back">Atrás</string>
+    <string name="dict_edit_hint">Editar</string>
 </resources>

@@ -39,7 +39,6 @@
     <string name="shift_word_casing">Change case with Shift</string>
     <string name="shift_word_casing_summary">Tap Shift at the end of a word: Capitalized → UPPERCASE → lowercase</string>
     <string name="learn_words">Learn new words</string>
-    <string name="view_learned_words">View learned words</string>
     <string name="try_title">try it</string>
     <string name="test_hint">Type here to try the keyboard…</string>
 
@@ -175,4 +174,14 @@
     <string name="clipboard_history_summary">Copied text is kept in memory for one hour; only pinned clips are saved, on this device. Anything the app marks as sensitive is never kept. It is not shown in password fields.</string>
     <string name="clear_clipboard">Clear clipboard history</string>
     <string name="clipboard_cleared">Clipboard history cleared</string>
+    <string name="personal_dictionary_title">Personal dictionary</string>
+    <string name="dict_search_hint">Search words</string>
+    <string name="dict_add_hint">New word</string>
+    <string name="dict_add">Add</string>
+    <string name="dict_edit_title">Edit word</string>
+    <string name="dict_save">Save</string>
+    <string name="dict_invalid_word">A word has 2 to 40 letters, with no spaces or digits</string>
+    <string name="dict_pending">Not suggested yet</string>
+    <string name="dict_back">Back</string>
+    <string name="dict_edit_hint">Edit</string>
 </resources>

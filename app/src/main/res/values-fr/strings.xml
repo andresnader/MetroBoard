@@ -25,7 +25,6 @@
     <string name="shift_word_casing">Changement de casse avec Maj</string>
     <string name="shift_word_casing_summary">Appuyez sur Maj à la fin d\'un mot : initiale majuscule → MAJUSCULES → minuscules</string>
     <string name="learn_words">Apprendre de nouveaux mots</string>
-    <string name="view_learned_words">Voir les mots appris</string>
     <string name="try_title">essayez-le</string>
     <string name="test_hint">Écrivez ici pour tester le clavier…</string>
 
@@ -155,4 +154,14 @@
     <string name="clipboard_history_summary">Le texte copié reste en mémoire pendant une heure ; seuls les éléments épinglés sont enregistrés, sur cet appareil. Ce que l\'application marque comme sensible n\'est jamais conservé. Il n\'est pas affiché dans les champs de mot de passe.</string>
     <string name="clear_clipboard">Effacer l\'historique du presse-papiers</string>
     <string name="clipboard_cleared">Historique du presse-papiers effacé</string>
+    <string name="personal_dictionary_title">Dictionnaire personnel</string>
+    <string name="dict_search_hint">Rechercher un mot</string>
+    <string name="dict_add_hint">Nouveau mot</string>
+    <string name="dict_add">Ajouter</string>
+    <string name="dict_edit_title">Modifier le mot</string>
+    <string name="dict_save">Enregistrer</string>
+    <string name="dict_invalid_word">Un mot comporte de 2 à 40 lettres, sans espace ni chiffre</string>
+    <string name="dict_pending">Pas encore suggéré</string>
+    <string name="dict_back">Retour</string>
+    <string name="dict_edit_hint">Modifier</string>
 </resources>
