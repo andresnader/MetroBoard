@@ -89,7 +89,7 @@
     <string name="settings_unavailable">Ouvrez les réglages de langue et de clavier de l\'appareil.</string>
 
     <string name="about_legal">Implémentation propre et indépendante inspirée du clavier Word Flow de Windows Phone 8.1. Sans code, polices, sons ni ressources propriétaires de Microsoft ni de Chiflow.</string>
-    <string name="about_licenses">Code : AGPL-3.0-or-later. Dictionnaires : validité des mots avec Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL) ; fréquences d\'OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0). Détails dans ATTRIBUTION.md.</string>
+    <string name="about_licenses">Code : AGPL-3.0-or-later. Dictionnaires : validité des mots avec Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL) ; fréquences d\'OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0) ; listes du mot suivant du Leipzig Corpora Collection via Helium314/aosp-dictionaries (CC BY 4.0). Détails dans ATTRIBUTION.md.</string>
 
     <string name="state_on">Activé</string>
     <string name="state_off">Désactivé</string>

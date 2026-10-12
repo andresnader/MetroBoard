@@ -120,7 +120,7 @@ object LanguageDictionaryRegistry {
     }
 
     /**
-     * Builds a dictionary from `dictionaries/<lang>.{dict,typos,bigrams,trigrams}` read through
+     * Builds a dictionary from `dictionaries/<lang>.{dict,typos,bigrams,nextwords,trigrams}` read through
      * [open]. Android passes `AssetManager.open`; JVM unit tests pass a file reader so they can
      * exercise the real shipped dictionaries instead of the tiny fallback lists.
      */
@@ -155,6 +155,19 @@ object LanguageDictionaryRegistry {
             readTsv(open, "dictionaries/$lang.bigrams") { parts ->
                 if (parts.size >= 2) {
                     bigrams.getOrPut(CompactWordTrie.normalize(parts[0].trim())) { ArrayList() }.add(parts[1].trim())
+                }
+            }
+        }
+        // Corpus next words (tools/build_bigrams.py): `word<TAB>next1<TAB>next2<TAB>next3`. They go after the
+        // hand-written pairs above, which stay first, and a word already listed is not added twice.
+        runCatching {
+            readTsv(open, "dictionaries/$lang.nextwords") { parts ->
+                if (parts.size >= 2) {
+                    val list = bigrams.getOrPut(CompactWordTrie.normalize(parts[0].trim())) { ArrayList() }
+                    for (next in parts.drop(1)) {
+                        val word = next.trim()
+                        if (word.isNotEmpty() && list.none { it.equals(word, ignoreCase = true) }) list.add(word)
+                    }
                 }
             }
         }

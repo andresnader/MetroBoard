@@ -9,7 +9,8 @@ El teclado instalado es 100 % offline. Todo lo que sigue se descarga **solo en d
 |---|---|---|
 | `<lang>.dict` | `palabra<TAB>frecuencia (1..255)`, ordenado por frecuencia, 60.000 palabras (es/en/fr/de) | `tools/build_dictionaries.py` |
 | `<lang>.typos` | `errata<TAB>corrección` (contracciones, tildes, erratas comunes) | `tools/generate_dictionaries.py` (a mano) |
-| `<lang>.bigrams`, `<lang>.trigrams` | siguiente palabra, **muy pocos pares (15–30 por idioma)** | `tools/generate_dictionaries.py` (a mano) |
+| `<lang>.bigrams`, `<lang>.trigrams` | siguiente palabra, **muy pocos pares (15–30 por idioma)**, escritos a mano y con prioridad | `tools/generate_dictionaries.py` (a mano) |
+| `<lang>.nextwords` | `palabra<TAB>sig1<TAB>sig2<TAB>sig3`: unas 30.000 palabras por idioma con hasta tres siguientes, ordenadas | `tools/build_bigrams.py` (Leipzig vía Helium314, CC BY 4.0) |
 
 Cifras exactas y huellas de las fuentes: [`dictionaries-build-report.md`](dictionaries-build-report.md) (generado).
 
@@ -68,3 +69,20 @@ en el top-3 entre el 62,6 % (es) y el 81,1 % (en).
   diccionario personal cubre el resto.
 - Un trie de 60.000 palabras ocupa 35–50 MB por idioma (estructura basada en `HashMap`); el registro mantiene como
   máximo 2 idiomas en memoria. Un índice compacto (array ordenado) reduciría la memoria y es trabajo pendiente.
+
+## Siguiente palabra (`tools/build_bigrams.py`)
+
+Las listas experimentales de [Helium314/aosp-dictionaries](https://codeberg.org/Helium314/aosp-dictionaries) se hicieron con el
+Leipzig Corpora Collection (noticias y web): sirven para predecir más allá del chat. Traen como máximo tres siguientes por palabra,
+con rango 1 a 3 y **sin conteos**, así que sirven para sugerir y desempatar, no para calcular una probabilidad.
+
+```bash
+python3 tools/build_bigrams.py --fetch   # descarga las 4 listas .combined a vendor/dict-sources/helium (solo desarrollo)
+python3 -I tools/build_bigrams.py        # genera los 4 .nextwords y docs/nextwords-build-report.md
+python3 -I tools/build_bigrams.py --check
+```
+
+Solo se conservan los pares cuyas dos palabras están en nuestro `<lang>.dict` (validado con Hunspell), de modo que el ruido de la
+web, los números y las palabras extranjeras no llegan al teclado. Se usa primero la forma en minúsculas («el») y solo después la
+capitalizada («El», inicio de frase). Los pares escritos a mano de `.bigrams` van siempre delante.
+

@@ -103,7 +103,7 @@
     <string name="settings_unavailable">Open the device language and keyboard settings.</string>
 
     <string name="about_legal">Own, independent implementation inspired by the Windows Phone 8.1 Word Flow keyboard. No proprietary code, fonts, sounds or resources from Microsoft or Chiflow.</string>
-    <string name="about_licenses">Code: AGPL-3.0-or-later. Dictionaries: word validity from Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL); frequencies from OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0). Details in ATTRIBUTION.md.</string>
+    <string name="about_licenses">Code: AGPL-3.0-or-later. Dictionaries: word validity from Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL); frequencies from OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0); next-word lists from the Leipzig Corpora Collection via Helium314/aosp-dictionaries (CC BY 4.0). Details in ATTRIBUTION.md.</string>
 
     <string name="state_on">On</string>
     <string name="state_off">Off</string>

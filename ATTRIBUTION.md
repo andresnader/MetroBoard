@@ -47,7 +47,13 @@ Repositorio: [LibreOffice/dictionaries](https://github.com/LibreOffice/dictionar
 
 ### 6. Listas de las que MetroBoard 0.2 y anteriores dependían (ya no se usan)
 - `xavier-hernandez/spanish-wordlist` (AGPL-3.0) y las frecuencias extraídas de Chi+Flow. Retiradas en 0.3; la sección de licencias del `NOTICE` explica el efecto.
-- Esta versión **no usa** Lexique 3, Leipzig Wortschatz, Wiktionary ni el corpus de Norvig, aunque versiones anteriores de este documento los mencionaban: nunca llegaron a incorporarse.
+- Esta versión **no usa** Lexique 3, Wiktionary ni el corpus de Norvig, aunque versiones anteriores de este documento los mencionaban: nunca llegaron a incorporarse. El Leipzig Wortschatz sí se usa desde 0.4, solo para las listas de «siguiente palabra» (sección 7).
+
+### 7. Listas de «siguiente palabra» (Helium314/aosp-dictionaries sobre el Leipzig Corpora Collection)
+- **Origen**: las listas experimentales de [Helium314/aosp-dictionaries](https://codeberg.org/Helium314/aosp-dictionaries) (`wordlists_experimental/main_{es,en_US,fr,de}.combined`), construidas a partir del [Leipzig Corpora Collection](https://wortschatz.uni-leipzig.de/en/download/) (Universidad de Leipzig; noticias y web).
+- **Licencia**: el repositorio declara «source lists under CC BY 4.0». Exige atribución, que es esta sección y la pantalla Acerca de. Su compatibilidad con la AGPL-3.0 del código queda pendiente de la misma revisión legal que las demás fuentes de datos.
+- **Qué se usa**: solo los pares «palabra → hasta tres siguientes» cuyas dos palabras están en nuestro diccionario ya validado con Hunspell. Se generan con `tools/build_bigrams.py` (reproducible, con huellas en `docs/nextwords-build-report.md`) y viajan como `assets/dictionaries/<lang>.nextwords`.
+- **Agradecimiento**: a la Universidad de Leipzig y a Helium314 por publicarlas.
 
 ### 9. Android Open Source Project (AOSP)
 - **Licencia**: Apache License 2.0
@@ -66,6 +72,7 @@ Repositorio: [LibreOffice/dictionaries](https://github.com/LibreOffice/dictionar
 | **Validez FR** | Grammalecte, Olivier R. | MPL-2.0 | `assets/dictionaries/fr.dict` (derivado) |
 | **Validez DE** | igerman98 / `de_DE_frami` | GPL v2 o v3 → v3 | `assets/dictionaries/de.dict` (derivado) |
 | **Frecuencias (4 idiomas)** | FrequencyWords / OpenSubtitles 2018 | CC-BY-SA-4.0 | pesos de los 4 `*.dict` |
+| **Siguiente palabra (4 idiomas)** | Helium314/aosp-dictionaries (Leipzig Corpora Collection) | CC BY 4.0 (según el repositorio de origen) | `assets/dictionaries/*.nextwords` |
 | **Android Framework APIs** | AOSP (Google) | Apache 2.0 | `app/build.gradle.kts` |
 
 ---
