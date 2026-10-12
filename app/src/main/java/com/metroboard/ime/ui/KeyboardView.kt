@@ -551,6 +551,10 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        // An accent popup is open: the finger that opened it chooses by sliding and lifting. The popup sits
+        // over the suggestion bar, so this must run before the "touch above the keys" shortcut below.
+        if (alternatives.isShowing && handleAlternativesTouch(ev)) return true
+
         // If touches occur on suggestion bar, allow normal button click dispatch
         val childY = ev.y
         if (childY < contentContainer.top || emojiKeyboard != null || panel != null) {
@@ -630,6 +634,39 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         }
 
         return super.dispatchTouchEvent(ev)
+    }
+
+    /** Slide / lift / cancel of the finger holding a key with its accent popup open. True when consumed. */
+    private fun handleAlternativesTouch(ev: MotionEvent): Boolean {
+        val action = ev.actionMasked
+        if (action != MotionEvent.ACTION_MOVE && action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL) {
+            return false
+        }
+        val index = ev.findPointerIndex(activeDownPointerId).takeIf { it >= 0 } ?: 0
+        val origin = IntArray(2).also { getLocationOnScreen(it) }
+        val screenX = origin[0] + ev.getX(index)
+        val screenY = origin[1] + ev.getY(index)
+        when (action) {
+            MotionEvent.ACTION_MOVE -> alternatives.fingerMoved(screenX, screenY)
+            MotionEvent.ACTION_UP -> {
+                alternatives.fingerReleased(screenX, screenY)
+                finishTouchSequence { stateMachine.onUp(ev.getPointerId(index), ev.getX(index), ev.getY(index), ev.eventTime, null) }
+            }
+            else -> {
+                alternatives.dismiss()
+                finishTouchSequence { stateMachine.onCancel() }
+            }
+        }
+        return true
+    }
+
+    /** What ending a touch always has to undo, so the state machine and the repeat/long-press timers never stick. */
+    private fun finishTouchSequence(endStateMachine: () -> Unit) {
+        mainHandler.removeCallbacks(longPressTimerRunnable)
+        mainHandler.removeCallbacks(repeatRunnable)
+        repeatingKey = null
+        highlightKey(null, false)
+        endStateMachine()
     }
 
     /**

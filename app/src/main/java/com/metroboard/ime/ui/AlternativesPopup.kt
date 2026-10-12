@@ -26,6 +26,10 @@ import com.metroboard.ime.util.dp
 
 class AlternativesPopup {
     private var popup: PopupWindow? = null
+    private var tiles: List<Pair<TextView, String>> = emptyList()
+    private var picked: ((String) -> Unit)? = null
+    private var highlighted = -1
+    private var slackPx = 0
 
     val isShowing: Boolean
         get() = popup?.isShowing == true
@@ -56,6 +60,7 @@ class AlternativesPopup {
             }
         }
 
+        val built = ArrayList<Pair<TextView, String>>(values.size)
         values.forEach { value ->
             val btn = TextView(context).apply {
                 text = value
@@ -84,7 +89,12 @@ class AlternativesPopup {
                 setMargins(context.dp(2), context.dp(2), context.dp(2), context.dp(2))
             }
             row.addView(btn, params)
+            built += btn to value
         }
+        tiles = built
+        picked = onSelected
+        highlighted = -1
+        slackPx = context.dp(14)
 
         val window = PopupWindow(
             row,
@@ -121,10 +131,47 @@ class AlternativesPopup {
         } catch (_: Exception) {}
     }
 
+    /** Index of the tile under a finger at this screen position, or -1. See [AlternativesSelection]. */
+    private fun indexAt(screenX: Float, screenY: Float): Int {
+        if (tiles.isEmpty()) return -1
+        val lefts = IntArray(tiles.size)
+        val rights = IntArray(tiles.size)
+        var bottom = 0
+        val at = IntArray(2)
+        tiles.forEachIndexed { i, (tile, _) ->
+            tile.getLocationOnScreen(at)
+            lefts[i] = at[0]
+            rights[i] = at[0] + tile.width
+            bottom = at[1] + tile.height
+        }
+        return AlternativesSelection.indexAt(screenX, screenY, lefts, rights, bottom, slackPx)
+    }
+
+    /** The finger that opened the popup moved: shows which tile releasing here would type. */
+    fun fingerMoved(screenX: Float, screenY: Float) {
+        val index = indexAt(screenX, screenY)
+        if (index == highlighted) return
+        tiles.getOrNull(highlighted)?.first?.isPressed = false
+        tiles.getOrNull(index)?.first?.isPressed = true
+        highlighted = index
+    }
+
+    /** The finger lifted: types the tile under it, if any, and closes the popup either way. */
+    fun fingerReleased(screenX: Float, screenY: Float) {
+        val index = indexAt(screenX, screenY)
+        val value = tiles.getOrNull(index)?.second
+        val callback = picked
+        dismiss()
+        if (value != null) callback?.invoke(value)
+    }
+
     fun dismiss() {
         try {
             popup?.dismiss()
         } catch (_: Exception) {}
         popup = null
+        tiles = emptyList()
+        picked = null
+        highlighted = -1
     }
 }
