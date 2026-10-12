@@ -24,6 +24,7 @@ class LatencyLog(private val capacity: Int = 600) {
     private val phases = LinkedHashMap<String, ArrayDeque<Double>>()
     private val stalls = ArrayDeque<Long>()
     private val fields = ArrayDeque<String>()
+    private val loads = LinkedHashMap<String, Long>()
 
     @Synchronized fun recordKey(queuedMs: Long, handledMs: Long) {
         push(queued, queuedMs.toDouble())
@@ -47,8 +48,13 @@ class LatencyLog(private val capacity: Int = 600) {
         while (fields.size > MAX_FIELDS) fields.removeFirst()
     }
 
+    /** How long loading a language's dictionary took (the cold start after a reboot is where a slow phone shows it). */
+    @Synchronized fun recordLoad(language: String, ms: Long) {
+        loads[language] = ms
+    }
+
     @Synchronized fun clear() {
-        queued.clear(); handled.clear(); phases.clear(); stalls.clear(); fields.clear()
+        queued.clear(); handled.clear(); phases.clear(); stalls.clear(); fields.clear(); loads.clear()
     }
 
     @Synchronized fun keySummary() = KeySummary(queued.size, stats(queued), stats(handled))
@@ -72,6 +78,9 @@ class LatencyLog(private val capacity: Int = 600) {
             out.appendLine("Touch waited before being handled (ms): ${keys.queued.line()}")
             out.appendLine("Handling a key (ms): ${keys.handled.line()}")
             phaseSummaries().forEach { (name, s) -> out.appendLine("  $name (ms): ${s.line()}") }
+        }
+        if (loads.isNotEmpty()) {
+            out.appendLine("Dictionary loads: " + loads.entries.joinToString(", ") { "${it.key} ${it.value} ms" })
         }
         val s = stallSummary()
         out.appendLine("Main thread stalls while the keyboard was open: over 50 ms ${s.over50}, over 200 ms ${s.over200}, over 1000 ms ${s.over1000}, longest ${s.longest} ms")

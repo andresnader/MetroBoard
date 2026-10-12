@@ -54,11 +54,49 @@ private const val MAX_TOP_ENTRIES = 15
 class CompactTrieNode {
     var isWord: Boolean = false
     var entry: DictionaryEntry? = null
-    val children = HashMap<Char, CompactTrieNode>()
+
+    // Children as two parallel arrays kept sorted by character. A HashMap per node cost about 200 bytes even for the
+    // many nodes with zero or one child; this is a few bytes for a leaf. Lookups scan at most ~30 keys (the root).
+    private var keys: CharArray = NO_KEYS
+    private var kids: Array<CompactTrieNode?> = NO_KIDS
+
+    val childCount: Int get() = keys.size
+    fun childChar(index: Int): Char = keys[index]
+    fun childAt(index: Int): CompactTrieNode = kids[index]!!
+
+    fun child(ch: Char): CompactTrieNode? {
+        for (i in keys.indices) if (keys[i] == ch) return kids[i]
+        return null
+    }
+
+    fun childOrCreate(ch: Char): CompactTrieNode {
+        var at = 0
+        while (at < keys.size && keys[at] < ch) at++
+        if (at < keys.size && keys[at] == ch) return kids[at]!!
+        val created = CompactTrieNode()
+        val newKeys = CharArray(keys.size + 1)
+        val newKids = arrayOfNulls<CompactTrieNode>(kids.size + 1)
+        System.arraycopy(keys, 0, newKeys, 0, at)
+        System.arraycopy(kids, 0, newKids, 0, at)
+        newKeys[at] = ch
+        newKids[at] = created
+        System.arraycopy(keys, at, newKeys, at + 1, keys.size - at)
+        System.arraycopy(kids, at, newKids, at + 1, kids.size - at)
+        keys = newKeys
+        kids = newKids
+        return created
+    }
+
+    private companion object {
+        val NO_KEYS = CharArray(0)
+        val NO_KIDS = arrayOfNulls<CompactTrieNode>(0)
+    }
     // Top MAX_TOP_ENTRIES entradas ordenadas por frecuencia descendente.
     // El orden se mantiene en todo momento para que insert() sea O(log K) en
     // lugar de reordenar la lista entera en cada nodo tocado.
-    val topEntries = ArrayList<DictionaryEntry>(MAX_TOP_ENTRIES)
+    // Most nodes (the deep ones) hold one or two words: start small and let it grow up to MAX_TOP_ENTRIES instead of
+    // reserving 15 slots in each of the ~250,000 nodes of a language.
+    val topEntries = ArrayList<DictionaryEntry>(2)
 }
 
 class CompactWordTrie {
@@ -75,7 +113,7 @@ class CompactWordTrie {
         addTopEntry(current, entry)
 
         for (ch in norm) {
-            val child = current.children.getOrPut(ch) { CompactTrieNode() }
+            val child = current.childOrCreate(ch)
             addTopEntry(child, entry)
             current = child
         }
@@ -149,7 +187,7 @@ class CompactWordTrie {
         val norm = normalize(prefix)
         var current = root
         for (ch in norm) {
-            val child = current.children[ch] ?: return emptyList()
+            val child = current.child(ch) ?: return emptyList()
             current = child
         }
         return current.topEntries
@@ -210,7 +248,9 @@ class CompactWordTrie {
     ) {
         if (depth >= rows.size - 1) return
 
-        for ((ch, child) in node.children) {
+        for (index in 0 until node.childCount) {
+            val ch = node.childChar(index)
+            val child = node.childAt(index)
             val prev = rows[depth]
             val cur = rows[depth + 1]
 

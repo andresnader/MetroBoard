@@ -72,7 +72,9 @@ object LanguageDictionaryRegistry {
             if (!inFlight.add(lang)) return
         }
         loader.execute {
+            val started = android.os.SystemClock.uptimeMillis()
             val result = runCatching { load() }
+            if (result.isSuccess) com.metroboard.ime.util.Diagnostics.log.recordLoad(lang, android.os.SystemClock.uptimeMillis() - started)
             val pending = synchronized(lock) {
                 inFlight.remove(lang)
                 result.getOrNull()?.let { loadedDictionaries[lang] = it }

@@ -91,4 +91,23 @@ class LatencyLogTest {
         assertEquals(0, log.stallSummary().over200)
         assertTrue(log.phaseSummaries().isEmpty())
     }
+
+    @Test fun dictionaryLoadTimesAreInTheReportBecauseAColdStartIsWhereASlowPhoneShowsIt() {
+        val log = LatencyLog()
+        log.recordLoad("es", 2310)
+        log.recordLoad("en", 1900)
+        val text = log.report("0.4.0", device)
+        assertTrue(text.contains("Dictionary loads"))
+        assertTrue(text.contains("es 2310 ms"))
+        assertTrue(text.contains("en 1900 ms"))
+    }
+
+    @Test fun anotherLoadOfTheSameLanguageReplacesTheOldNumber() {
+        val log = LatencyLog()
+        log.recordLoad("es", 5000)
+        log.recordLoad("es", 800)
+        val text = log.report("0.4.0", device)
+        assertTrue(text.contains("es 800 ms"))
+        assertFalse(text.contains("5000"))
+    }
 }
