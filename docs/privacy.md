@@ -1,6 +1,18 @@
-# Privacidad — MetroBoard 0.3
+# Privacidad — MetroBoard 0.4
 
 Lo que el código hace hoy (comprobado en [`0.3/security-audit.md`](0.3/security-audit.md)). Donde algo no está probado se dice.
+
+## Cambios de 0.4 (2026-10-12)
+
+- **Lo copiado se muestra en la barra de sugerencias** durante un minuto, solo en un campo vacío de texto, y nunca en contraseñas ni con
+  el dispositivo bloqueado. Usa el historial del portapapeles de 0.3, así que conserva sus límites (solo texto, ≤ 2.000 caracteres, nada
+  marcado como sensible, caducidad de 1 h, desactivable en Ajustes).
+- **Copia local del texto alrededor del cursor,** solo en memoria, para no pedírselo a la app en cada tecla. Nunca se usa en campos de
+  contraseña, no se guarda y se descarta al cambiar de campo o ante cualquier cambio externo.
+- **Registros de diagnóstico** (`MB_EDITOR`, `MB_LAT`, `MB_PHASES`): solo en builds *debug*; contienen el paquete de la app, indicadores
+  del campo y tiempos, nunca texto escrito.
+- Las listas de siguiente palabra son datos fijos del paquete: no se envía nada ni se aprende nada de ellas.
+- **El teclado sigue sin permiso de Internet.**
 
 ## Red y permisos
 

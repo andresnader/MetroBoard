@@ -131,12 +131,24 @@
     <string name="clipboard">Clipboard</string>
 
     <!-- Versions are names, not prose: the same in every language. -->
-    <string name="version_030" translatable="false">0.3.0</string>
-    <string name="version_020" translatable="false">0.2.0</string>
-    <string name="version_010" translatable="false">0.1.0</string>
+    <string name="version_040" translatable="false">0.4.0 · 2026-10-12</string>
+    <string name="version_030" translatable="false">0.3.0 · 2026-10-11</string>
+    <string name="version_020" translatable="false">0.2.0 · 2026-10-11</string>
+    <string name="version_010" translatable="false">0.1.0 · 2026-10-11</string>
 
     <string name="version_label">version %1$s</string>
     <string name="changelog_title">what\'s new</string>
+    <string-array name="changelog_0_4_0">
+        <item>Fixed a crash when holding Space to change language: the chooser is now a panel inside the keyboard.</item>
+        <item>Accents: hold a key, slide to the accent and lift. The popup no longer stays open.</item>
+        <item>Personal dictionary editor: add, edit, delete and search your words, per language.</item>
+        <item>Live preview: the keyboard changes as you pick a theme, an accent color or key tint.</item>
+        <item>Email and web address fields get @ and .com keys. Names are never autocorrected, and swipe typing stays out of passwords.</item>
+        <item>About 30,000 words per language now predict the next word, news and web text included, not just chat.</item>
+        <item>Swipe typing uses the previous word to choose between shapes that fit equally well.</item>
+        <item>What you just copied shows on the suggestion bar, ready to paste.</item>
+        <item>Much quicker response while typing: fewer waits on the app, and suggestions are searched off the main thread.</item>
+    </string-array>
     <string-array name="changelog_0_3_0">
         <item>Live clipboard: what you copy appears as tiles. Tap one to type it, pin it to keep it.</item>
         <item>New toolbar next to the suggestions: quick keyboard size and a shortcut to Settings.</item>

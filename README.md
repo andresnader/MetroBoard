@@ -30,7 +30,7 @@ Este proyecto está inspirado en múltiples proyectos y trabajos de la comunidad
 
 Agradecemos formalmente a cada autor y comunidad. Consulta [ATTRIBUTION.md](ATTRIBUTION.md) para los agradecimientos y licencias completas, y [CHANGELOG.md](CHANGELOG.md) para el historial de versiones.
 
-## Funcionalidades (v0.3)
+## Funcionalidades (v0.4)
 
 - Servicio `InputMethodService` registrado con `BIND_INPUT_METHOD`, metadatos XML,
   subtipo QWERTY y pantalla de habilitación, selección y preferencias.
@@ -228,8 +228,8 @@ Lista completa y contexto en [docs/0.3/qa-report.md](docs/0.3/qa-report.md). Las
 | v0.1 | IME + layout + Shift + puntuación; sugerencias locales de demostración |
 | v0.2 | Prototipo ampliado (rama principal local): 4 idiomas en la UI, Word Flow, emoji, diccionario personal |
 | v0.3 | **Calidad de escritura**: multitáctil, idiomas aislados, diccionarios reales, autocorrección conservadora y reversible, Word Flow sobre todo el léxico, copia de seguridad validada |
-| v0.4 | Predicción contextual (corpus de n-gramas), índice de diccionario compacto, validación en hardware y accesibilidad |
-| v0.5 | Ajuste fino de UX con mediciones en dispositivos reales |
+| v0.4 | **Más rápido y más inteligente** (2026-10-12): respuesta al escribir (p95 37 → 4 ms en el emulador), siguiente palabra real (~30.000 por idioma), Word Flow con contexto, editor del diccionario personal, tipos de campo (correo, URL, nombres), lo copiado en la barra, vista previa en vivo y firma de release. Detalle en [CHANGELOG](CHANGELOG.md) y [docs/0.4](docs/0.4/README.md) |
+| v0.5 | Cinemática y grabador de trazos reales, imágenes en el portapapeles, importar diccionarios, validación en hardware y accesibilidad |
 
 Las fuentes y decisiones están en [corpus-analysis.md](docs/corpus-analysis.md).
 La integración IME sigue la [guía oficial Android](https://developer.android.com/develop/ui/views/touch-and-input/creating-input-method)

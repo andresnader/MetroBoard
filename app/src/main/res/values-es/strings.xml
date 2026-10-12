@@ -117,6 +117,17 @@
 
     <string name="version_label">versión %1$s</string>
     <string name="changelog_title">novedades</string>
+    <string-array name="changelog_0_4_0">
+        <item>Corregido un cierre inesperado al mantener la barra espaciadora para cambiar de idioma: el selector ahora es un panel dentro del teclado.</item>
+        <item>Acentos: mantén una tecla, desliza hasta el acento y suelta. El popup ya no se queda abierto.</item>
+        <item>Editor del diccionario personal: añade, edita, borra y busca tus palabras, por idioma.</item>
+        <item>Vista previa en vivo: el teclado cambia mientras eliges tema, color de acento o tintado de teclas.</item>
+        <item>Los campos de correo y de direcciones web tienen teclas @ y .com. Los nombres nunca se autocorrigen y el trazo no actúa en contraseñas.</item>
+        <item>Unas 30.000 palabras por idioma predicen la siguiente, con texto de noticias y web, no solo de chat.</item>
+        <item>La escritura por deslizamiento usa la palabra anterior para elegir entre formas que encajan igual de bien.</item>
+        <item>Lo que acabas de copiar aparece en la barra de sugerencias, listo para pegar.</item>
+        <item>Respuesta mucho más ágil al escribir: menos esperas a la app y las sugerencias se buscan fuera del hilo principal.</item>
+    </string-array>
     <string-array name="changelog_0_3_0">
         <item>Portapapeles en vivo: lo que copias aparece en mosaicos. Toca uno para escribirlo, fíjalo para conservarlo.</item>
         <item>Nueva barra de herramientas junto a las sugerencias: tamaño rápido del teclado y acceso directo a Ajustes.</item>

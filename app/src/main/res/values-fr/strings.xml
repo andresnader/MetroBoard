@@ -117,6 +117,17 @@
 
     <string name="version_label">version %1$s</string>
     <string name="changelog_title">nouveautés</string>
+    <string-array name="changelog_0_4_0">
+        <item>Correction d’un plantage en maintenant la barre d’espace pour changer de langue : le sélecteur est désormais un panneau dans le clavier.</item>
+        <item>Accents : maintenez une touche, glissez jusqu’à l’accent et relâchez. La fenêtre ne reste plus ouverte.</item>
+        <item>Éditeur du dictionnaire personnel : ajoutez, modifiez, supprimez et recherchez vos mots, par langue.</item>
+        <item>Aperçu en direct : le clavier change pendant que vous choisissez le thème, la couleur d’accent ou la teinte des touches.</item>
+        <item>Les champs e-mail et adresse web ont des touches @ et .com. Les noms ne sont jamais corrigés et la saisie par glissement reste hors des mots de passe.</item>
+        <item>Environ 30 000 mots par langue prédisent le mot suivant, avec des textes d’actualité et du web, pas seulement du chat.</item>
+        <item>La saisie par glissement utilise le mot précédent pour départager des formes qui conviennent aussi bien.</item>
+        <item>Ce que vous venez de copier s’affiche dans la barre de suggestions, prêt à coller.</item>
+        <item>Réponse bien plus vive à la frappe : moins d’attente de l’application et suggestions cherchées hors du fil principal.</item>
+    </string-array>
     <string-array name="changelog_0_3_0">
         <item>Presse-papiers en direct : ce que vous copiez apparaît en vignettes. Touchez-en une pour l\'écrire, épinglez-la pour la garder.</item>
         <item>Nouvelle barre d\'outils à côté des suggestions : taille rapide du clavier et raccourci vers les réglages.</item>

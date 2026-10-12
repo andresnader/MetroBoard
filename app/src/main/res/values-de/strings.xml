@@ -117,6 +117,17 @@
 
     <string name="version_label">Version %1$s</string>
     <string name="changelog_title">Neuigkeiten</string>
+    <string-array name="changelog_0_4_0">
+        <item>Absturz behoben, wenn man die Leertaste zum Sprachwechsel gedrückt hält: Die Auswahl ist jetzt ein Panel in der Tastatur.</item>
+        <item>Akzente: Taste halten, zum Akzent gleiten und loslassen. Das Popup bleibt nicht mehr offen.</item>
+        <item>Editor für das persönliche Wörterbuch: Wörter pro Sprache hinzufügen, bearbeiten, löschen und suchen.</item>
+        <item>Live-Vorschau: Die Tastatur ändert sich, während Sie Design, Akzentfarbe oder Tastenfärbung wählen.</item>
+        <item>E-Mail- und Webadressfelder haben die Tasten @ und .com. Namen werden nie autokorrigiert, und die Wischeingabe bleibt aus Passwörtern heraus.</item>
+        <item>Rund 30.000 Wörter pro Sprache sagen das nächste Wort voraus, mit Nachrichten- und Webtexten, nicht nur Chat.</item>
+        <item>Die Wischeingabe nutzt das vorherige Wort, um zwischen gleich gut passenden Formen zu entscheiden.</item>
+        <item>Was Sie gerade kopiert haben, erscheint in der Vorschlagsleiste, bereit zum Einfügen.</item>
+        <item>Deutlich flottere Reaktion beim Tippen: weniger Warten auf die App, Vorschläge werden außerhalb des Hauptthreads gesucht.</item>
+    </string-array>
     <string-array name="changelog_0_3_0">
         <item>Zwischenablage live: Kopiertes erscheint als Kacheln. Antippen zum Einfügen, anheften zum Behalten.</item>
         <item>Neue Werkzeugleiste neben den Vorschlägen: schnelle Tastaturgröße und Abkürzung zu den Einstellungen.</item>

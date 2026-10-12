@@ -12,6 +12,59 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 ---
 
+## [0.4.0] - 2026-10-12 — Más rápido, más inteligente
+
+Desarrollo de Ameizin (Andrés Nader, info@ameizin.ec). Mediciones y método en [`docs/0.4/README.md`](docs/0.4/README.md).
+
+### Fixed
+- **Cierre inesperado al mantener la barra espaciadora** (`BadTokenException`). Un `AlertDialog` no puede mostrarse desde un
+  teclado (no tiene token de ventana de actividad), así que la pulsación larga y la tecla del globo fallaban siempre. El selector
+  de idioma es ahora un panel dentro del teclado. Reproducido y verificado en el emulador.
+- **La fila inferior se solapaba con los botones del sistema** (flecha de ocultar y globo). Se rellenaba por la barra de
+  navegación (63 px) y la franja real mide 126 px (`tappableElement`).
+- **Popup de acentos:** se elegía con un toque nuevo y se quedaba abierto. Ahora se mantiene la tecla, se desliza hasta el acento
+  y se suelta; soltar sin deslizar lo cierra sin escribir nada.
+- **Sin predicción en apps con `IME_FLAG_NO_PERSONALIZED_LEARNING`** (muchas apps de IA y de privacidad lo usan). Ese flag solo
+  prohíbe *aprender*; las sugerencias salen del diccionario fijo. **Cambia una decisión del commit inicial.** Los campos de
+  contraseña siguen sin leerse.
+- **Palabras borradas que reaparecían.** Ajustes y teclado abrían cada uno su copia del diccionario personal y la desactualizada
+  reescribía el archivo. Ahora comparten una sola instancia.
+- Caja «pruébalo» duplicada en *Acerca de*.
+
+### Added
+- **Editor del diccionario personal** (Ajustes ▸ Escritura): añadir, editar, borrar y buscar palabras por idioma. Una palabra
+  añadida a mano se sugiere y se protege de la autocorrección desde el primer momento.
+- **Vista previa en vivo en Apariencia:** el teclado real, fijo bajo los controles, cambia al instante con el tema, el acento y
+  el tintado de teclas.
+- **Tipos de campo:** correo (`@` en lugar del emoji), URL (`/` y `.com`; al mantener: `.net .org .edu .es .ec`), nombres de
+  persona (mayúscula en cada palabra, sin autocorrección) y **sin escritura por deslizamiento** en contraseñas, direcciones y
+  campos numéricos.
+- **Siguiente palabra real:** unas 30.000 palabras por idioma con hasta tres siguientes (antes ~20), del Leipzig Corpora
+  Collection vía Helium314/aosp-dictionaries (CC BY 4.0), filtradas contra nuestro diccionario. Noticias y web, así que funciona
+  más allá del chat. `tools/build_bigrams.py` lo reproduce.
+- **Word Flow con contexto:** la palabra anterior desempata entre trazos que encajan igual de bien. Acierto en primera posición
+  (sintético, pares reales), sin → con contexto: es 88→93 %, fr 80→87 %, de 74→81 %, en 77→79 % con ruido de 0,03 del ancho del teclado.
+- **Lo que acabas de copiar aparece en la barra de sugerencias,** listo para pegar (enlaces sin el `https://www.`), durante un
+  minuto y solo en un campo vacío; nunca en contraseñas ni con el dispositivo bloqueado.
+- **Firma de release** desde un `keystore.properties` ignorado por git: [`docs/release.md`](docs/release.md).
+- Créditos de Ameizin en *Acerca de* y en el README. Fechas en el registro de cambios de la app.
+
+### Performance (medido en el emulador; conviene repetirlo en un teléfono)
+- Cada letra hacía **dos llamadas síncronas a la app** para leer el texto alrededor del cursor (1–31 ms cada una). Ahora hay una
+  copia local, válida mientras todo lo que ocurre sea del teclado y descartada ante el primer cambio externo.
+- La búsqueda de sugerencias, de hasta 80 ms con una palabra mal escrita, corre en otro hilo.
+- Procesar una tecla, 98 pulsaciones de español real alternando versiones: mediana 6 → 2 ms, **p95 37 → 4 ms**, máximo 60 → 10 ms.
+- Herramientas solo para builds *debug*: `adb logcat -s MB_LAT MB_PHASES MB_EDITOR`.
+
+### No incluido todavía
+- Imágenes y capturas de pantalla en el portapapeles (solo texto y enlaces).
+- Cinemática del trazo (velocidad y curvatura) y un grabador de trazos reales para calibrar con datos de verdad.
+- Importar diccionarios `.combined` desde la app y bigramas personales.
+- Ayuda de IA con API propia (diseño recomendado: variante aparte, bajo demanda, sin permiso de Internet en la normal).
+- Teclado radial en arco.
+
+---
+
 ## [0.3.0] - 2026-10-11 — Quality & Experience
 
 Rama `feature/metroboard-0.3-quality`, apilada sobre el PR #1. Integra además el commit local no publicado `3d4de42`
