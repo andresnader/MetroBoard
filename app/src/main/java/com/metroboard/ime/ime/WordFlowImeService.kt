@@ -12,6 +12,8 @@ import android.app.KeyguardManager
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.util.Log
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.inputmethodservice.InputMethodService
@@ -102,6 +104,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         super.onStartInput(attribute, restarting)
         KeyboardColors.accent = preferences.accentColor
         policy = EditorPolicy.from(attribute, preferences)
+        logEditorForDiagnosis(attribute)
         editor.start(attribute, policy)
         controller.start(policy.editing)
         page = KeyboardPage.LETTERS
@@ -110,6 +113,20 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         keyboard?.closePanel() // a panel opened in one field must not follow the user into the next
         keyboard?.let { applyKeyboardLayout(it) }
         render()
+    }
+
+    /**
+     * Debug builds only: which flags a host app sends decides whether suggestions appear in it. Logs the
+     * package and the flag words, never anything typed. Read with `adb logcat -s MB_EDITOR`.
+     */
+    private fun logEditorForDiagnosis(info: EditorInfo) {
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+        Log.d(
+            "MB_EDITOR",
+            "pkg=${info.packageName} inputType=0x${Integer.toHexString(info.inputType)} " +
+                "imeOptions=0x${Integer.toHexString(info.imeOptions)} suggestions=${policy.editing.suggestions} " +
+                "autoCorrect=${policy.editing.autoCorrect} learn=${policy.editing.learnWords} kind=${policy.kind}",
+        )
     }
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
