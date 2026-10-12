@@ -117,6 +117,13 @@
 
     <string name="version_label">version %1$s</string>
     <string name="changelog_title">nouveautés</string>
+    <string-array name="changelog_0_4_1">
+        <item>Maintenir Retour arrière supprime désormais doucement au début puis plus vite. Choisissez l’attente et la vitesse dans Réglages > Gestes.</item>
+        <item>Le délai d’appui long (accents, sélecteur de langue) est réglable.</item>
+        <item>Gérer le presse-papiers : modifiez, épinglez, supprimez et effacez ce qui est enregistré. Dans le clavier, maintenez un clip pour le modifier.</item>
+        <item>Diagnostic : si la frappe reste lente, activez « Enregistrer les temps de réponse » dans À propos, tapez une minute et copiez le rapport.</item>
+        <item>Moins d’attente de l’application (les majuscules sont calculées localement) et les dictionnaires utilisent un tiers de mémoire en moins.</item>
+    </string-array>
     <string-array name="changelog_0_4_0">
         <item>Correction d’un plantage en maintenant la barre d’espace pour changer de langue : le sélecteur est désormais un panneau dans le clavier.</item>
         <item>Accents : maintenez une touche, glissez jusqu’à l’accent et relâchez. La fenêtre ne reste plus ouverte.</item>

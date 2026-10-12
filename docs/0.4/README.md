@@ -36,3 +36,24 @@ Los pares salen de las propias listas, así que es el caso favorable; las palabr
 ## Datos de las listas de siguiente palabra
 
 Ver [`../nextwords-build-report.md`](../nextwords-build-report.md): 29.000–33.000 palabras por idioma, 62.000–81.000 pares.
+
+## 0.4.1 — reporte de pruebas en WhatsApp (2026-10-12)
+
+El APK probado era la 0.4.0 completa (contiene la caché del texto, las sugerencias asíncronas y las listas de siguiente palabra),
+así que **las mediciones del emulador no reflejaban el teléfono**.
+
+- **Pulsaciones perdidas:** prueba instrumentada `fastSloppyTypingNeverDropsOrReordersAKey` (6 semillas × 120 pulsaciones, 6–14 por
+  segundo, uno y dos pulgares con solapes, el pulgar «rodando» durante el contacto): pasa. La lógica de toques no descarta ni reordena.
+- **Carga por tecla en el emulador** (98 teclas): espera del toque mediana 2 ms; procesar la tecla 2–4 ms; la barra espaciadora con
+  erratas 5–8 ms (`edit`) y `getCursorCapsMode` 1–1,6 ms (ya eliminado).
+- **Memoria:** el diccionario de un idioma ocupaba 51 MB de heap en la JVM; ahora 34 MB. Con un idioma cargado el proceso del teclado
+  pasó de 54 a 43 MB de heap Java y de 103 a 84 MB de PSS.
+- **Reinicio con PIN (emulador):** antes de desbloquear, `dumpsys user` da `RUNNING_LOCKED` y `ime list -s` solo muestra Gboard;
+  tras desbloquear, `RUNNING_UNLOCKED`, el teclado sigue siendo el predeterminado (`settings get secure default_input_method`) y se
+  muestra al instante.
+- **Borrado mantenido:** mantener Retroceso 1,0 / 1,5 / 2,5 s borró 6 / 11 / 23 caracteres (con 60 ms fijos serían ≈ 9 / 18 / 35).
+
+Lo que sigue sin poder afirmarse: la causa exacta del retraso en el teléfono. El informe de **Ajustes ▸ Acerca de ▸ diagnóstico** la
+acotará: separa lo que espera el toque (el sistema o el hilo bloqueado), lo que tarda cada fase, los bloqueos del hilo principal, el
+heap y los tiempos de carga del diccionario.
+

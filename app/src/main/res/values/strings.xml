@@ -131,6 +131,7 @@
     <string name="clipboard">Clipboard</string>
 
     <!-- Versions are names, not prose: the same in every language. -->
+    <string name="version_041" translatable="false">0.4.1 · 2026-10-12</string>
     <string name="version_040" translatable="false">0.4.0 · 2026-10-12</string>
     <string name="version_030" translatable="false">0.3.0 · 2026-10-11</string>
     <string name="version_020" translatable="false">0.2.0 · 2026-10-11</string>
@@ -138,6 +139,13 @@
 
     <string name="version_label">version %1$s</string>
     <string name="changelog_title">what\'s new</string>
+    <string-array name="changelog_0_4_1">
+        <item>Holding Backspace now deletes gently at first and then faster. Choose the wait and the speed in Settings > Gestures.</item>
+        <item>The long-press delay (accents, language picker) is adjustable.</item>
+        <item>Manage clipboard: edit, pin, delete and clear what was saved. In the keyboard, long-press a clip to edit it.</item>
+        <item>Diagnostics: if typing still feels slow, turn on “Record response times” in About, type for a minute and copy the report.</item>
+        <item>Less waiting on the app (capitals are worked out locally) and dictionaries use a third less memory.</item>
+    </string-array>
     <string-array name="changelog_0_4_0">
         <item>Fixed a crash when holding Space to change language: the chooser is now a panel inside the keyboard.</item>
         <item>Accents: hold a key, slide to the accent and lift. The popup no longer stays open.</item>

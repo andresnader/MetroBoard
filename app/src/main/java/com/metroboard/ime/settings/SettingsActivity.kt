@@ -480,6 +480,7 @@ class SettingsActivity : Activity() {
             setLinkTextColor(KeyboardColors.accent)
         })
         title(getString(R.string.changelog_title))
+        changelog(R.string.version_041, R.array.changelog_0_4_1)
         changelog(R.string.version_040, R.array.changelog_0_4_0)
         changelog(R.string.version_030, R.array.changelog_0_3_0)
         changelog(R.string.version_020, R.array.changelog_0_2_0)

@@ -229,6 +229,7 @@ Lista completa y contexto en [docs/0.3/qa-report.md](docs/0.3/qa-report.md). Las
 | v0.2 | Prototipo ampliado (rama principal local): 4 idiomas en la UI, Word Flow, emoji, diccionario personal |
 | v0.3 | **Calidad de escritura**: multitáctil, idiomas aislados, diccionarios reales, autocorrección conservadora y reversible, Word Flow sobre todo el léxico, copia de seguridad validada |
 | v0.4 | **Más rápido y más inteligente** (2026-10-12): respuesta al escribir (p95 37 → 4 ms en el emulador), siguiente palabra real (~30.000 por idioma), Word Flow con contexto, editor del diccionario personal, tipos de campo (correo, URL, nombres), lo copiado en la barra, vista previa en vivo y firma de release. Detalle en [CHANGELOG](CHANGELOG.md) y [docs/0.4](docs/0.4/README.md) |
+| v0.4.1 | **Respuesta al reporte de pruebas** (2026-10-12): borrado mantenido escalonado y ajustable, retardo de pulsación larga ajustable, gestionar y editar el portapapeles, diagnóstico de tiempos para APK de release, un tercio menos de memoria. Hallazgos en [docs/0.4](docs/0.4/README.md) |
 | v0.5 | Cinemática y grabador de trazos reales, imágenes en el portapapeles, importar diccionarios, validación en hardware y accesibilidad |
 
 Las fuentes y decisiones están en [corpus-analysis.md](docs/corpus-analysis.md).

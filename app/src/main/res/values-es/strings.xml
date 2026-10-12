@@ -117,6 +117,13 @@
 
     <string name="version_label">versión %1$s</string>
     <string name="changelog_title">novedades</string>
+    <string-array name="changelog_0_4_1">
+        <item>Mantener Retroceso ahora borra con suavidad al principio y luego más rápido. Elige la espera y la velocidad en Ajustes > Gestos.</item>
+        <item>El retardo de pulsación larga (acentos, selector de idioma) es ajustable.</item>
+        <item>Gestionar portapapeles: edita, fija, borra y vacía lo guardado. En el teclado, mantén pulsado un clip para editarlo.</item>
+        <item>Diagnóstico: si escribir sigue yendo lento, activa «Registrar tiempos de respuesta» en Acerca de, escribe un minuto y copia el informe.</item>
+        <item>Menos esperas a la app (las mayúsculas se calculan localmente) y los diccionarios usan un tercio menos de memoria.</item>
+    </string-array>
     <string-array name="changelog_0_4_0">
         <item>Corregido un cierre inesperado al mantener la barra espaciadora para cambiar de idioma: el selector ahora es un panel dentro del teclado.</item>
         <item>Acentos: mantén una tecla, desliza hasta el acento y suelta. El popup ya no se queda abierto.</item>

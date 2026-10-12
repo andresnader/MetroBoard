@@ -117,6 +117,13 @@
 
     <string name="version_label">Version %1$s</string>
     <string name="changelog_title">Neuigkeiten</string>
+    <string-array name="changelog_0_4_1">
+        <item>Die gehaltene Rücktaste löscht jetzt anfangs sanft und dann schneller. Wartezeit und Geschwindigkeit stellen Sie unter Einstellungen > Gesten ein.</item>
+        <item>Die Verzögerung beim langen Drücken (Akzente, Sprachauswahl) ist einstellbar.</item>
+        <item>Zwischenablage verwalten: Gespeichertes bearbeiten, anheften, löschen und leeren. In der Tastatur: Clip lange drücken zum Bearbeiten.</item>
+        <item>Diagnose: Wenn das Tippen weiter langsam wirkt, schalten Sie unter Info „Antwortzeiten aufzeichnen“ ein, tippen Sie eine Minute und kopieren Sie den Bericht.</item>
+        <item>Weniger Warten auf die App (Großschreibung wird lokal berechnet), und die Wörterbücher brauchen ein Drittel weniger Speicher.</item>
+    </string-array>
     <string-array name="changelog_0_4_0">
         <item>Absturz behoben, wenn man die Leertaste zum Sprachwechsel gedrückt hält: Die Auswahl ist jetzt ein Panel in der Tastatur.</item>
         <item>Akzente: Taste halten, zum Akzent gleiten und loslassen. Das Popup bleibt nicht mehr offen.</item>

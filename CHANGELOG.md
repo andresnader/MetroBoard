@@ -12,6 +12,47 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 ---
 
+## [0.4.1] - 2026-10-12 — Respuesta al reporte de pruebas en WhatsApp
+
+Reporte `reporte_t_cnico_e_incidencias_teclado_android.md` (APK de la 0.4.0). Qué se encontró, qué se arregló y qué **no** se puede
+afirmar todavía, en [`docs/0.4/README.md`](docs/0.4/README.md).
+
+### Fixed
+- **BUG-02, borrado mantenido descontrolado.** Repetía cada 60 ms desde la primera repetición (≈17 caracteres por segundo, fijo).
+  Ahora espera (corto 250 / normal 400 / largo 600 ms), borra con suavidad los 8 primeros caracteres y luego acelera, a velocidad
+  lenta, normal o rápida. Medido: mantener 1,5 s borra 11 caracteres (antes ≈18) y 2,5 s borra 23 (antes ≈35).
+
+### Added
+- **REQ-01:** el retardo de pulsación larga (corto 250 / normal 350 / largo 500 / muy largo 700 ms), el retardo inicial del
+  borrado y su velocidad son ajustes (Ajustes ▸ Gestos), validados e incluidos en la copia de seguridad.
+- **REQ-02:** *Gestionar portapapeles* (Ajustes ▸ Privacidad): interruptor del historial, **editar** el texto guardado, fijar, borrar
+  y vaciar. En el teclado, mantener pulsado un clip abre esa pantalla sobre ese clip. (Ya existían interruptor, lista, fijar y borrar;
+  faltaba editar.)
+- **Diagnóstico que funciona en el APK de release** (Ajustes ▸ Acerca de, apagado por defecto): registra solo números en memoria
+  (espera del toque, tiempo de cada tecla y de cada fase, bloqueos del hilo principal, tiempos de carga del diccionario, indicadores
+  de los últimos campos) y «Copiar informe». Es la forma de medir en tu teléfono lo que el emulador no muestra.
+
+### Performance
+- Las mayúsculas automáticas se calculan con la copia local del texto: antes cada espacio hacía una llamada **síncrona** a la app
+  (`getCursorCapsMode`), que espera al hilo de interfaz de WhatsApp. Una prueba instrumentada compara el resultado con el de la
+  plataforma para 21 textos.
+- El diccionario ocupa **un tercio menos de memoria** por idioma (trie con arreglos en lugar de un `HashMap` por nodo): 51 → 34 MB en
+  la JVM; en el emulador el heap Java del teclado pasa de 54 a 43 MB. Menos recolección de basura y menos riesgo de que Android mate
+  el proceso.
+
+### Investigated, not changed
+- **BUG-01, retraso y pulsaciones perdidas:** una prueba de estrés aleatoria (6 semillas × 120 pulsaciones, 6–14 por segundo, uno y dos
+  pulgares con solapes y deriva) **no pierde ni reordena ninguna tecla** en la `KeyboardView` real, y en el emulador cada tecla cuesta
+  2–4 ms. El retraso del video es, por tanto, esperas en tiempo real en el teléfono (probablemente llamadas síncronas a WhatsApp, el
+  recolector de basura o carga del procesador) que solo se ven midiendo allí: usa el diagnóstico.
+- **BUG-03, «no se inicia tras reiniciar»:** reproducido con un PIN en el emulador. Antes del primer desbloqueo el teclado **no está
+  disponible** (solo Gboard, porque no declara arranque directo); tras desbloquear vuelve solo, sigue siendo el predeterminado y se
+  muestra al instante. **No hace falta ningún `BroadcastReceiver` de `BOOT_COMPLETED`** (el sistema arranca la IME cuando hace falta)
+  y añadirlo no cambiaría nada. Soportar el arranque directo exige mover preferencias y diccionario personal a almacenamiento
+  protegido del dispositivo, con riesgo de perder datos si se hace mal: no se hizo a ciegas.
+
+---
+
 ## [0.4.0] - 2026-10-12 — Más rápido, más inteligente
 
 Desarrollo de Ameizin (Andrés Nader, info@ameizin.ec). Mediciones y método en [`docs/0.4/README.md`](docs/0.4/README.md).
