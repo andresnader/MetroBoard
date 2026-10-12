@@ -57,6 +57,24 @@ class InputConnectionEditorTest {
         }
     }
 
+    // Capitalisation is worked out from the local copy of the text; this checks it agrees with what the platform
+    // itself says for the same text, so skipping the synchronous call into the app changes nothing.
+    @Test fun localCapitalisationAgreesWithThePlatformForManyTexts() {
+        val samples = listOf(
+            "", "hola", "Hola. ", "hola ", "Hola.", "Hola. mundo", "\u00bfQu\u00e9? ", "\u00a1Hola! ", "Hola.\n", "Hola.\n\n",
+            "(Hola) ", "(Hola.) ", "\"Hola.\" ", "1. ", "hola: ", "Hola.   ", "hola, ", "Mr. ", "...", "Fin\u2026 ", "a. b. c. ",
+        )
+        for (text in samples) {
+            onEditor(text) { field, editor, _ ->
+                val connection = field.onCreateInputConnection(EditorInfo())!!
+                val modes = InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+                val platform = connection.getCursorCapsMode(modes) != 0
+                // The editor's policy asks for sentence capitals only; compare like with like.
+                assertEquals("text '$text'", platform, editor.shouldCapitalize())
+            }
+        }
+    }
+
     @Test fun deletesSupplementaryCharacterWithoutBrokenSurrogate() = onEditor("hola 😀") { field, _, controller ->
         controller.backspace()
         assertEquals("hola ", field.text.toString())

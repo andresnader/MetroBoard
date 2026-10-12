@@ -145,9 +145,9 @@ class InputConnectionEditor(
 
     override fun shouldCapitalize(): Boolean {
         if (!policy.editing.automaticCapitalization) return false
-        val ic = connection() ?: return false
-        if (LatencyProbe.time("ipc.capsMode") { ic.getCursorCapsMode(policy.capsModes) } != 0) return true
-        // Use the platform's contextual algorithm, not a last-character-only rule.
+        if (connection() == null) return false
+        // Worked out from the local copy of the text with the platform's own algorithm: asking the app
+        // (getCursorCapsMode) is a synchronous call, and this runs on every space and punctuation mark.
         val context = beforeCursor(BEFORE_WINDOW)
         if (context.isEmpty()) return start == 0
         return TextUtils.getCapsMode(context, context.length, policy.capsModes) != 0
