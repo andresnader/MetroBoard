@@ -19,7 +19,8 @@ data class SwipeCandidate(
     val score: Double,
     val shapeSimilarity: Double = 0.0,
     val frequencyScore: Double = 0.0,
-    val userBonus: Double = 0.0
+    val userBonus: Double = 0.0,
+    val contextBonus: Double = 0.0,
 )
 
 class KeyHitMap(
@@ -67,15 +68,26 @@ class WordFlowShapeDecoder(
      * [path] and [centersOverride] must share one coordinate system (the caller normalises both to
      * the bounding box of the letter keys). Without [centersOverride] the static layout maps are used.
      */
-    fun decode(path: List<GesturePoint>, language: String = "es", centersOverride: Map<Char, KeyCenter>? = null): List<String> {
-        val ranked = decodeScored(path, language, centersOverride)
+    fun decode(
+        path: List<GesturePoint>,
+        language: String = "es",
+        centersOverride: Map<Char, KeyCenter>? = null,
+        /** The word typed just before this swipe, if any: words that usually follow it are favoured. */
+        previousWord: String? = null,
+    ): List<String> {
+        val ranked = decodeScored(path, language, centersOverride, previousWord)
         // Confidence gate: a scribble must not turn into a confidently wrong word.
         if (ranked.isEmpty() || ranked.first().shapeSimilarity < MIN_CONFIDENCE) return emptyList()
         return ranked.map { it.word }.distinct().take(3)
     }
 
     /** Ranked candidates with their scores, before the confidence gate. Exposed for calibration. */
-    internal fun decodeScored(path: List<GesturePoint>, language: String, centersOverride: Map<Char, KeyCenter>? = null): List<SwipeCandidate> {
+    internal fun decodeScored(
+        path: List<GesturePoint>,
+        language: String,
+        centersOverride: Map<Char, KeyCenter>? = null,
+        previousWord: String? = null,
+    ): List<SwipeCandidate> {
         if (path.size < 3) return emptyList()
         val centers = centersOverride ?: KeyboardGeometry.centers(language)
 
@@ -107,6 +119,17 @@ class WordFlowShapeDecoder(
         val personalSet = personalWords.toHashSet()
         val pool = LinkedHashSet<String>(personalWords)
         pool.addAll(dict.wordsByEndpoints(startSet, endSet, MIN_CANDIDATE_FREQUENCY, MAX_POOL))
+
+        // Context: the words that usually follow the previous one. They are always candidates (when their first and
+        // last letters fit the swipe) and get a bonus by rank; it only separates shapes that fit about equally.
+        val nextRank = HashMap<String, Int>()
+        previousWord?.takeIf { it.isNotBlank() }?.let { previous ->
+            dict.getBigramSuggestions(previous).forEachIndexed { rank, word -> nextRank.putIfAbsent(word.lowercase(Locale.ROOT), rank) }
+        }
+        for (word in nextRank.keys) {
+            val c = cleanWord(word)
+            if (c.length >= 2 && c.first() in startSet && c.last() in endSet) pool.add(word)
+        }
 
         // 4. Geometric scoring with cheap rejections first.
         val scored = ArrayList<SwipeCandidate>()
@@ -153,7 +176,8 @@ class WordFlowShapeDecoder(
             val shape = completeness * 2.2 / (1.0 + effectiveDist * SHAPE_SHARPNESS)
             val freq = dict.getFrequency(candidate).toDouble() / 255.0 * FREQUENCY_WEIGHT
             val user = if (candidate in personalSet) USER_BONUS else 0.0
-            scored.add(SwipeCandidate(candidate, shape + freq + user, shape, freq, user))
+            val context = nextRank[candidate.lowercase(Locale.ROOT)]?.let { CONTEXT_BONUS.getOrElse(it) { 0.0 } } ?: 0.0
+            scored.add(SwipeCandidate(candidate, shape + freq + user + context, shape, freq, user, context))
         }
 
         return scored.sortedByDescending { it.score }
@@ -226,6 +250,12 @@ class WordFlowShapeDecoder(
         const val SHAPE_SHARPNESS = 3.8
         const val FREQUENCY_WEIGHT = 0.8
         const val USER_BONUS = 1.2
+        /**
+         * Bonus for a word that is the 1st, 2nd or 3rd likeliest to follow the previous word. Calibrated against the
+         * shape score: a swipe that goes exactly through the neighbouring key (one key width away) scores 0.23 lower
+         * (tema/yema), so the bonus stays below that. Context decides between near ties, it never beats a clear swipe.
+         */
+        val CONTEXT_BONUS = doubleArrayOf(0.15, 0.10, 0.06)
         /**
          * Minimum geometric similarity of the best candidate. Calibrated on synthetic data: correct
          * swipes score p5 >= 1.72 (jitter up to 50% of a key) and random scribbles peak at about 1.63

@@ -264,4 +264,21 @@ class EditorControllerPredictionTest {
         assertTrue(controller.suggestionQuery() == null)
         assertEquals(emptyList<String>(), controller.suggestions())
     }
+
+    // Swipe typing uses the word before the swipe as context.
+    @Test fun theWordBeforeASwipeIsTheOneBeforeTheSpace() {
+        val controller = controller(MemoryEditor("hola el "), StubEngine())
+        assertEquals("el", controller.previousWordForSwipe())
+    }
+
+    @Test fun noContextWhenTheCursorIsInsideAWordOrAtTheStart() {
+        assertEquals(null, controller(MemoryEditor("hola el"), StubEngine()).previousWordForSwipe())
+        assertEquals(null, controller(MemoryEditor(""), StubEngine()).previousWordForSwipe())
+    }
+
+    @Test fun noContextWhereSuggestionsAreOff() {
+        val editor = MemoryEditor("hola el ")
+        val controller = EditorController(editor, StubEngine()).also { it.start(EditingPolicy(suggestions = false)) }
+        assertEquals(null, controller.previousWordForSwipe())
+    }
 }

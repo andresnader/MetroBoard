@@ -62,6 +62,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         fun onSettingsRequested() = Unit
         fun onHeightModeChanged(mode: String) = Unit
         fun onLanguageSelected(code: String) = Unit
+        /** The word typed just before a swipe, so the decoder can favour the words that usually follow it. */
+        fun previousWordForSwipe(): String? = null
     }
 
     private val suggestionButtons = mutableListOf<TextView>()
@@ -140,7 +142,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         }
 
         override fun onSwipeEnded(path: List<GesturePoint>) {
-            decodeShapeAsync(path)
+            decodeShapeAsync(path, listener.previousWordForSwipe())
             trailPoints.clear()
             invalidate()
         }
@@ -729,7 +731,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     ) { r -> Thread(r, "metroboard-wordflow").apply { isDaemon = true } }.apply { allowCoreThreadTimeOut(true) }
 
     /** Decoding scans the whole lexicon, so it runs off the UI thread and the result is posted back. */
-    private fun decodeShapeAsync(path: List<GesturePoint>) {
+    private fun decodeShapeAsync(path: List<GesturePoint>, previousWord: String?) {
         if (path.size < 3) return
         val geo = letterGeometry() ?: return
         val language = currentLanguage
@@ -737,7 +739,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             GesturePoint(((pt.x - geo.left) / geo.width).coerceIn(-0.1f, 1.1f), ((pt.y - geo.top) / geo.height).coerceIn(-0.1f, 1.1f), pt.timeMillis)
         }
         shapeExecutor.execute {
-            val candidates = decoder.decode(normalized, language, geo.centers)
+            val candidates = decoder.decode(normalized, language, geo.centers, previousWord)
             if (candidates.isNotEmpty()) {
                 mainHandler.post { if (isAttachedToWindow && language == currentLanguage) listener.onWordFlow(candidates.first(), candidates) }
             }

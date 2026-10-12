@@ -275,6 +275,8 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         keyboard?.showLanguagePanel(preferences.language)
     }
 
+    override fun previousWordForSwipe(): String? = controller.previousWordForSwipe()
+
     override fun onLanguageSelected(code: String) {
         keyboard?.closePanel()
         switchLanguage(code)

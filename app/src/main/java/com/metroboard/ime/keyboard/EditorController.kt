@@ -309,6 +309,12 @@ class EditorController(
 
     fun suggestions(): List<String> = suggestionQuery()?.let(::lookUp).orEmpty()
 
+    /**
+     * The word typed just before a swipe, used to favour the words that usually follow it. Null when there is none
+     * to use: the cursor is inside a word, at the start of the field, or the field takes no suggestions.
+     */
+    fun previousWordForSwipe(): String? = if (policy.suggestions && prefix() == null) previousWord() else null
+
     private fun formatCandidate(candidate: String, capitalizeFirst: Boolean, upperCase: Boolean = isUpperCaseNow()): String = when {
         upperCase -> candidate.uppercase(Locale.ROOT)
         capitalizeFirst -> candidate.replaceFirstChar { it.uppercaseChar() }
