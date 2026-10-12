@@ -134,7 +134,8 @@ class EditorController(
         shift.breakTapSequence()
         lastCorrection = null
         lastSwipe = null
-        // Sensitive / no-learning fields must never have their text read.
+        // Sensitive fields (suggestions and learning both off) must never have their text read. In a
+        // no-learning field the word is read for suggestions only; it is never stored (see learnIfAllowed).
         val lastWord = (if (policy.suggestions || policy.learnWords) prefix() else null)
             ?.takeUnless { inUrlOrEmailToken() }
         val correction = if (lastWord != null && policy.suggestions && policy.autoCorrect && mayAutoCorrect(lastWord)) {
