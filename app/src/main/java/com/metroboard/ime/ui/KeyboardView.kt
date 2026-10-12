@@ -197,8 +197,13 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         setWillNotDraw(false)
 
         setOnApplyWindowInsetsListener { view, insets ->
+            // The system draws the hide / switch-keyboard buttons in a strip taller than the navigation bar
+            // (measured on a 2.625x display: navigationBars 63 px, tappableElement 126 px). Padding by the
+            // navigation bar alone let the bottom row of keys run under those buttons.
             val navBottom = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                insets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
+                insets.getInsets(
+                    android.view.WindowInsets.Type.navigationBars() or android.view.WindowInsets.Type.tappableElement()
+                ).bottom
             } else {
                 @Suppress("DEPRECATION")
                 insets.systemWindowInsetBottom
