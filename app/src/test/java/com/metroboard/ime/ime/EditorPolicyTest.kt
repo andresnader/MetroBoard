@@ -125,4 +125,50 @@ class EditorPolicyTest {
         val policy = EditorPolicy.from(textInfo(), suggestionsEnabled = false)
         assertFalse(policy.editing.learnWords)
     }
+
+    // ---- what kind of field it is -------------------------------------------
+
+    private fun textWith(variation: Int, flags: Int = 0) = EditorInfo().apply {
+        inputType = InputType.TYPE_CLASS_TEXT or variation or flags
+    }
+
+    @Test
+    fun emailAndUrlFieldsAreRecognisedSoTheyGetTheirOwnKeys() {
+        assertEquals(FieldKind.EMAIL, EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS)).kind)
+        assertEquals(FieldKind.EMAIL, EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS)).kind)
+        assertEquals(FieldKind.URL, EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_URI)).kind)
+        assertEquals(FieldKind.TEXT, EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_NORMAL)).kind)
+        assertEquals(FieldKind.TEXT, EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_PASSWORD)).kind)
+    }
+
+    @Test
+    fun personNamesCapitaliseEveryWordAndAreNeverAutocorrected() {
+        val policy = EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_PERSON_NAME))
+        assertTrue(policy.capsModes and InputType.TYPE_TEXT_FLAG_CAP_WORDS != 0)
+        assertFalse(policy.editing.autoCorrect)
+        assertTrue(policy.editing.suggestions)
+        assertTrue(policy.editing.learnWords)
+    }
+
+    @Test
+    fun otherTextFieldsStillAutocorrectAndCapitaliseSentences() {
+        val policy = EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_NORMAL))
+        assertTrue(policy.editing.autoCorrect)
+        assertEquals(0, policy.capsModes and InputType.TYPE_TEXT_FLAG_CAP_WORDS)
+    }
+
+    @Test
+    fun swipeTypingIsOnlyForPlainTextFields() {
+        assertTrue(EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_NORMAL)).swipeTyping)
+        assertTrue(EditorPolicy.from(textWith(InputType.TYPE_TEXT_VARIATION_PERSON_NAME)).swipeTyping)
+        for (variation in listOf(
+            InputType.TYPE_TEXT_VARIATION_PASSWORD, InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD,
+            InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD, InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
+            InputType.TYPE_TEXT_VARIATION_URI,
+        )) {
+            assertFalse("variation $variation", EditorPolicy.from(textWith(variation)).swipeTyping)
+        }
+        assertFalse(EditorPolicy.from(EditorInfo().apply { inputType = InputType.TYPE_CLASS_NUMBER }).swipeTyping)
+        assertFalse(EditorPolicy.from(EditorInfo().apply { inputType = InputType.TYPE_CLASS_PHONE }).swipeTyping)
+    }
 }

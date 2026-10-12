@@ -495,8 +495,14 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             else -> "NORMAL"
         }
 
-        val rows = if (policy.kind == FieldKind.TEXT) {
-            KeyboardLayout.rows(page, numberRow, language, currentLayoutType)
+        val lettersField = policy.kind == FieldKind.TEXT || policy.kind == FieldKind.EMAIL || policy.kind == FieldKind.URL
+        val rows = if (lettersField) {
+            val variant = when (policy.kind) {
+                FieldKind.EMAIL -> TextVariant.EMAIL
+                FieldKind.URL -> TextVariant.URL
+                else -> TextVariant.PLAIN
+            }
+            KeyboardLayout.rows(page, numberRow, language, currentLayoutType, variant)
         } else {
             KeyboardLayout.numeric(
                 phone = policy.kind == FieldKind.PHONE,
@@ -513,7 +519,7 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         val secondAlphaIndex = if (numberRow) 2 else 1
         rows.forEachIndexed { index, specs ->
             val row = LinearLayout(context).apply { orientation = HORIZONTAL }
-            val needsIndent = specs.size == 9 && policy.kind == FieldKind.TEXT && page == KeyboardPage.LETTERS && index == secondAlphaIndex
+            val needsIndent = specs.size == 9 && lettersField && page == KeyboardPage.LETTERS && index == secondAlphaIndex
             if (needsIndent) {
                 row.addView(View(context), LayoutParams(0, 1, .5f))
             }

@@ -213,4 +213,35 @@ class KeyboardLayoutTest {
         assertEquals(KeyboardLayoutType.QWERTZ, KeyboardLayout.resolve("", "de"))
         assertEquals(KeyboardLayoutType.QWERTY, KeyboardLayout.resolve("whatever", "es"))
     }
+
+    // ---- email and URL fields get the keys people need there -----------------
+
+    private fun bottomRow(variant: TextVariant) =
+        KeyboardLayout.rows(KeyboardPage.LETTERS, language = "en", variant = variant).last()
+
+    @Test fun plainFieldsKeepTheEmojiKeyAndHaveNoAtOrDotCom() {
+        val row = bottomRow(TextVariant.PLAIN)
+        assertTrue(row.any { it.action == KeyAction.EMOJI })
+        assertTrue(row.none { it.label == "@" || it.label == ".com" })
+    }
+
+    @Test fun emailFieldsPutAtInThePlaceOfEmoji() {
+        val row = bottomRow(TextVariant.EMAIL)
+        assertTrue(row.any { it.label == "@" })
+        assertTrue(row.none { it.action == KeyAction.EMOJI })
+        assertTrue(row.any { it.label == "." })
+    }
+
+    @Test fun urlFieldsGetSlashAndDotCom() {
+        val row = bottomRow(TextVariant.URL)
+        assertTrue(row.any { it.label == "/" })
+        val dotCom = row.single { it.label == ".com" }
+        assertTrue(dotCom.alternatives.contains(".org"))
+        assertTrue(row.none { it.action == KeyAction.EMOJI })
+    }
+
+    @Test fun everyBottomRowFillsTheSameWidth() {
+        val widths = TextVariant.values().map { v -> bottomRow(v).sumOf { it.weight.toDouble() } }
+        widths.forEach { assertEquals(widths.first(), it, 0.001) }
+    }
 }

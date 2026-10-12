@@ -167,7 +167,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
             numberRow = preferences.numberRow,
             heightScale = preferences.heightScale,
             language = preferences.language,
-            wordFlow = preferences.wordFlow,
+            wordFlow = preferences.wordFlow && policy.swipeTyping,
             tintKeys = preferences.tintKeys,
             layoutOverride = layoutType,
             theme = preferences.theme,

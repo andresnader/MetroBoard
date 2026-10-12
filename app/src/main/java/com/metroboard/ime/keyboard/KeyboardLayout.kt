@@ -12,6 +12,9 @@ enum class KeyAction { TEXT, SHIFT, DELETE, SPACE, ENTER, SYMBOLS, LETTERS, MORE
 enum class KeyboardPage { LETTERS, SYMBOLS, MORE_SYMBOLS }
 enum class KeyboardLayoutType { QWERTY, AZERTY, QWERTZ }
 
+/** What the text field is for. Email and URL fields swap the emoji key for the keys those fields need. */
+enum class TextVariant { PLAIN, EMAIL, URL }
+
 data class KeySpec(
     val label: String,
     val action: KeyAction = KeyAction.TEXT,
@@ -88,7 +91,8 @@ object KeyboardLayout {
         page: KeyboardPage,
         numberRow: Boolean = false,
         language: String = "en",
-        layoutType: KeyboardLayoutType = defaultLayoutFor(language)
+        layoutType: KeyboardLayoutType = defaultLayoutFor(language),
+        variant: TextVariant = TextVariant.PLAIN,
     ): List<List<KeySpec>> {
         val spaceText = when (language) {
             "es" -> "espacio"
@@ -99,14 +103,24 @@ object KeyboardLayout {
 
         val point = KeySpec(".", alternatives = punctuation)
 
-        val bottom = listOf(
-            KeySpec(if (page == KeyboardPage.LETTERS) "&123" else "abc",
-                if (page == KeyboardPage.LETTERS) KeyAction.SYMBOLS else KeyAction.LETTERS, 1.5f),
-            KeySpec("", KeyAction.EMOJI, 1.2f),
-            KeySpec(spaceText, KeyAction.SPACE, 4.6f),
-            point,
-            KeySpec("", KeyAction.ENTER, 1.7f),
-        )
+        val pageKey = KeySpec(if (page == KeyboardPage.LETTERS) "&123" else "abc",
+            if (page == KeyboardPage.LETTERS) KeyAction.SYMBOLS else KeyAction.LETTERS, 1.5f)
+        val enter = KeySpec("", KeyAction.ENTER, 1.7f)
+        // Every variant adds up to the same total weight (10), so the rows above line up with it.
+        val bottom = when (variant) {
+            TextVariant.PLAIN -> listOf(
+                pageKey, KeySpec("", KeyAction.EMOJI, 1.2f), KeySpec(spaceText, KeyAction.SPACE, 4.6f), point, enter,
+            )
+            TextVariant.EMAIL -> listOf(
+                pageKey, KeySpec("@", weight = 1.2f, alternatives = listOf("_", "-", "+")),
+                KeySpec(spaceText, KeyAction.SPACE, 4.6f), point, enter,
+            )
+            TextVariant.URL -> listOf(
+                pageKey, KeySpec("/", weight = 1.2f, alternatives = listOf("?", "#", "&", "=")),
+                KeySpec(spaceText, KeyAction.SPACE, 3.1f), point,
+                KeySpec(".com", weight = 1.5f, alternatives = listOf(".net", ".org", ".edu", ".es", ".ec")), enter,
+            )
+        }
 
         return when (page) {
             KeyboardPage.LETTERS -> {
