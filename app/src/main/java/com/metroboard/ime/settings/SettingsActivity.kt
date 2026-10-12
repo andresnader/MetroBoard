@@ -369,6 +369,11 @@ class SettingsActivity : Activity() {
 
     // 8. ABOUT
     private fun createAboutPage() = page {
+        // Who made it. The address is tappable and opens the mail app.
+        addView(metroLabel(getString(R.string.about_credit), MetroType.BODY).apply {
+            android.text.util.Linkify.addLinks(this, android.text.util.Linkify.EMAIL_ADDRESSES)
+            setLinkTextColor(KeyboardColors.accent)
+        })
         title(getString(R.string.changelog_title))
         changelog(R.string.version_030, R.array.changelog_0_3_0)
         changelog(R.string.version_020, R.array.changelog_0_2_0)

@@ -1,5 +1,7 @@
 # MetroBoard
 
+Un desarrollo de **Ameizin** — Andrés Nader · [info@ameizin.ec](mailto:info@ameizin.ec)
+
 IME Android independiente en Kotlin, inspirado en el comportamiento, la ergonomía
 y la dirección visual tipográfica y minimalista del diseño Metro / Word Flow de Windows Phone 8.1.
 **No es una reproducción exacta ni un producto de Microsoft.** No contiene código, fuentes, imágenes,
