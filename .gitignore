@@ -35,3 +35,10 @@ vendor/
 
 # Local test screenshots
 emulator_*.png
+
+# Material de trabajo local (referencias, tickets y grabaciones de pruebas), no forma parte del código
+/Windows phone 81. UI UX Design/
+/gu_a_de_motor_predictivo_y_corpus.md
+/word_flow_emulation_blueprint.md
+/reporte_t_cnico_e_incidencias_teclado_android.md
+*.mp4
