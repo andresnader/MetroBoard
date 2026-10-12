@@ -12,12 +12,14 @@ import android.os.SystemClock
 import android.util.Log
 
 /**
- * Debug builds only: times the phases of handling one key so the slow one is found by measuring, not guessing.
- * Each phase is added up by name and [flush] prints them on one line: `adb logcat -s MB_PHASES`.
+ * Times the phases of handling one key so the slow one is found by measuring, not guessing. Each phase is added up by
+ * name and [flush] hands them to [Diagnostics] (and, in debug builds, prints them: `adb logcat -s MB_PHASES`).
  * Does nothing (and costs one boolean check) when [enabled] is false.
  */
 object LatencyProbe {
     @Volatile var enabled = false
+    /** Also write to logcat (debug builds). The numbers always go to [Diagnostics.log] when [enabled]. */
+    @Volatile var logToLogcat = false
     private val phases = LinkedHashMap<String, Long>()
 
     inline fun <T> time(name: String, block: () -> T): T {
@@ -36,11 +38,14 @@ object LatencyProbe {
 
     fun flush(label: String) {
         if (!enabled) return
-        val line = synchronized(phases) {
-            val text = phases.entries.joinToString(" ") { "${it.key}=${"%.1f".format(it.value / 1_000_000.0)}" }
+        val taken = synchronized(phases) {
+            val copy = LinkedHashMap(phases)
             phases.clear()
-            text
+            copy
         }
-        Log.d("MB_PHASES", "$label $line")
+        taken.forEach { (name, nanos) -> Diagnostics.log.recordPhase(name, nanos / 1_000_000.0) }
+        if (logToLogcat) {
+            Log.d("MB_PHASES", "$label " + taken.entries.joinToString(" ") { "${it.key}=${"%.1f".format(it.value / 1_000_000.0)}" })
+        }
     }
 }

@@ -11,6 +11,10 @@ Lo que el código hace hoy (comprobado en [`0.3/security-audit.md`](0.3/security
   contraseña, no se guarda y se descarta al cambiar de campo o ante cualquier cambio externo.
 - **Registros de diagnóstico** (`MB_EDITOR`, `MB_LAT`, `MB_PHASES`): solo en builds *debug*; contienen el paquete de la app, indicadores
   del campo y tiempos, nunca texto escrito.
+- **Diagnóstico opcional** (Ajustes ▸ Acerca de, apagado por defecto): si lo activas, guarda **solo números** en memoria (cuánto tardó cada
+  tecla en responder, cuánto esperó el toque, bloqueos del hilo principal) y los indicadores de los últimos cinco campos (paquete de la
+  app, `inputType`, `imeOptions`). Nunca texto escrito. No se escribe en disco ni se envía: lo único que sale es el informe que tú
+  copias con «Copiar informe». Se borra con «Borrar» o al reiniciarse el teclado.
 - Las listas de siguiente palabra son datos fijos del paquete: no se envía nada ni se aprende nada de ellas.
 - **El teclado sigue sin permiso de Internet.**
 

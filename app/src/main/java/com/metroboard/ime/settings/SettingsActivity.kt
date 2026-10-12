@@ -11,6 +11,8 @@ package com.metroboard.ime.settings
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -35,6 +37,7 @@ import com.metroboard.ime.keyboard.KeyboardLayout
 import com.metroboard.ime.keyboard.KeyboardPage
 import com.metroboard.ime.keyboard.ShiftState
 import com.metroboard.ime.ui.KeyboardView
+import com.metroboard.ime.util.Diagnostics
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.dp
 
@@ -455,6 +458,23 @@ class SettingsActivity : Activity() {
 
         help(getString(R.string.about_legal))
         help(getString(R.string.about_licenses))
+
+        // Support: lets a release build report why it feels slow on this particular phone, without adb.
+        title(getString(R.string.diagnostics_title))
+        help(getString(R.string.diagnostics_help))
+        toggle(R.string.diagnostics_toggle, preferences.diagnostics) {
+            preferences.diagnostics = it
+            Diagnostics.configure(this@SettingsActivity, it)
+        }
+        action(R.string.diagnostics_copy) {
+            val report = Diagnostics.log.report(versionName(), Diagnostics.deviceInfo())
+            getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("MetroBoard diagnostics", report))
+            Toast.makeText(this@SettingsActivity, R.string.diagnostics_copied, Toast.LENGTH_SHORT).show()
+        }
+        action(R.string.diagnostics_clear) {
+            Diagnostics.log.clear()
+            Toast.makeText(this@SettingsActivity, R.string.diagnostics_cleared, Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** One version heading in the accent colour, then its notes as a plain list. */

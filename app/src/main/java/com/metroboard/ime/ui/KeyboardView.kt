@@ -39,7 +39,9 @@ import com.metroboard.ime.ime.EditorPolicy
 import com.metroboard.ime.ime.FieldKind
 import com.metroboard.ime.keyboard.*
 import com.metroboard.ime.clipboard.ClipboardHistory
+import com.metroboard.ime.util.Diagnostics
 import com.metroboard.ime.util.KeyboardColors
+import com.metroboard.ime.util.LatencyProbe
 import com.metroboard.ime.util.dp
 
 @SuppressLint("ViewConstructor")
@@ -110,16 +112,19 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     // Touch State Machine
     private val touchListener = object : TouchInputListener {
         override fun onKeyTapped(key: KeySpec) {
-            if (!traceLatency) {
+            if (!LatencyProbe.enabled) {
                 listener.onKey(key)
                 return
             }
-            // Debug builds: how long the touch waited before we handled it (a busy main thread shows up here) and
-            // how long handling the key took. Read with `adb logcat -s MB_LAT`.
+            // How long the touch waited before we handled it (a busy main thread shows up here) and how long handling
+            // the key took. Goes to the diagnostics report; debug builds also log it: `adb logcat -s MB_LAT`.
             val start = SystemClock.uptimeMillis()
             listener.onKey(key)
             val end = SystemClock.uptimeMillis()
-            Log.d("MB_LAT", "key='${key.label}' queued=${start - lastTouchEventTime}ms handled=${end - start}ms")
+            Diagnostics.log.recordKey(start - lastTouchEventTime, end - start)
+            if (LatencyProbe.logToLogcat) {
+                Log.d("MB_LAT", "key='${key.label}' queued=${start - lastTouchEventTime}ms handled=${end - start}ms")
+            }
         }
 
         override fun onKeyLongPressed(key: KeySpec, anchorX: Float, anchorY: Float) {
@@ -572,7 +577,6 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         }
     }
 
-    private val traceLatency = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
     private var lastTouchEventTime = 0L
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {

@@ -178,4 +178,11 @@
     <string name="about_credit">Un desarrollo de Ameizin — Andrés Nader · info@ameizin.ec</string>
     <string name="preview_suggestions">Hola|Buenos|Hey</string>
     <string name="clip_suggestion_description">Pegar lo que copiaste: %1$s</string>
+    <string name="diagnostics_title">diagnóstico</string>
+    <string name="diagnostics_help">Si al escribir notas lentitud, actívalo, escribe un minuto y copia el informe. Solo guarda números (cuánto tardó cada tecla en responder), nunca lo que escribes, en memoria, hasta que lo borres o el teclado se reinicie.</string>
+    <string name="diagnostics_toggle">Registrar tiempos de respuesta</string>
+    <string name="diagnostics_copy">Copiar informe</string>
+    <string name="diagnostics_clear">Borrar</string>
+    <string name="diagnostics_copied">Informe copiado</string>
+    <string name="diagnostics_cleared">Borrado</string>
 </resources>

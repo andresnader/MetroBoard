@@ -223,4 +223,66 @@ class KeyboardViewTouchTest {
         assertEquals("a deliberate swipe over several keys must commit once", 1, wordFlowCommits)
         assertTrue("a swipe must not also type letters", typed.isEmpty())
     }
+
+    /**
+     * Fast, sloppy typing as a person does it: 6 to 14 letters a second, one or two thumbs with presses that overlap,
+     * and the thumb rolling a little while it is down. Every press must come out, in the order it was pressed.
+     */
+    @Test
+    fun fastSloppyTypingNeverDropsOrReordersAKey() {
+        val letters = "qwertyuiopasdfghjklzxcvbnm".map { it.toString() }
+        for (seed in 1..6) {
+            typed.clear(); pointers.clear(); wordFlowCommits = 0
+            val rnd = java.util.Random(seed.toLong())
+            val intended = ArrayList<String>()
+            repeat(120) { n ->
+                val key = letters[rnd.nextInt(letters.size)]
+                val (x, y) = keyCenter(key)
+                val finger = n % 2 // two thumbs take turns
+                val overlap = rnd.nextInt(100) < 45
+                val hold = 35L + rnd.nextInt(80)
+                val gap = 15L + rnd.nextInt(70)
+                // This press starts while the other thumb may still be down.
+                pointers += Pointer(finger, x, y)
+                val index = pointers.indexOfFirst { it.id == finger }
+                if (pointers.size == 1) send(MotionEvent.ACTION_DOWN) else send(MotionEvent.ACTION_POINTER_DOWN, index)
+                intended += key
+                // Thumb roll: up to a third of a key width, in two small moves.
+                repeat(rnd.nextInt(3)) {
+                    clock += 8
+                    pointers.first { it.id == finger }.apply {
+                        this.x = x + (rnd.nextFloat() - 0.5f) * 22f
+                        this.y = y + (rnd.nextFloat() - 0.5f) * 22f
+                    }
+                    send(MotionEvent.ACTION_MOVE)
+                }
+                clock += hold
+                if (!overlap || pointers.size == 1) {
+                    val idx = pointers.indexOfFirst { it.id == finger }
+                    if (pointers.size == 1) send(MotionEvent.ACTION_UP) else send(MotionEvent.ACTION_POINTER_UP, idx)
+                    pointers.removeAt(idx)
+                    // the other thumb, if still down, lifts too
+                    pointers.toList().forEach { other ->
+                        clock += 5
+                        val oi = pointers.indexOfFirst { it.id == other.id }
+                        if (pointers.size == 1) send(MotionEvent.ACTION_UP) else send(MotionEvent.ACTION_POINTER_UP, oi)
+                        pointers.removeAt(oi)
+                    }
+                }
+                clock += gap
+            }
+            // release whatever is still down
+            pointers.toList().forEach { other ->
+                clock += 5
+                val oi = pointers.indexOfFirst { it.id == other.id }
+                if (pointers.size == 1) send(MotionEvent.ACTION_UP) else send(MotionEvent.ACTION_POINTER_UP, oi)
+                pointers.removeAt(oi)
+            }
+            inst.waitForIdleSync()
+            Thread.sleep(400) // let the tap-order timer flush anything still waiting
+            inst.waitForIdleSync()
+            assertEquals("seed $seed: keys typed vs pressed (first difference shown by the lists)", intended, typed)
+            assertEquals("seed $seed: fast tapping must never turn into a shape-written word", 0, wordFlowCommits)
+        }
+    }
 }

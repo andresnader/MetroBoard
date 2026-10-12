@@ -178,4 +178,11 @@
     <string name="about_credit">Eine Entwicklung von Ameizin — Andrés Nader · info@ameizin.ec</string>
     <string name="preview_suggestions">Hallo|Hi|Hey</string>
     <string name="clip_suggestion_description">Kopierten Text einfügen: %1$s</string>
+    <string name="diagnostics_title">Diagnose</string>
+    <string name="diagnostics_help">Wenn das Tippen langsam wirkt, schalten Sie dies ein, tippen Sie eine Minute und kopieren Sie den Bericht. Er speichert nur Zahlen (wie lange jede Taste zur Antwort brauchte), nie, was Sie tippen, im Speicher, bis Sie ihn löschen oder die Tastatur neu startet.</string>
+    <string name="diagnostics_toggle">Antwortzeiten aufzeichnen</string>
+    <string name="diagnostics_copy">Bericht kopieren</string>
+    <string name="diagnostics_clear">Löschen</string>
+    <string name="diagnostics_copied">Bericht kopiert</string>
+    <string name="diagnostics_cleared">Gelöscht</string>
 </resources>

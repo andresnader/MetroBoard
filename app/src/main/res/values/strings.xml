@@ -199,4 +199,11 @@
     <string name="about_credit">A development by Ameizin — Andrés Nader · info@ameizin.ec</string>
     <string name="preview_suggestions">Hello|Hi|Hey</string>
     <string name="clip_suggestion_description">Paste what you copied: %1$s</string>
+    <string name="diagnostics_title">diagnostics</string>
+    <string name="diagnostics_help">If typing feels slow, turn this on, type for a minute and copy the report. It records only numbers (how long each key took to answer), never what you type, in memory, until you clear it or the keyboard restarts.</string>
+    <string name="diagnostics_toggle">Record response times</string>
+    <string name="diagnostics_copy">Copy report</string>
+    <string name="diagnostics_clear">Clear</string>
+    <string name="diagnostics_copied">Report copied</string>
+    <string name="diagnostics_cleared">Cleared</string>
 </resources>

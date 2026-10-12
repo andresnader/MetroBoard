@@ -178,4 +178,11 @@
     <string name="about_credit">Un développement d’Ameizin — Andrés Nader · info@ameizin.ec</string>
     <string name="preview_suggestions">Bonjour|Salut|Coucou</string>
     <string name="clip_suggestion_description">Coller ce que vous avez copié : %1$s</string>
+    <string name="diagnostics_title">diagnostic</string>
+    <string name="diagnostics_help">Si la frappe vous semble lente, activez ceci, tapez une minute et copiez le rapport. Il n’enregistre que des chiffres (le temps de réponse de chaque touche), jamais ce que vous tapez, en mémoire, jusqu’à ce que vous l’effaciez ou que le clavier redémarre.</string>
+    <string name="diagnostics_toggle">Enregistrer les temps de réponse</string>
+    <string name="diagnostics_copy">Copier le rapport</string>
+    <string name="diagnostics_clear">Effacer</string>
+    <string name="diagnostics_copied">Rapport copié</string>
+    <string name="diagnostics_cleared">Effacé</string>
 </resources>

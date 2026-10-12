@@ -150,6 +150,11 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         get() = preferences.getString(KEY_THEME, "DARK") ?: "DARK"
         set(value) { preferences.edit().putString(KEY_THEME, value).apply() }
 
+    /** Record response times for the diagnostics report. Off by default; not part of a backup (it is per device). */
+    var diagnostics: Boolean
+        get() = preferences.getBoolean(KEY_DIAGNOSTICS, false)
+        set(value) { preferences.edit().putBoolean(KEY_DIAGNOSTICS, value).apply() }
+
     var oneHandedMode: String
         get() = preferences.getString(KEY_ONE_HANDED_MODE, "OFF") ?: "OFF"
         set(value) { preferences.edit().putString(KEY_ONE_HANDED_MODE, value).apply() }
@@ -283,5 +288,6 @@ class KeyboardPreferences(val preferences: SharedPreferences) {
         const val KEY_LAYOUT_OVERRIDE = "pref_layout_override"
         const val KEY_THEME = "pref_theme"
         const val KEY_ONE_HANDED_MODE = "pref_one_handed_mode"
+        const val KEY_DIAGNOSTICS = "pref_diagnostics"
     }
 }

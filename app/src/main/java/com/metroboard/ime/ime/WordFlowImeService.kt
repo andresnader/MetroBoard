@@ -39,6 +39,7 @@ import com.metroboard.ime.settings.KeyboardPreferences
 import com.metroboard.ime.settings.SettingsActivity
 import com.metroboard.ime.sound.KeySound
 import com.metroboard.ime.ui.KeyboardView
+import com.metroboard.ime.util.Diagnostics
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.LatencyProbe
 
@@ -119,6 +120,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
 
     override fun onStartInput(attribute: EditorInfo, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        Diagnostics.configure(this, preferences.diagnostics)
         KeyboardColors.accent = preferences.accentColor
         policy = EditorPolicy.from(attribute, preferences)
         logEditorForDiagnosis(attribute)
@@ -138,8 +140,8 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
      * package and the flag words, never anything typed. Read with `adb logcat -s MB_EDITOR`.
      */
     private fun logEditorForDiagnosis(info: EditorInfo) {
+        if (LatencyProbe.enabled) Diagnostics.log.recordField(info.packageName, info.inputType, info.imeOptions)
         if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
-        LatencyProbe.enabled = true
         Log.d(
             "MB_EDITOR",
             "pkg=${info.packageName} inputType=0x${Integer.toHexString(info.inputType)} " +
@@ -150,6 +152,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
 
     override fun onStartInputView(info: EditorInfo, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        Diagnostics.startWatching()
         KeyboardColors.accent = preferences.accentColor
         policy = EditorPolicy.from(info, preferences)
         controller.start(policy.editing)
@@ -416,6 +419,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        Diagnostics.stopWatching()
         keyboard?.dismissPopups()
         keyboard?.render(ShiftState.LOWERCASE, false, emptyList(), "")
         controller.finish()
