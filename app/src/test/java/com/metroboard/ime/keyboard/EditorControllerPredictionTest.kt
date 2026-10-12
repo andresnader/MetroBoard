@@ -235,4 +235,33 @@ class EditorControllerPredictionTest {
         c.type("www.google.com "); c.type("tecldao"); c.space(2000)
         assertEquals("www.google.com teclado ", editor.value)
     }
+
+    // The dictionary lookup for the suggestion bar runs on another thread, so what has to be known about the
+    // editor is captured when the question is asked, not when the answer arrives.
+    @Test fun theLookupFormatsWithTheCasingOfTheMomentTheQuestionWasAsked() {
+        val editor = MemoryEditor("")
+        val controller = controller(editor, StubEngine(suggestions = mapOf("ho" to listOf("hola", "hoy"))))
+        controller.tapShift(0L)
+        controller.tapShift(100L) // double tap: Caps Lock
+        assertEquals(ShiftState.CAPS_LOCK, controller.shift.state)
+        editor.commit("ho")
+        val question = controller.suggestionQuery()!!
+        controller.tapShift(10_000L) // Caps Lock off before the answer arrives
+        assertEquals(listOf("HOLA", "HOY"), controller.lookUp(question))
+    }
+
+    @Test fun theLookupNeedsNoAccessToTheEditor() {
+        val editor = MemoryEditor("")
+        val controller = controller(editor, StubEngine(suggestions = mapOf("ho" to listOf("hola"))))
+        editor.commit("ho")
+        val question = controller.suggestionQuery()!!
+        editor.commit("rrible xyz") // the field changes while the lookup is running
+        assertEquals(listOf("hola"), controller.lookUp(question)) // still the answer to the question that was asked
+    }
+
+    @Test fun nothingToSuggestIsNoQueryAtAll() {
+        val controller = controller(MemoryEditor(""), StubEngine())
+        assertTrue(controller.suggestionQuery() == null)
+        assertEquals(emptyList<String>(), controller.suggestions())
+    }
 }

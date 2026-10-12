@@ -38,6 +38,7 @@ import com.metroboard.ime.settings.SettingsActivity
 import com.metroboard.ime.sound.KeySound
 import com.metroboard.ime.ui.KeyboardView
 import com.metroboard.ime.util.KeyboardColors
+import com.metroboard.ime.util.LatencyProbe
 
 /** `ClipDescription.EXTRA_IS_SENSITIVE` (API 33), spelled out so it also reads on the older versions we support. */
 private const val EXTRA_IS_SENSITIVE = "android.content.extra.IS_SENSITIVE"
@@ -56,6 +57,15 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private lateinit var clipboardHistory: ClipboardHistory
     private val primaryClipListener = ClipboardManager.OnPrimaryClipChangedListener { recordPrimaryClip() }
 
+    // The dictionary search for the suggestion bar runs on its own thread, so a slow lookup (tens of ms for a
+    // misspelt word) never holds up the next key press. Results from an older keystroke are dropped.
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private val lookupThread = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+        Thread(task, "metroboard-suggest").apply { isDaemon = true }
+    }
+    private var lookupGeneration = 0
+    private var candidates: List<String> = emptyList()
+
     override fun onCreate() {
         super.onCreate()
         preferences = KeyboardPreferences(this)
@@ -64,7 +74,6 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         suggestionEngine = LocalSuggestionEngine(personalDict, this, preferences.language)
         controller = EditorController(editor, suggestionEngine)
         // Dictionaries load on a background thread; refresh the suggestion bar when one is ready.
-        val ui = android.os.Handler(android.os.Looper.getMainLooper())
         LanguageDictionaryRegistry.onDictionaryLoaded = { ui.post { if (::controller.isInitialized) render() } }
         LanguageDictionaryRegistry.preload(preferences.language, this)
         clipboardHistory = ClipboardHistories.shared(this)
@@ -111,6 +120,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         suggestionEngine.activeLanguage = preferences.language
         LanguageDictionaryRegistry.preload(preferences.language, this)
         keyboard?.closePanel() // a panel opened in one field must not follow the user into the next
+        candidates = emptyList() // nor the previous field's suggestions
         keyboard?.let { applyKeyboardLayout(it) }
         render()
     }
@@ -121,6 +131,7 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
      */
     private fun logEditorForDiagnosis(info: EditorInfo) {
         if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+        LatencyProbe.enabled = true
         Log.d(
             "MB_EDITOR",
             "pkg=${info.packageName} inputType=0x${Integer.toHexString(info.inputType)} " +
@@ -200,22 +211,25 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
 
     override fun onKey(key: KeySpec) {
         val now = SystemClock.uptimeMillis()
-        keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) }
-        sound.play(preferences.sound, key.action, preferences.soundVolume)
+        LatencyProbe.time("haptics") { keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) } }
+        LatencyProbe.time("sound") { sound.play(preferences.sound, key.action, preferences.soundVolume) }
 
-        when (key.action) {
-            KeyAction.TEXT -> if (key.label.isNotEmpty()) controller.text(key.label)
-            KeyAction.SHIFT -> controller.tapShift(now)
-            KeyAction.DELETE -> controller.backspace()
-            KeyAction.SPACE -> controller.space(now)
-            KeyAction.ENTER -> controller.enter()
-            KeyAction.SYMBOLS -> changePage(KeyboardPage.SYMBOLS)
-            KeyAction.MORE_SYMBOLS -> changePage(KeyboardPage.MORE_SYMBOLS)
-            KeyAction.LETTERS -> changePage(KeyboardPage.LETTERS)
-            KeyAction.EMOJI -> keyboard?.showEmoticons()
-            KeyAction.CLIPBOARD -> onClipboardPasteRequested()
+        LatencyProbe.time("edit") {
+            when (key.action) {
+                KeyAction.TEXT -> if (key.label.isNotEmpty()) controller.text(key.label)
+                KeyAction.SHIFT -> controller.tapShift(now)
+                KeyAction.DELETE -> controller.backspace()
+                KeyAction.SPACE -> controller.space(now)
+                KeyAction.ENTER -> controller.enter()
+                KeyAction.SYMBOLS -> changePage(KeyboardPage.SYMBOLS)
+                KeyAction.MORE_SYMBOLS -> changePage(KeyboardPage.MORE_SYMBOLS)
+                KeyAction.LETTERS -> changePage(KeyboardPage.LETTERS)
+                KeyAction.EMOJI -> keyboard?.showEmoticons()
+                KeyAction.CLIPBOARD -> onClipboardPasteRequested()
+            }
         }
         render()
+        LatencyProbe.flush("key='${key.label}'")
     }
 
     private fun changePage(next: KeyboardPage) {
@@ -412,16 +426,34 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         keyboard = null
         sound.release()
         LanguageDictionaryRegistry.onDictionaryLoaded = null
+        lookupThread.shutdownNow()
         super.onDestroy()
     }
 
     private fun render() {
-        keyboard?.render(
-            controller.shift.state,
-            policy.editing.forceUppercase,
-            controller.suggestions(),
-            enterLabel()
-        )
+        val query = LatencyProbe.time("query") { controller.suggestionQuery() }
+        val generation = ++lookupGeneration
+        if (query == null || query is EditorController.SuggestionQuery.Known) {
+            // Nothing to search for: answer at once.
+            candidates = query?.let(controller::lookUp).orEmpty()
+            draw()
+            return
+        }
+        // Shift state and the Enter label are drawn now; the words stay as they were until the new ones are ready.
+        draw()
+        lookupThread.execute {
+            val words = controller.lookUp(query)
+            ui.post {
+                if (generation == lookupGeneration) {
+                    candidates = words
+                    draw()
+                }
+            }
+        }
+    }
+
+    private fun draw() = LatencyProbe.time("draw") {
+        keyboard?.render(controller.shift.state, policy.editing.forceUppercase, candidates, enterLabel())
     }
 
     private fun enterLabel(): String {

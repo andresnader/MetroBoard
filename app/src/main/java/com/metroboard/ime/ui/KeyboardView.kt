@@ -19,6 +19,8 @@ import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -104,7 +106,16 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     // Touch State Machine
     private val touchListener = object : TouchInputListener {
         override fun onKeyTapped(key: KeySpec) {
+            if (!traceLatency) {
+                listener.onKey(key)
+                return
+            }
+            // Debug builds: how long the touch waited before we handled it (a busy main thread shows up here) and
+            // how long handling the key took. Read with `adb logcat -s MB_LAT`.
+            val start = SystemClock.uptimeMillis()
             listener.onKey(key)
+            val end = SystemClock.uptimeMillis()
+            Log.d("MB_LAT", "key='${key.label}' queued=${start - lastTouchEventTime}ms handled=${end - start}ms")
         }
 
         override fun onKeyLongPressed(key: KeySpec, anchorX: Float, anchorY: Float) {
@@ -556,7 +567,11 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         }
     }
 
+    private val traceLatency = context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0
+    private var lastTouchEventTime = 0L
+
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        lastTouchEventTime = ev.eventTime
         // An accent popup is open: the finger that opened it chooses by sliding and lifting. The popup sits
         // over the suggestion bar, so this must run before the "touch above the keys" shortcut below.
         if (alternatives.isShowing && handleAlternativesTouch(ev)) return true

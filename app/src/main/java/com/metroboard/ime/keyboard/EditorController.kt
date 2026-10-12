@@ -251,35 +251,71 @@ class EditorController(
         return if (editor.beforeCursor(expected.length) == expected) swipe else null
     }
 
-    fun suggestions(): List<String> {
-        if (!policy.suggestions) return emptyList()
-        currentSwipe()?.let { return it.alternatives }
+    /**
+     * What the suggestion bar has to look up. It is read from the editor on the calling thread (that part is quick)
+     * so that the lookup itself, [lookUp], touches only the dictionary and can run on another thread: the dictionary
+     * search takes tens of milliseconds for a misspelt word and must not hold up the next key press.
+     */
+    sealed interface SuggestionQuery {
+        /** Upper case at the moment of asking (field forces it, or Caps Lock); the answer is formatted with this. */
+        val upperCase: Boolean
+
+        /** Words that are already known: the alternatives of the swipe just made. */
+        class Known(val words: List<String>, override val upperCase: Boolean) : SuggestionQuery
+        class Replacements(val selected: String, override val upperCase: Boolean) : SuggestionQuery
+        class Completions(val prefix: String, override val upperCase: Boolean) : SuggestionQuery
+        class NextWord(val twoWords: Pair<String, String>?, val previous: String?, override val upperCase: Boolean) : SuggestionQuery
+    }
+
+    /** What to look up for the suggestion bar right now, or null when it should be empty. */
+    fun suggestionQuery(): SuggestionQuery? {
+        if (!policy.suggestions) return null
+        val upper = policy.forceUppercase || shift.state == ShiftState.CAPS_LOCK
+        currentSwipe()?.let { return SuggestionQuery.Known(it.alternatives, upper) }
         // A word the editor has selected (the user double-tapped it in the host app): offer replacements.
         // An IME cannot see taps inside another app's text field, but it does see the resulting selection.
         if (editor.hasSelection()) {
-            val selected = editor.selectedText()?.takeIf(::isSingleWord) ?: return emptyList()
-            return engine.suggestReplacements(selected).take(3).map { formatCandidate(it, selected.first().isUpperCase()) }
+            val selected = editor.selectedText()?.takeIf(::isSingleWord) ?: return null
+            return SuggestionQuery.Replacements(selected, upper)
         }
         val prefix = prefix()
         if (prefix == null) {
             val twoWords = previousTwoWords()
-            if (twoWords != null) {
-                val trigrams = engine.suggestNextTrigram(twoWords.first, twoWords.second)
-                if (trigrams.isNotEmpty()) {
-                    return trigrams.take(3).map { formatCandidate(it, false) }
-                }
-            }
-            val prev = previousWord() ?: return emptyList()
-            return engine.suggestNext(prev).take(3).map { formatCandidate(it, false) }
+            val previous = previousWord()
+            if (twoWords == null && previous == null) return null
+            return SuggestionQuery.NextWord(twoWords, previous, upper)
         }
-        return engine.suggest(prefix).take(3).map { formatCandidate(it, prefix.first().isUpperCase()) }
+        return SuggestionQuery.Completions(prefix, upper)
     }
 
-    private fun formatCandidate(candidate: String, capitalizeFirst: Boolean): String = when {
-        policy.forceUppercase || shift.state == ShiftState.CAPS_LOCK -> candidate.uppercase(Locale.ROOT)
+    /** The dictionary half of [suggestions]: no access to the editor, safe to run off the main thread. */
+    fun lookUp(query: SuggestionQuery): List<String> = when (query) {
+        is SuggestionQuery.Known -> query.words
+        is SuggestionQuery.Replacements ->
+            engine.suggestReplacements(query.selected).take(3)
+                .map { formatCandidate(it, query.selected.first().isUpperCase(), query.upperCase) }
+        is SuggestionQuery.Completions ->
+            engine.suggest(query.prefix).take(3)
+                .map { formatCandidate(it, query.prefix.first().isUpperCase(), query.upperCase) }
+        is SuggestionQuery.NextWord -> {
+            val trigrams = query.twoWords?.let { engine.suggestNextTrigram(it.first, it.second) }.orEmpty()
+            when {
+                trigrams.isNotEmpty() -> trigrams.take(3).map { formatCandidate(it, false, query.upperCase) }
+                query.previous != null -> engine.suggestNext(query.previous).take(3).map { formatCandidate(it, false, query.upperCase) }
+                else -> emptyList()
+            }
+        }
+    }
+
+    fun suggestions(): List<String> = suggestionQuery()?.let(::lookUp).orEmpty()
+
+    private fun formatCandidate(candidate: String, capitalizeFirst: Boolean, upperCase: Boolean = isUpperCaseNow()): String = when {
+        upperCase -> candidate.uppercase(Locale.ROOT)
         capitalizeFirst -> candidate.replaceFirstChar { it.uppercaseChar() }
         else -> candidate
     }
+
+    private fun isUpperCaseNow() = policy.forceUppercase || shift.state == ShiftState.CAPS_LOCK
 
     /** Re-read/revalidate the prefix on tap; do not replace stale or partial words. */
     fun chooseSuggestion(candidate: String) {
