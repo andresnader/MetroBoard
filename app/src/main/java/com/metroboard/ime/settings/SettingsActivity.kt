@@ -376,10 +376,6 @@ class SettingsActivity : Activity() {
 
         help(getString(R.string.about_legal))
         help(getString(R.string.about_licenses))
-
-        // Same field as on the typing page, for instant verification.
-        title(getString(R.string.try_title))
-        addView(metroTextField(getString(R.string.test_hint)))
     }
 
     /** One version heading in the accent colour, then its notes as a plain list. */
