@@ -51,8 +51,10 @@ data class EditorPolicy(
                 InputType.TYPE_TEXT_VARIATION_FILTER,
             )
             val noSuggestions = type and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS != 0 ||
-                type and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE != 0 ||
-                info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0
+                type and InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE != 0
+            // Only forbids learning from what is typed (many apps set it for privacy). Suggestions come
+            // from the fixed dictionary and are not personalised, so they stay on.
+            val noLearning = info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING != 0
             val normal = text && !sensitive && !address
             val modes = InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
                 (type and (InputType.TYPE_TEXT_FLAG_CAP_WORDS or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS))
@@ -65,7 +67,7 @@ data class EditorPolicy(
                     autoCorrect = normal && !noSuggestions && suggestionsEnabled && autoCorrectEnabled,
                     shiftWordCasing = shiftWordCasingEnabled,
                     // Never in sensitive/address fields, nor when the editor opts out of personalised learning.
-                    learnWords = normal && !noSuggestions && suggestionsEnabled && learningEnabled,
+                    learnWords = normal && !noSuggestions && !noLearning && suggestionsEnabled && learningEnabled,
                     sensitive = sensitive,
                 ),
                 kind = when (typeClass) {

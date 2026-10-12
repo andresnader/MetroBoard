@@ -68,14 +68,17 @@ class EditorPolicyTest {
     }
 
     @Test
-    fun testNoPersonalizedLearningFlagDisablesSuggestions() {
+    fun testNoPersonalizedLearningFlagOnlyStopsLearning() {
+        // Apps such as AI chats set this flag for privacy. It forbids learning from what is typed; the
+        // suggestions come from the fixed dictionary and are not personalised, so they must stay on.
         val info = EditorInfo().apply {
             inputType = InputType.TYPE_CLASS_TEXT
             imeOptions = EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
         }
         val policy = EditorPolicy.from(info)
-        assertFalse(policy.editing.suggestions)
-        assertFalse(policy.editing.autoCorrect)
+        assertTrue(policy.editing.suggestions)
+        assertTrue(policy.editing.autoCorrect)
+        assertFalse(policy.editing.learnWords)
     }
 
     // ---- learning of new words ---------------------------------------------

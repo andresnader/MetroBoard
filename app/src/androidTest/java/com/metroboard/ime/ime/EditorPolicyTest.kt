@@ -46,8 +46,10 @@ class EditorPolicyTest {
         }
     }
 
-    @Test fun noPersonalizedLearningIsConservativelySuggestionFree() {
-        assertFalse(policy(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING).editing.suggestions)
+    @Test fun noPersonalizedLearningOnlyStopsLearning() {
+        val editing = policy(InputType.TYPE_CLASS_TEXT, EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING).editing
+        assertTrue(editing.suggestions)
+        assertFalse(editing.learnWords)
     }
     @Test fun noSuggestionsAndAutocompleteAreRespected() {
         for (flag in listOf(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS, InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE)) {
