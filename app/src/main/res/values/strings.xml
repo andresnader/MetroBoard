@@ -1,78 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default (English): used for every device language without its own folder. Spanish, French and German
+     live in values-es, values-fr and values-de and must define exactly the same keys. -->
 <resources>
-    <string name="app_name">MetroBoard</string>
-    <string name="subtype_name">QWERTY · español básico</string>
-    <string name="setup_title">tu teclado.\ntu ritmo.</string>
-    <string name="setup_subtitle">MetroBoard · v0.1</string>
-    <string name="setup_instructions">1. Habilita MetroBoard en los ajustes del sistema.\n2. Selecciónalo como método de entrada.\n3. Prueba el campo de abajo.</string>
-    <string name="enable_keyboard">1  habilitar teclado</string>
-    <string name="select_keyboard">2  seleccionar teclado</string>
-    <string name="keyboard_active">El teclado está seleccionado.</string>
-    <string name="keyboard_enabled">Habilitado. Falta seleccionarlo.</string>
-    <string name="keyboard_disabled">El teclado todavía no está habilitado.</string>
-    <string name="feedback_title">preferencias</string>
-    <string name="vibration">Vibración al tocar</string>
-    <string name="sound">Sonido al tocar</string>
-    <string name="suggestions">Sugerencias locales de demostración</string>
-    <string name="privacy_note">Funciona sin conexión. No guarda lo que escribes, no aprende palabras y no envía datos. En campos de contraseña se desactivan las sugerencias y las transformaciones automáticas.</string>
-    <string name="independent_note">Proyecto independiente inspirado en la ergonomía y estética de Windows Phone 8.1 / diseño Metro. Sin afiliación con Microsoft ni assets propietarios.</string>
-    <string name="test_hint">Escribe aquí. Prueba dos espacios…</string>
-    <string name="test_email">Prueba un correo electrónico</string>
-    <string name="test_password">Prueba una contraseña ficticia</string>
-    <string name="test_number">Prueba un número decimal</string>
-    <string name="try_title">pruébalo</string>
-    <string name="suggestion_description">Insertar sugerencia: %1$s</string>
-    <string name="shift_lower">Shift: minúsculas</string>
-    <string name="shift_auto">Shift: mayúscula automática</string>
-    <string name="shift_once">Shift: siguiente letra mayúscula</string>
-    <string name="shift_locked">Shift: bloqueo de mayúsculas</string>
-    <string name="space">Espacio. Mantén pulsado para cambiar de teclado</string>
-    <string name="backspace">Borrar</string>
-    <string name="punctuation">Punto. Mantén pulsado para más puntuación</string>
-    <string name="emoji">Emoticonos de texto</string>
-    <string name="symbols">Números y símbolos</string>
-    <string name="letters">Volver a letras</string>
-    <string name="more_symbols">Más símbolos</string>
-    <string name="enter">Retorno</string>
-    <string name="action_done">listo</string>
-    <string name="action_next">sig.</string>
-    <string name="action_previous">ant.</string>
-    <string name="action_search">buscar</string>
-    <string name="action_go">ir</string>
-    <string name="action_send">enviar</string>
-    <string name="settings_unavailable">Abre los ajustes de idioma y teclado del dispositivo.</string>
-    <string name="section_typing">escritura y corrección</string>
-    <string name="autocorrect">Corrección automática con espacio</string>
-    <string name="autocap">Mayúscula inicial automática</string>
-    <string name="double_space_period">Punto rápido con doble espacio</string>
-    <string name="shift_word_casing">Shift capitaliza la palabra al final</string>
-    <string name="shift_word_casing_summary">Al tocar Shift al final de una palabra: mayúscula inicial → MAYÚSCULAS → minúsculas</string>
-    <string name="section_appearance">apariencia</string>
-    <string name="show_number_row">Fila de números dedicada</string>
-    <string name="accent_color_title">color de acento Lumia</string>
-    <string name="height_scale_title">altura del teclado</string>
-    <string name="height_small">Compacto (85%)</string>
-    <string name="height_normal">Estándar (100%)</string>
-    <string name="height_tall">Alto (115%)</string>
-    <string name="section_tools">copia y restauración</string>
-    <string name="export_settings">Exportar ajustes (JSON)</string>
-    <string name="import_settings">Importar ajustes (JSON)</string>
-    <string name="reset_settings">Restablecer ajustes</string>
-    <string name="copied_to_clipboard">Configuración copiada al portapapeles</string>
-    <string name="settings_imported">Configuración importada correctamente</string>
-    <string name="invalid_json">JSON inválido o incompatible</string>
-    <string name="reset_done">Ajustes restablecidos por defecto</string>
-    <string name="pivot_general">general</string>
-    <string name="pivot_typing">escritura</string>
-    <string name="pivot_appearance">apariencia</string>
-    <string name="pivot_backup">copia</string>
-    <string name="pivot_try">pruébalo</string>
-    <string name="section_feedback">respuesta y gestos</string>
-    <string name="wordflow">Escritura por deslizamiento (Word Flow)</string>
-    <string name="wordflow_summary">Desliza el dedo por las teclas para escribir con estela fluida</string>
-    <string name="language_title">idioma del teclado</string>
-    <string name="lang_spanish">Español (con ñ)</string>
-    <string name="lang_english">English (QWERTY)</string>
-    <string name="space_spanish">espacio</string>
-    <string name="space_english">space</string>
-    <string name="language_switched">Idioma cambiado a %1$s</string>
+    <string name="app_name" translatable="false">MetroBoard</string>
+    <string name="subtype_es" translatable="false">Español (QWERTY)</string>
+    <string name="subtype_en" translatable="false">English (QWERTY)</string>
+    <string name="subtype_fr" translatable="false">Français (AZERTY)</string>
+    <string name="subtype_de" translatable="false">Deutsch (QWERTZ)</string>
+    <!-- Each language is written in its own language, in every locale. -->
+    <string name="lang_es" translatable="false">Español</string>
+    <string name="lang_en" translatable="false">English</string>
+    <string name="lang_fr" translatable="false">Français</string>
+    <string name="lang_de" translatable="false">Deutsch</string>
+
+    <string name="enable_keyboard">1  enable keyboard</string>
+    <string name="select_keyboard">2  select keyboard</string>
+    <string name="select_system_ime">Switch system keyboard…</string>
+
+    <!-- Pivot section labels: one or two words, shown in lower case. -->
+    <string name="tab_languages">Languages</string>
+    <string name="tab_typing">Typing</string>
+    <string name="tab_layout">Layout</string>
+    <string name="tab_appearance">Appearance</string>
+    <string name="tab_sound">Sound</string>
+    <string name="tab_gestures">Gestures</string>
+    <string name="tab_privacy">Privacy</string>
+    <string name="tab_about">About</string>
+
+    <string name="language_title">keyboard language</string>
+    <string name="layout_title">key layout</string>
+    <string name="layout_auto_short">Auto</string>
+    <string name="input_method_title">input method</string>
+
+    <string name="suggestions">Predictive text</string>
+    <string name="autocorrect">Automatic spelling correction</string>
+    <string name="autocap">Automatic capitalization</string>
+    <string name="double_space_period">Quick period with double space</string>
+    <string name="shift_word_casing">Change case with Shift</string>
+    <string name="shift_word_casing_summary">Tap Shift at the end of a word: Capitalized → UPPERCASE → lowercase</string>
+    <string name="learn_words">Learn new words</string>
+    <string name="try_title">try it</string>
+    <string name="test_hint">Type here to try the keyboard…</string>
+
+    <string name="height_scale_title">keyboard height</string>
+    <string name="height_small">Compact</string>
+    <string name="height_normal">Normal</string>
+    <string name="height_tall">Tall</string>
+    <string name="show_number_row">Top number row</string>
+    <string name="key_popup">Key popups (long press)</string>
+    <string name="one_handed_title">one-handed mode</string>
+    <string name="one_handed_off">Off</string>
+    <string name="one_handed_left">Left</string>
+    <string name="one_handed_right">Right</string>
+
+    <string name="theme_title">keyboard theme</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_system">System</string>
+    <string name="accent_color_title">Lumia accent color</string>
+    <string name="tint_keys">Tint keys with the accent color</string>
+
+    <string name="sound">Typing sound (dry WP8.1 click)</string>
+    <string name="sound_volume">Sound volume</string>
+    <string name="volume_low">Low</string>
+    <string name="volume_medium">Medium</string>
+    <string name="volume_high">High</string>
+    <string name="vibration">Haptic vibration</string>
+    <string name="haptic_strength">Vibration strength</string>
+    <string name="haptic_light">Light</string>
+    <string name="haptic_medium">Medium</string>
+    <string name="haptic_strong">Strong</string>
+
+    <string name="wordflow">Swipe typing (Word Flow)</string>
+    <string name="wordflow_summary">Slide your finger across the keys to type with a fluid trail</string>
+    <string name="swipe_delete_title">swipe to delete</string>
+    <string name="swipe_delete_summary">Swipe left from the backspace key to delete whole words</string>
+    <string name="spacebar_cursor">Cursor control from space</string>
+    <string name="spacebar_cursor_summary">Slide horizontally on space to move the cursor</string>
+    <string name="long_press_space">Long press on space</string>
+    <string name="long_press_space_summary">Opens the language and keyboard picker</string>
+
+    <string name="offline_indicator" formatted="false">100% offline · No internet permission</string>
+    <string name="privacy_note">No internet permission is requested. No telemetry, analytics or keystroke logging. In password fields, learning is strictly disabled.</string>
+    <string name="import_android_dict">import from Android personal dictionary</string>
+    <string name="import_android_dict_done">%1$d words imported from the system dictionary</string>
+    <string name="clear_learned_words">Delete personal dictionary</string>
+    <string name="export_settings">Export settings and words (JSON)</string>
+    <string name="import_settings">Import settings and words (JSON)</string>
+    <string name="reset_settings">Restore default values</string>
+    <string name="reset_confirm">Restore all settings to the initial Windows Phone 8.1 values?</string>
+    <string name="reset_done">Settings restored to defaults</string>
+    <string name="dictionary_cleared">Personal dictionary deleted</string>
+    <string name="no_learned_words">No learned words yet</string>
+    <string name="delete_word_title">Delete word</string>
+    <string name="delete_word_message">Delete “%1$s” from the dictionary?</string>
+    <string name="delete_word">Delete</string>
+    <string name="word_deleted">Word deleted</string>
+    <string name="backup_saved">Backup saved</string>
+    <string name="backup_failed">Could not save the backup</string>
+    <string name="backup_imported">%1$d settings and %2$d words imported</string>
+    <string name="invalid_json">Invalid or incompatible JSON</string>
+    <string name="settings_unavailable">Open the device language and keyboard settings.</string>
+
+    <string name="about_legal">Own, independent implementation inspired by the Windows Phone 8.1 Word Flow keyboard. No proprietary code, fonts, sounds or resources from Microsoft or Chiflow.</string>
+    <string name="about_licenses">Code: AGPL-3.0-or-later. Dictionaries: word validity from Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL); frequencies from OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0); next-word lists from the Leipzig Corpora Collection via Helium314/aosp-dictionaries (CC BY 4.0). Details in ATTRIBUTION.md.</string>
+
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
+
+    <!-- Keyboard: accessibility descriptions and action keys -->
+    <string name="suggestion_description">Insert suggestion: %1$s</string>
+    <string name="shift_lower">Shift: lowercase</string>
+    <string name="shift_auto">Shift: automatic capital</string>
+    <string name="shift_once">Shift: next letter uppercase</string>
+    <string name="shift_locked">Shift: caps lock</string>
+    <string name="space">Space. Long press for language picker</string>
+    <string name="backspace">Delete</string>
+    <string name="punctuation">Period. Long press for more punctuation</string>
+    <string name="emoji">Emoticon and emoji picker</string>
+    <string name="symbols">Numbers and symbols</string>
+    <string name="letters">Back to letters</string>
+    <string name="more_symbols">More symbols</string>
+    <string name="enter">Return</string>
+    <string name="action_done">done</string>
+    <string name="action_next">next</string>
+    <string name="action_previous">prev.</string>
+    <string name="action_search">search</string>
+    <string name="action_go">go</string>
+    <string name="action_send">send</string>
+    <string name="clipboard">Clipboard</string>
+
+    <!-- Versions are names, not prose: the same in every language. -->
+    <string name="version_050" translatable="false">0.5.0 · 2026-10-14</string>
+    <string name="version_041" translatable="false">0.4.1 · 2026-10-12</string>
+    <string name="version_040" translatable="false">0.4.0 · 2026-10-12</string>
+    <string name="version_030" translatable="false">0.3.0 · 2026-10-11</string>
+    <string name="version_020" translatable="false">0.2.0 · 2026-10-11</string>
+    <string name="version_010" translatable="false">0.1.0 · 2026-10-11</string>
+
+    <string name="version_label">version %1$s</string>
+    <string name="changelog_title">what\'s new</string>
+    <string-array name="changelog_0_5_0">
+        <item>Swiping: the word appears much sooner after you lift your finger, with exactly the same suggestions as before.</item>
+        <item>The click and the vibration come when your finger touches the key, not when it lifts.</item>
+        <item>A key tapped right after a swipe is typed after the swiped word, never before it.</item>
+        <item>Less work for every key: no needless redraws, no second search after a typo, and learned words are saved in the background.</item>
+        <item>With two thumbs, both pressed keys light up.</item>
+    </string-array>
+    <string-array name="changelog_0_4_1">
+        <item>Holding Backspace now deletes gently at first and then faster. Choose the wait and the speed in Settings > Gestures.</item>
+        <item>The long-press delay (accents, language picker) is adjustable.</item>
+        <item>Manage clipboard: edit, pin, delete and clear what was saved. In the keyboard, long-press a clip to edit it.</item>
+        <item>Diagnostics: if typing still feels slow, turn on “Record response times” in About, type for a minute and copy the report.</item>
+        <item>Less waiting on the app (capitals are worked out locally) and dictionaries use a third less memory.</item>
+    </string-array>
+    <string-array name="changelog_0_4_0">
+        <item>Fixed a crash when holding Space to change language: the chooser is now a panel inside the keyboard.</item>
+        <item>Accents: hold a key, slide to the accent and lift. The popup no longer stays open.</item>
+        <item>Personal dictionary editor: add, edit, delete and search your words, per language.</item>
+        <item>Live preview: the keyboard changes as you pick a theme, an accent color or key tint.</item>
+        <item>Email and web address fields get @ and .com keys. Names are never autocorrected, and swipe typing stays out of passwords.</item>
+        <item>About 30,000 words per language now predict the next word, news and web text included, not just chat.</item>
+        <item>Swipe typing uses the previous word to choose between shapes that fit equally well.</item>
+        <item>What you just copied shows on the suggestion bar, ready to paste.</item>
+        <item>Much quicker response while typing: fewer waits on the app, and suggestions are searched off the main thread.</item>
+    </string-array>
+    <string-array name="changelog_0_3_0">
+        <item>Live clipboard: what you copy appears as tiles. Tap one to type it, pin it to keep it.</item>
+        <item>New toolbar next to the suggestions: quick keyboard size and a shortcut to Settings.</item>
+        <item>The Settings menu now loops: swipe past the last section and you are back at the first.</item>
+        <item>Settings and the keyboard follow your phone\'s language (English, Spanish, French, German).</item>
+        <item>Word Flow rebuilt: it looks at the whole dictionary and writes nothing when it is not sure.</item>
+        <item>60,000 words per language, each language with its own dictionary.</item>
+        <item>Autocorrect never changes a valid word, and Backspace undoes it.</item>
+        <item>The 20 official Windows Phone accent colors and a flat clipboard icon.</item>
+        <item>Fixed: repeated letters (ww, oo) selecting a word, and taps lost when typing with two thumbs.</item>
+        <item>Back up settings and words to a file you choose, with no storage permission.</item>
+    </string-array>
+    <string-array name="changelog_0_2_0">
+        <item>Swipe typing (Word Flow) and swipe left on Backspace to delete whole words.</item>
+        <item>One-handed mode, light and dark themes, and hardware keyboard support.</item>
+        <item>Skin tone picker for emoji, and import from the Android personal dictionary.</item>
+    </string-array>
+    <string-array name="changelog_0_1_0">
+        <item>First release: flat Metro keys, Shift states, double space for a period and long press for accents.</item>
+        <item>Offline dictionaries in four languages. No internet permission.</item>
+    </string-array>
+
+    <string name="clipboard_title">clipboard</string>
+    <string name="clipboard_empty">Nothing copied yet. What you copy will appear here.</string>
+    <string name="clipboard_back">Back to the keyboard</string>
+    <string name="clipboard_clear">Clear</string>
+    <string name="clipboard_pin">Pin</string>
+    <string name="clipboard_unpin">Unpin</string>
+    <string name="clipboard_delete">Delete</string>
+    <string name="resize_title">size</string>
+    <string name="open_settings">Open settings</string>
+    <string name="toolbar_open">More tools</string>
+    <string name="toolbar_close">Close tools</string>
+    <string name="clipboard_history">Clipboard history</string>
+    <string name="clipboard_history_summary">Copied text is kept in memory for one hour; only pinned clips are saved, on this device. Anything the app marks as sensitive is never kept. It is not shown in password fields.</string>
+    <string name="clear_clipboard">Clear clipboard history</string>
+    <string name="clipboard_cleared">Clipboard history cleared</string>
+    <string name="personal_dictionary_title">Personal dictionary</string>
+    <string name="dict_search_hint">Search words</string>
+    <string name="dict_add_hint">New word</string>
+    <string name="dict_add">Add</string>
+    <string name="dict_edit_title">Edit word</string>
+    <string name="dict_save">Save</string>
+    <string name="dict_invalid_word">A word has 2 to 40 letters, with no spaces or digits</string>
+    <string name="dict_pending">Not suggested yet</string>
+    <string name="dict_back">Back</string>
+    <string name="dict_edit_hint">Edit</string>
+    <string name="about_credit">A development by Ameizin — Andrés Nader · info@ameizin.ec</string>
+    <string name="preview_suggestions">Hello|Hi|Hey</string>
+    <string name="clip_suggestion_description">Paste what you copied: %1$s</string>
+    <string name="diagnostics_title">diagnostics</string>
+    <string name="diagnostics_help">If typing feels slow, turn this on, type for a minute and copy the report. It records only numbers (how long each key took to answer), never what you type, in memory, until you clear it or the keyboard restarts.</string>
+    <string name="diagnostics_toggle">Record response times</string>
+    <string name="diagnostics_copy">Copy report</string>
+    <string name="diagnostics_clear">Clear</string>
+    <string name="diagnostics_copied">Report copied</string>
+    <string name="diagnostics_cleared">Cleared</string>
+    <string name="long_press_delay_title">long-press delay</string>
+    <string name="delay_short">Short</string>
+    <string name="delay_normal">Normal</string>
+    <string name="delay_long">Long</string>
+    <string name="delay_very_long">Very long</string>
+    <string name="long_press_delay_summary">How long you hold a key before its accents (or the language picker on Space) appear.</string>
+    <string name="backspace_delay_title">backspace: wait before repeating</string>
+    <string name="backspace_speed_title">backspace: speed once it repeats</string>
+    <string name="speed_slow">Slow</string>
+    <string name="speed_fast">Fast</string>
+    <string name="backspace_summary">Holding Backspace deletes one character at a time, gently at first and then faster. A longer wait or a slower speed deletes less by accident.</string>
+    <string name="clipboard_manage">Manage clipboard</string>
+    <string name="clipboard_edit_title">Edit clip</string>
+    <string name="clipboard_clear_unpinned">Clear unpinned</string>
+    <string name="clipboard_invalid">A clip cannot be empty or longer than 2,000 characters</string>
+    <string name="clipboard_manage_hint">Tap a clip to edit it. Pinned clips are kept when the keyboard restarts; the rest are forgotten after an hour. In the keyboard, long-press a clip to edit it.</string>
 </resources>

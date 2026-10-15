@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple geometric, monochrome clipboard glyph in the Windows Phone AppBar style (tinted at runtime). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8" android:strokeLineJoin="miter"
+        android:pathData="M5,5h14v16h-14z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M9,3h6v4h-6z" />
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.6"
+        android:pathData="M8.5,12h7M8.5,16h7" />
+</vector>

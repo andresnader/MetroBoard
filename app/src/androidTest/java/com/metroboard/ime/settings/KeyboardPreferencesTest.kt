@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.settings
 
 import android.content.Context
@@ -32,7 +40,7 @@ class KeyboardPreferencesTest {
         assertFalse(preferences.numberRow)
         assertEquals(KeyboardPreferences.DEFAULT_ACCENT_COLOR, preferences.accentColor)
         assertEquals(1.0f, preferences.heightScale, 0.001f)
-        assertEquals("es", preferences.language)
+        assertEquals(KeyboardPreferences.languageFor(java.util.Locale.getDefault().language), preferences.language)
     }
 
     @Test

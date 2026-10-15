@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.ui
 
 import android.annotation.SuppressLint
@@ -17,6 +25,9 @@ class KeyButton @JvmOverloads constructor(context: Context, val action: KeyActio
     private val iconPath = Path()
     var shiftState = ShiftState.LOWERCASE
         set(value) { field = value; invalidate() }
+
+    /** The Shift look KeyboardView.render applied last (null: none yet), so an unchanged one is not rebuilt per key. */
+    internal var shownActive: Boolean? = null
     var onRepeat: (() -> Unit)? = null
     private var repeating = false
     private val repeat = object : Runnable {
@@ -39,11 +50,17 @@ class KeyButton @JvmOverloads constructor(context: Context, val action: KeyActio
         minHeight = 0
         minimumHeight = 0
         stateListAnimator = null
-        setTextColor(android.graphics.Color.WHITE)
+        setTextColor(KeyboardColors.foreground)
         textSize = 23f
         typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL)
         maxLines = 1
         background = KeyboardColors.keyBackground()
+    }
+
+    fun refreshTheme(tintKeys: Boolean = false) {
+        setTextColor(KeyboardColors.foreground)
+        background = KeyboardColors.keyBackground(tintKeys = tintKeys)
+        invalidate()
     }
 
     // Ordinary taps delegate to Button, which calls performClick (including TalkBack).

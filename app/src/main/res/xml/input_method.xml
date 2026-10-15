@@ -3,9 +3,27 @@
     android:settingsActivity="com.metroboard.ime.settings.SettingsActivity"
     android:supportsSwitchingToNextInputMethod="true">
     <subtype
-        android:label="@string/subtype_name"
+        android:label="@string/subtype_es"
         android:imeSubtypeLocale="es"
         android:languageTag="es"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:label="@string/subtype_en"
+        android:imeSubtypeLocale="en"
+        android:languageTag="en"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:label="@string/subtype_fr"
+        android:imeSubtypeLocale="fr"
+        android:languageTag="fr"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true" />
+    <subtype
+        android:label="@string/subtype_de"
+        android:imeSubtypeLocale="de"
+        android:languageTag="de"
         android:imeSubtypeMode="keyboard"
         android:isAsciiCapable="true" />
 </input-method>

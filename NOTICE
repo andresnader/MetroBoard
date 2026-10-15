@@ -1,0 +1,73 @@
+MetroBoard
+Copyright (C) 2026 MetroBoard Contributors
+
+Licensed under the GNU Affero General Public License, Version 3 or later.
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+
+================================================================================
+AVISO DE LICENCIA Y OBLIGACIONES DE REDISTRIBUCIÓN
+================================================================================
+
+Este proyecto se distribuye bajo AGPL-3.0-or-later, una licencia copyleft viral.
+
+Qué significa en la práctica:
+
+  - Si distribuyes MetroBoard (modificado o sin modificar) debes hacerlo
+    también bajo AGPL-3.0 y ofrecer su código fuente completo a quien lo
+    reciba.
+  - La AGPL se extiende a la oferta del programa en red: si alguien usa
+    MetroBoard como servicio alcanzable por red, también debe poder obtener
+    el código fuente.
+  - No hay distribución de código propietario que enlace con MetroBoard sin
+    cumplimiento de la AGPL.
+
+Esta decisión de licencia es del propietario del proyecto y no se modifica en 0.3.
+Contexto: hasta 0.2 la AGPL venía impuesta por una lista de palabras española
+publicada bajo AGPL-3.0. En 0.3 esa lista se sustituyó, pero los diccionarios
+es y de se distribuyen derivados de fuentes GPL-3.0-or-later, de modo que el
+repositorio sigue siendo copyleft y no puede relicenciarse a términos
+permisivos mientras los incluya.
+
+
+================================================================================
+TERCEROS INCLUIDOS
+================================================================================
+
+1. Listas de palabras es / en / fr / de (60.000 palabras cada una)
+   --------------------------------------------------------------
+   Generadas por tools/build_dictionaries.py (reproducible). Resultado en
+   app/src/main/assets/dictionaries/*.dict; huellas de las fuentes en
+   docs/dictionaries-build-report.md.
+
+   Validez de la palabra (Hunspell, LibreOffice/dictionaries):
+     es  es_EC            tri-licencia GPLv3+/LGPLv3+/MPL-1.1+ (se elige GPLv3+)
+     en  en_US (SCOWL)    licencia permisiva tipo MIT/BSD
+     fr  fr_FR 7.7        MPL-2.0 (Olivier R., Grammalecte)
+     de  de_DE_frami      GPL v2 o v3 (se elige v3)
+
+   Las listas son obras derivadas de esos diccionarios (selección filtrada).
+
+2. Datos de frecuencia de palabras
+   --------------------------------
+   Origen:    https://github.com/hermitdave/FrequencyWords (lista 2018, a su
+              vez derivada de OpenSubtitles 2018 / OPUS)
+   Licencia:  contenido CC-BY-SA-4.0 (código MIT)
+   Uso:       el peso 1..255 de cada palabra de los cuatro *.dict se calcula a
+              partir de su rango en esa lista.
+
+   NOTA LEGAL (pendiente de revisión, esto no es asesoramiento legal): la
+   obligación ShareAlike de CC-BY-SA-4.0 alcanza a los datos derivados. Creative
+   Commons declara CC BY-SA 4.0 compatible, en un solo sentido, con GPLv3, y
+   este proyecto se distribuye bajo AGPL-3.0-or-later. Conviene confirmarlo
+   antes de publicar en una tienda de aplicaciones.
+
+   Esta fuente REEMPLAZA a los rangos extraídos del APK de Chi+Flow y a la
+   lista española AGPL de xavier-hernandez que usaban las versiones 0.1 y 0.2:
+   ya no se distribuye ningún dato derivado de un APK propietario.
+
+3. Licencias de herramientas externas (no incluidas)
+   -----------------------------------------------
+   Gradle Wrapper, Kotlin, JUnit, Hamcrest, Android SDK: cada uno bajo sus
+   respectivas licencias de código abierto. No se incluyen ni se
+   redistribuyen aquí; se descargan en tiempo de compilación.

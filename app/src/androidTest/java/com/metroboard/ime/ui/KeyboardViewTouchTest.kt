@@ -1,0 +1,428 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
+package com.metroboard.ime.ui
+
+import android.app.Activity
+import android.content.Intent
+import android.os.SystemClock
+import android.view.InputDevice
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import com.metroboard.ime.ime.EditorPolicy
+import com.metroboard.ime.keyboard.KeyAction
+import com.metroboard.ime.keyboard.KeySpec
+import com.metroboard.ime.keyboard.KeyboardPage
+import com.metroboard.ime.settings.SettingsActivity
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * Drives the real [KeyboardView] (hit testing, per-pointer dispatch, state machine) with
+ * synthetic multi-pointer MotionEvents, the same way Android would deliver two thumbs.
+ */
+@RunWith(AndroidJUnit4::class)
+class KeyboardViewTouchTest {
+    private val inst = InstrumentationRegistry.getInstrumentation()
+    private val typed = mutableListOf<String>()
+    private var wordFlowCommits = 0
+    private lateinit var view: KeyboardView
+    private var downTime = 0L
+    private var clock = 0L
+
+    private class Pointer(val id: Int, var x: Float, var y: Float)
+    private val pointers = mutableListOf<Pointer>()
+
+    /** "press:x" (finger down, click and vibration), "key:x" (typed), "word:x" (swipe committed), in order. */
+    private val events = mutableListOf<String>()
+
+    private val listener = object : KeyboardView.Listener {
+        override fun onKeyPressed(key: KeySpec) { events += "press:${key.label}" }
+        override fun onKey(key: KeySpec) {
+            events += "key:${key.label}"
+            if (key.action == KeyAction.TEXT) typed += key.label
+        }
+        override fun onSuggestion(word: String) {}
+        override fun onSwitchKeyboard() {}
+        override fun onAlternativesOpened() {}
+        override fun onWordFlow(word: String, candidates: List<String>) { events += "word:$word"; wordFlowCommits++ }
+        override fun onLanguageToggled() {}
+        override fun onSpacebarCursorMoved(step: Int) {}
+        override fun onSpacebarLongPressed() {}
+        override fun onClipboardPasteRequested() {}
+    }
+
+    private lateinit var host: Activity
+
+    @Before
+    fun setUp() {
+        typed.clear(); events.clear(); wordFlowCommits = 0; pointers.clear()
+        // The view must be attached to a real window: KeyboardView ignores buttons that are not shown.
+        host = inst.startActivitySync(
+            Intent(inst.targetContext, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        inst.runOnMainSync {
+            view = KeyboardView(host, listener)
+            view.setLayout(
+                page = KeyboardPage.LETTERS,
+                policy = EditorPolicy.from(EditorInfo(), false),
+                language = "es",
+                wordFlow = true,
+            )
+            host.addContentView(
+                view,
+                ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
+            )
+        }
+        inst.waitForIdleSync()
+        downTime = SystemClock.uptimeMillis()
+        clock = downTime
+    }
+
+    @After
+    fun tearDown() {
+        inst.runOnMainSync { host.finish() }
+    }
+
+    // ---- helpers -------------------------------------------------------
+
+    private fun keyButton(label: String): KeyButton {
+        fun find(v: View): KeyButton? {
+            if (v is KeyButton && v.text?.toString().equals(label, ignoreCase = true)) return v
+            if (v is ViewGroup) for (i in 0 until v.childCount) find(v.getChildAt(i))?.let { return it }
+            return null
+        }
+        return requireNotNull(find(view)) { "key '$label' not found in layout" }
+    }
+
+    private fun keyCenter(label: String): Pair<Float, Float> {
+        val key = keyButton(label)
+        var x = key.width / 2f
+        var y = key.height / 2f
+        var cur: View = key
+        while (cur !== view) {
+            x += cur.left; y += cur.top
+            cur = cur.parent as View
+        }
+        return x to y
+    }
+
+    private fun send(action: Int, actionIndex: Int = 0) {
+        val props = pointers.map { MotionEvent.PointerProperties().apply { id = it.id; toolType = MotionEvent.TOOL_TYPE_FINGER } }
+        val coords = pointers.map { MotionEvent.PointerCoords().apply { x = it.x; y = it.y; pressure = 1f; size = 1f } }
+        val masked = if (action == MotionEvent.ACTION_POINTER_DOWN || action == MotionEvent.ACTION_POINTER_UP)
+            action or (actionIndex shl MotionEvent.ACTION_POINTER_INDEX_SHIFT) else action
+        val ev = MotionEvent.obtain(
+            downTime, clock, masked, pointers.size,
+            props.toTypedArray(), coords.toTypedArray(),
+            0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0,
+        )
+        inst.runOnMainSync { view.dispatchTouchEvent(ev) }
+        ev.recycle()
+    }
+
+    private fun down(id: Int, key: String, dt: Long = 0) {
+        clock += dt
+        val (x, y) = keyCenter(key)
+        pointers += Pointer(id, x, y)
+        if (pointers.size == 1) send(MotionEvent.ACTION_DOWN)
+        else send(MotionEvent.ACTION_POINTER_DOWN, pointers.indexOfFirst { it.id == id })
+    }
+
+    private fun moveTo(id: Int, key: String, dt: Long = 0) {
+        clock += dt
+        val (x, y) = keyCenter(key)
+        pointers.first { it.id == id }.apply { this.x = x; this.y = y }
+        send(MotionEvent.ACTION_MOVE)
+    }
+
+    private fun up(id: Int, dt: Long = 0) {
+        clock += dt
+        val idx = pointers.indexOfFirst { it.id == id }
+        if (pointers.size == 1) send(MotionEvent.ACTION_UP) else send(MotionEvent.ACTION_POINTER_UP, idx)
+        pointers.removeAt(idx)
+    }
+
+    // ---- scenarios -----------------------------------------------------
+
+    @Test
+    fun rapidSingleFingerTapsAreTypedInOrder() {
+        for (k in listOf("h", "o", "l", "a")) { down(0, k); up(0, 40); clock += 60 }
+        assertEquals(listOf("h", "o", "l", "a"), typed)
+        assertEquals(0, wordFlowCommits)
+    }
+
+    @Test
+    fun doubledLettersTypedFastAreBothTyped() {
+        // "ww", "ll", "ee": a second press of the same key within 300 ms used to select the whole word.
+        for (k in listOf("w", "l", "e")) { down(0, k); up(0, 40); clock += 60; down(0, k); up(0, 40); clock += 60 }
+        assertEquals(listOf("w", "w", "l", "l", "e", "e"), typed)
+    }
+
+    @Test
+    fun alternatingTwoThumbsWithOverlapNeverTriggersWordFlow() {
+        // left thumb: a s d f, right thumb: l k j h, overlapping presses
+        val left = listOf("a", "s", "d", "f")
+        val right = listOf("l", "k", "j", "h")
+        for (i in left.indices) {
+            down(0, left[i])
+            down(1, right[i], 30)
+            up(0, 40)
+            up(1, 30)
+            clock += 60
+        }
+        assertEquals(left.indices.flatMap { listOf(left[it], right[it]) }, typed)
+        assertEquals("two-thumb typing must never commit a shape-written word", 0, wordFlowCommits)
+    }
+
+    @Test
+    fun nearSimultaneousPressesKeepPressOrderEvenWhenReleasedInReverse() {
+        down(0, "a")
+        down(1, "l", 25)
+        up(1, 35) // l released first
+        up(0, 15)
+        assertEquals(listOf("a", "l"), typed)
+    }
+
+    @Test
+    fun secondThumbWhileTheFirstDriftsDoesNotStartWordFlow() {
+        down(0, "a")
+        down(1, "l", 20)
+        moveTo(0, "s", 15) // involuntary drift of the first thumb
+        moveTo(0, "d", 15)
+        up(1, 20)
+        up(0, 20)
+        assertEquals(0, wordFlowCommits)
+        assertTrue("second thumb's key must be typed", typed.contains("l"))
+    }
+
+    @Test
+    fun cancelDuringATwoFingerGestureLeavesTheViewUsable() {
+        down(0, "a")
+        down(1, "l", 20)
+        send(MotionEvent.ACTION_CANCEL)
+        pointers.clear()
+        clock += 100
+        down(0, "h"); up(0, 40)
+        assertTrue(typed.contains("h"))
+        assertEquals(0, wordFlowCommits)
+    }
+
+    @Test
+    fun aClearSingleFingerGestureStillShapeWrites() {
+        // Decoding is asynchronous and never loads a dictionary on the UI thread: have it ready.
+        com.metroboard.ime.dictionary.LanguageDictionaryRegistry.get("es", inst.targetContext)
+        // "mensaje" is far outside the 500 most frequent words, so this also covers the full lexicon.
+        val word = listOf("m", "e", "n", "s", "a", "j", "e")
+        down(0, word.first())
+        for (k in word.drop(1)) moveTo(0, k, 25)
+        up(0, 25)
+        repeat(40) { if (wordFlowCommits == 0) { inst.waitForIdleSync(); Thread.sleep(100) } }
+        assertEquals("a deliberate swipe over several keys must commit once", 1, wordFlowCommits)
+        assertTrue("a swipe must not also type letters", typed.isEmpty())
+    }
+
+    /**
+     * Fast, sloppy typing as a person does it: 6 to 14 letters a second, one or two thumbs with presses that overlap,
+     * and the thumb rolling a little while it is down. Every press must come out, in the order it was pressed.
+     */
+    @Test
+    fun fastSloppyTypingNeverDropsOrReordersAKey() {
+        val letters = "qwertyuiopasdfghjklzxcvbnm".map { it.toString() }
+        for (seed in 1..6) {
+            typed.clear(); pointers.clear(); wordFlowCommits = 0
+            val rnd = java.util.Random(seed.toLong())
+            val intended = ArrayList<String>()
+            repeat(120) { n ->
+                val key = letters[rnd.nextInt(letters.size)]
+                val (x, y) = keyCenter(key)
+                val finger = n % 2 // two thumbs take turns
+                val overlap = rnd.nextInt(100) < 45
+                val hold = 35L + rnd.nextInt(80)
+                val gap = 15L + rnd.nextInt(70)
+                // This press starts while the other thumb may still be down.
+                pointers += Pointer(finger, x, y)
+                val index = pointers.indexOfFirst { it.id == finger }
+                if (pointers.size == 1) send(MotionEvent.ACTION_DOWN) else send(MotionEvent.ACTION_POINTER_DOWN, index)
+                intended += key
+                // Thumb roll: up to a third of a key width, in two small moves.
+                repeat(rnd.nextInt(3)) {
+                    clock += 8
+                    pointers.first { it.id == finger }.apply {
+                        this.x = x + (rnd.nextFloat() - 0.5f) * 22f
+                        this.y = y + (rnd.nextFloat() - 0.5f) * 22f
+                    }
+                    send(MotionEvent.ACTION_MOVE)
+                }
+                clock += hold
+                if (!overlap || pointers.size == 1) {
+                    val idx = pointers.indexOfFirst { it.id == finger }
+                    if (pointers.size == 1) send(MotionEvent.ACTION_UP) else send(MotionEvent.ACTION_POINTER_UP, idx)
+                    pointers.removeAt(idx)
+                    // the other thumb, if still down, lifts too
+                    pointers.toList().forEach { other ->
+                        clock += 5
+                        val oi = pointers.indexOfFirst { it.id == other.id }
+                        if (pointers.size == 1) send(MotionEvent.ACTION_UP) else send(MotionEvent.ACTION_POINTER_UP, oi)
+                        pointers.removeAt(oi)
+                    }
+                }
+                clock += gap
+            }
+            // release whatever is still down
+            pointers.toList().forEach { other ->
+                clock += 5
+                val oi = pointers.indexOfFirst { it.id == other.id }
+                if (pointers.size == 1) send(MotionEvent.ACTION_UP) else send(MotionEvent.ACTION_POINTER_UP, oi)
+                pointers.removeAt(oi)
+            }
+            inst.waitForIdleSync()
+            Thread.sleep(400) // let the tap-order timer flush anything still waiting
+            inst.waitForIdleSync()
+            assertEquals("seed $seed: keys typed vs pressed (first difference shown by the lists)", intended, typed)
+            assertEquals("seed $seed: fast tapping must never turn into a shape-written word", 0, wordFlowCommits)
+        }
+    }
+
+    // ---- 0.5: feedback at touch-down, two-thumb highlight, swipes and taps in order, cheaper redraws ----------------
+
+    @Test
+    fun theClickComesWhenTheFingerLandsAndTheKeyWhenItLifts() {
+        down(0, "h")
+        assertEquals(listOf("press:h"), events)
+        up(0, 40)
+        assertEquals(listOf("press:h", "key:h"), events)
+    }
+
+    @Test
+    fun twoThumbsShowBothKeysPressedUntilEachLifts() {
+        down(0, "a")
+        down(1, "l", 20)
+        inst.runOnMainSync {
+            assertTrue("left thumb's key lit", keyButton("a").isPressed)
+            assertTrue("right thumb's key lit", keyButton("l").isPressed)
+        }
+        up(0, 20)
+        inst.runOnMainSync {
+            assertTrue("the key of the thumb still down stays lit", keyButton("l").isPressed)
+            assertTrue(!keyButton("a").isPressed)
+        }
+        up(1, 20)
+        inst.runOnMainSync { assertTrue(!keyButton("l").isPressed) }
+        assertEquals(listOf("a", "l"), typed)
+    }
+
+    private fun swipe(vararg keys: String) {
+        down(0, keys.first())
+        for (k in keys.drop(1)) moveTo(0, k, 25)
+        up(0, 25)
+    }
+
+    private fun waitUntil(condition: () -> Boolean) {
+        repeat(80) { if (!condition()) { inst.waitForIdleSync(); Thread.sleep(25) } }
+    }
+
+    private fun typedAndSwiped() = events.filter { it.startsWith("key:") || it.startsWith("word:") }
+
+    @Test
+    fun aKeyTappedRightAfterASwipeIsTypedAfterTheSwipedWord() {
+        val decodeMayFinish = java.util.concurrent.CountDownLatch(1)
+        view.heldTapTimeoutMs = 10_000
+        view.decodeSwipe = { _, _, _, _ -> decodeMayFinish.await(); listOf("hola") }
+        swipe("h", "o", "l", "a")
+        clock += 30
+        down(0, "m"); up(0, 40) // the next key, while the word is still being worked out
+        inst.waitForIdleSync()
+        assertTrue("the key must wait for the word", typedAndSwiped().isEmpty())
+        assertTrue("its click is not delayed", events.contains("press:m"))
+        decodeMayFinish.countDown()
+        waitUntil { typedAndSwiped().size == 2 }
+        assertEquals(listOf("word:hola", "key:m"), typedAndSwiped())
+    }
+
+    @Test
+    fun aSlowDecodeNeverHoldsAKeyForLong() {
+        val decodeMayFinish = java.util.concurrent.CountDownLatch(1)
+        view.heldTapTimeoutMs = 100
+        view.decodeSwipe = { _, _, _, _ -> decodeMayFinish.await(); listOf("hola") }
+        swipe("h", "o", "l", "a")
+        clock += 30
+        down(0, "m"); up(0, 40)
+        Thread.sleep(300)
+        inst.waitForIdleSync()
+        assertEquals("past the bound the key is typed", listOf("key:m"), typedAndSwiped())
+        decodeMayFinish.countDown()
+        waitUntil { typedAndSwiped().size == 2 }
+        assertEquals("the late word still arrives", listOf("key:m", "word:hola"), typedAndSwiped())
+    }
+
+    @Test
+    fun aSwipeKeepsTheTouchSamplesAndroidBatchesIntoOneEvent() {
+        var decodedPoints = -1
+        val decoded = java.util.concurrent.CountDownLatch(1)
+        view.decodeSwipe = { path, _, _, _ -> decodedPoints = path.size; decoded.countDown(); emptyList() }
+        down(0, "m")
+        for (k in listOf("e", "n", "s")) moveTo(0, k, 25) // recognised as a swipe by now
+        // Five more events towards "a", each carrying three earlier samples (as a 240 Hz screen delivers them per frame).
+        val (sx, sy) = keyCenter("s")
+        val (ax, ay) = keyCenter("a")
+        repeat(5) { e ->
+            val samples = (1..4).map { s -> val f = (e * 4 + s) / 20f; (sx + (ax - sx) * f) to (sy + (ay - sy) * f) }
+            sendMoveWithHistory(samples, stepMs = 4)
+        }
+        up(0, 10)
+        assertTrue(decoded.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals("down + 3 moves + 5 events x (3 historical + 1)", 1 + 3 + 5 * 4, decodedPoints)
+    }
+
+    private fun sendMoveWithHistory(samples: List<Pair<Float, Float>>, stepMs: Long) {
+        val props = arrayOf(MotionEvent.PointerProperties().apply { id = 0; toolType = MotionEvent.TOOL_TYPE_FINGER })
+        fun at(x: Float, y: Float) = arrayOf(MotionEvent.PointerCoords().apply { this.x = x; this.y = y; pressure = 1f; size = 1f })
+        clock += stepMs
+        val (fx, fy) = samples.first()
+        val ev = MotionEvent.obtain(downTime, clock, MotionEvent.ACTION_MOVE, 1, props, at(fx, fy), 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+        for ((x, y) in samples.drop(1)) { clock += stepMs; ev.addBatch(clock, at(x, y), 0) } // earlier samples become history
+        inst.runOnMainSync { view.dispatchTouchEvent(ev) }
+        ev.recycle()
+        pointers.first { it.id == 0 }.apply { x = samples.last().first; y = samples.last().second }
+    }
+
+    @Test
+    fun drawingTheSameStateAgainAsksForNoLayoutPass() {
+        val render = Runnable {
+            view.render(com.metroboard.ime.keyboard.ShiftState.LOWERCASE, false, listOf("hola", "hoy", "hora"), "")
+        }
+        inst.runOnMainSync(render)
+        inst.waitForIdleSync() // the first one changes the words and may lay out
+        var requested = true
+        inst.runOnMainSync { render.run(); requested = view.isLayoutRequested }
+        assertTrue("an unchanged suggestion bar must not lay the keyboard out again", !requested)
+    }
+
+    @Test
+    fun theSameLayoutAskedTwiceKeepsItsKeys() {
+        val before = keyButton("q")
+        inst.runOnMainSync {
+            view.setLayout(page = KeyboardPage.LETTERS, policy = EditorPolicy.from(EditorInfo(), false), language = "es", wordFlow = true)
+        }
+        assertTrue("same request: the keys are reused", before === keyButton("q"))
+        inst.runOnMainSync {
+            view.setLayout(page = KeyboardPage.LETTERS, policy = EditorPolicy.from(EditorInfo(), false), language = "en", wordFlow = true)
+        }
+        inst.waitForIdleSync()
+        assertTrue("another language: built again", before !== keyButton("q"))
+    }
+}

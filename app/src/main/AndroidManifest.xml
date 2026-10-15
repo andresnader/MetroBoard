@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- No Internet, contacts, storage or microphone permissions. -->
+    <!-- 100% Offline: zero Internet, contacts, storage or microphone permissions. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
+
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
@@ -12,12 +15,20 @@
         <activity
             android:name=".settings.SettingsActivity"
             android:exported="true"
-            android:windowSoftInputMode="stateHidden|adjustResize">
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".settings.ClipboardManagerActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".settings.PersonalDictionaryActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <service
             android:name=".ime.WordFlowImeService"
             android:label="@string/app_name"

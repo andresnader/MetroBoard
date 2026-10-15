@@ -15,6 +15,7 @@ build/
 local.properties
 *.jks
 *.keystore
+keystore.properties
 
 # OS files
 .DS_Store
@@ -27,5 +28,17 @@ decompiled/
 *.aab
 *.xapk
 
+# Upstream wordlists clonados por tools/fetch_spanish_wordlist.py
+# Se fijan por commit en el script, así que no hace falta versionarlos:
+# el asset generado en assets/dictionaries/ sí está commiteado.
+vendor/
+
 # Local test screenshots
 emulator_*.png
+
+# Material de trabajo local (referencias, tickets y grabaciones de pruebas), no forma parte del código
+/Windows phone 81. UI UX Design/
+/gu_a_de_motor_predictivo_y_corpus.md
+/word_flow_emulation_blueprint.md
+/reporte_t_cnico_e_incidencias_teclado_android.md
+*.mp4

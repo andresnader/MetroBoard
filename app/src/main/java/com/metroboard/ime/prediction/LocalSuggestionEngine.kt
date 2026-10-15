@@ -1,121 +1,213 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.prediction
 
+import android.content.Context
+import com.metroboard.ime.dictionary.DictionaryProvider
 import com.metroboard.ime.dictionary.DisabledPersonalDictionary
+import com.metroboard.ime.dictionary.LanguageDictionaryRegistry
 import com.metroboard.ime.dictionary.PersonalDictionary
+import com.metroboard.ime.language.LanguagePacks
 import java.util.Locale
-import kotlin.math.abs
 
 class LocalSuggestionEngine(
     private val personal: PersonalDictionary = DisabledPersonalDictionary,
-    language: String = "es",
+    private val context: Context? = null,
+    var activeLanguage: String = "es",
+    /** Dictionary source; tests inject the real shipped dictionaries here. */
+    private val dictionaryFor: (String) -> DictionaryProvider =
+        { language -> LanguageDictionaryRegistry.getNonBlocking(language, context) },
+    /**
+     * While the real dictionary is still loading only the tiny built-in sample exists. On a device
+     * (a Context is present) the engine then stays silent instead of acting on it: autocorrecting
+     * towards 35 words or learning common words as "new" would be wrong. Without a Context
+     * (unit tests, headless use) the sample is all there is, so it is used.
+     */
+    private val waitForRealDictionary: Boolean = context != null,
 ) : SuggestionEngine {
 
-    private var pack: LanguagePack = LanguagePacks.forCode(language)
+    private fun usable(dict: DictionaryProvider) = !(waitForRealDictionary && dict.isSample)
+
+    /** One remembered answer of [DictionaryProvider.autoCorrect]; [word] is null when there was no correction. */
+    private class Correction(val word: String?)
+
+    // The dictionary's correction of the last words looked up. The suggestion thread works it out while a word is
+    // being typed (step 2 of suggest), and the space that ends the word asks the very same question on the UI thread,
+    // where the fuzzy search behind it used to run again. Only answers of the same dictionary object are reused.
+    private val corrections = object : LinkedHashMap<String, Correction>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Correction>?) = size > CORRECTIONS_KEPT
+    }
+    private var correctionsFrom: DictionaryProvider? = null
+
+    /** dict.autoCorrect([typed], AUTOCORRECT_MIN_FREQUENCY), remembered. [typed] is lower case. */
+    private fun correctionOf(dict: DictionaryProvider, typed: String): String? {
+        synchronized(corrections) {
+            if (correctionsFrom === dict) corrections[typed]?.let { return it.word }
+        }
+        val found = dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY) // slow part, outside the lock
+        synchronized(corrections) {
+            if (correctionsFrom !== dict) { corrections.clear(); correctionsFrom = dict }
+            corrections[typed] = Correction(found)
+        }
+        return found
+    }
 
     override fun setLanguage(language: String) {
-        pack = LanguagePacks.forCode(language)
+        activeLanguage = language
     }
 
-    override fun suggest(prefix: String): List<String> {
+    override fun suggest(prefix: String): List<String> = suggest(prefix, activeLanguage)
+
+    /**
+     * Candidates for the word being typed, best first (the UI puts the first one in the
+     * emphasised centre slot). A word that is already valid is kept verbatim as the top
+     * candidate and is never padded with fuzzy look-alikes; fuzzy matching is only used for
+     * words the language does not know, and never proposes rare words.
+     */
+    fun suggest(prefix: String, language: String): List<String> {
         if (prefix.isBlank()) return emptyList()
-        val normalized = prefix.lowercase(Locale.ROOT)
+        val typed = prefix.lowercase(Locale.ROOT)
+        val dict = dictionaryFor(language)
+        if (!usable(dict)) return emptyList()
+        val valid = dict.contains(typed) || personal.knows(typed, language)
         val result = LinkedHashSet<String>()
 
-        pack.corrections[normalized]?.let { result.add(it) }
+        // 1. A valid, common word is preserved exactly as typed and stays first. A valid but
+        //    rare word (e.g. the letter name "cu" while typing "cuando") competes by frequency.
+        val strongValid = valid && (personal.knows(typed, language) || dict.getFrequency(typed) >= STRONG_WORD_MIN_FREQUENCY)
+        if (strongValid) result.add(typed)
 
-        personal.wordsWithPrefix(normalized)
-            .filter { it != normalized }
+        // 2. Curated typo / contraction fix of the ACTIVE language (es: tambien -> también).
+        if (!valid) correctionOf(dict, typed)?.let { if (it != typed) result.add(it) }
+
+        // 3. Words the user has kept (language-scoped, used at least twice).
+        personal.wordsWithPrefix(typed, language)
+            .filter { it.lowercase(Locale.ROOT) != typed }
+            .take(2)
             .forEach { result.add(it) }
 
-        pack.words.asSequence()
-            .filter { it.startsWith(normalized) && it != normalized }
-            .forEach {
-                if (result.size < 3) result.add(it)
-            }
-
-        if (result.size < 3 && normalized.length >= 3) {
-            val fuzzy = pack.words.asSequence()
-                .filter { it !in result && it != normalized && abs(it.length - normalized.length) <= 1 }
-                .map { word -> word to proximityDamerauLevenshtein(normalized, word) }
-                .filter { (_, distance) -> distance <= 1.4 }
-                .sortedBy { (_, distance) -> distance }
-                .map { it.first }
-            for (word in fuzzy) {
-                if (result.size >= 3) break
-                result.add(word)
-            }
-        }
-        return result.take(3)
-    }
-
-    override fun suggestNext(previousWord: String): List<String> {
-        if (previousWord.isBlank()) return emptyList()
-        return pack.bigrams[previousWord.lowercase(Locale.ROOT)] ?: emptyList()
-    }
-
-    override fun autoCorrect(word: String): String? {
-        if (word.isBlank()) return null
-        val normalized = word.lowercase(Locale.ROOT)
-        pack.corrections[normalized]?.let { return it }
-
-        if (pack.words.contains(normalized) || personal.wordsWithPrefix(normalized).contains(normalized)) {
-            return null
+        // 4. Completions by frequency. Continuations of an already complete word must be common.
+        for (w in dict.wordsWithPrefix(typed, 8)) {
+            if (result.size >= MAX_CANDIDATES) break
+            if (w.lowercase(Locale.ROOT) == typed) continue
+            if (valid && dict.getFrequency(w) < VALID_WORD_COMPLETION_MIN_FREQUENCY) continue
+            result.add(w)
         }
 
-        if (normalized.length >= 3) {
-            return pack.words.asSequence()
-                .filter { abs(it.length - normalized.length) <= 1 }
-                .map { candidate -> candidate to proximityDamerauLevenshtein(normalized, candidate) }
-                .filter { (_, distance) -> distance <= 0.8 }
-                .minByOrNull { it.second }
-                ?.first
+        if (valid && !strongValid) {
+            // Rare-but-valid word: it competes by frequency with the continuations (so "cu" does
+            // not outrank cuando/cuenta/cualquier) but is never replaced by autocorrect.
+            val typedFreq = dict.getFrequency(typed)
+            val at = result.indexOfFirst { dict.getFrequency(it) < typedFreq }.let { if (it < 0) result.size else it }
+            val merged = result.toMutableList().apply { add(at, typed) }
+            result.clear(); result.addAll(merged)
         }
-        return null
-    }
 
-    companion object {
-        private val ADJACENT_KEYS: Map<Char, Set<Char>> = mapOf(
-            'q' to setOf('w', 'a', 's'), 'w' to setOf('q', 'e', 'a', 's', 'd'),
-            'e' to setOf('w', 'r', 's', 'd', 'f'), 'r' to setOf('e', 't', 'd', 'f', 'g'),
-            't' to setOf('r', 'y', 'f', 'g', 'h'), 'y' to setOf('t', 'u', 'g', 'h', 'j'),
-            'u' to setOf('y', 'i', 'h', 'j', 'k'), 'i' to setOf('u', 'o', 'j', 'k', 'l'),
-            'o' to setOf('i', 'p', 'k', 'l'), 'p' to setOf('o', 'l', 'ñ'),
-            'a' to setOf('q', 'w', 's', 'z'), 's' to setOf('w', 'e', 'a', 'd', 'z', 'x'),
-            'd' to setOf('e', 'r', 's', 'f', 'x', 'c'), 'f' to setOf('r', 't', 'd', 'g', 'c', 'v'),
-            'g' to setOf('t', 'y', 'f', 'h', 'v', 'b'), 'h' to setOf('y', 'u', 'g', 'j', 'b', 'n'),
-            'j' to setOf('u', 'i', 'h', 'k', 'n', 'm'), 'k' to setOf('i', 'o', 'j', 'l', 'm'),
-            'l' to setOf('o', 'p', 'k', 'ñ'), 'ñ' to setOf('l', 'p'),
-            'z' to setOf('a', 's', 'x'), 'x' to setOf('z', 's', 'd', 'c'),
-            'c' to setOf('x', 'd', 'f', 'v'), 'v' to setOf('c', 'f', 'g', 'b'),
-            'b' to setOf('v', 'g', 'h', 'n'), 'n' to setOf('b', 'h', 'j', 'm'),
-            'm' to setOf('n', 'j', 'k')
-        )
-
-        fun proximityDamerauLevenshtein(s1: String, s2: String): Double {
-            val dp = Array(s1.length + 1) { DoubleArray(s2.length + 1) }
-            for (i in 0..s1.length) dp[i][0] = i.toDouble()
-            for (j in 0..s2.length) dp[0][j] = j.toDouble()
-            for (i in 1..s1.length) {
-                val c1 = s1[i - 1]
-                for (j in 1..s2.length) {
-                    val c2 = s2[j - 1]
-                    val cost = when {
-                        c1 == c2 -> 0.0
-                        ADJACENT_KEYS[c1]?.contains(c2) == true -> 0.6
-                        else -> 1.0
-                    }
-                    var best = minOf(
-                        dp[i - 1][j] + 1.0,
-                        dp[i][j - 1] + 1.0,
-                        dp[i - 1][j - 1] + cost,
-                    )
-                    if (i > 1 && j > 1 && c1 == s2[j - 2] && s1[i - 2] == c2) {
-                        best = minOf(best, dp[i - 2][j - 2] + 0.8)
-                    }
-                    dp[i][j] = best
+        // 5. Fuzzy neighbours only for unknown words, and only common ones.
+        if (!valid && result.size < MAX_CANDIDATES && typed.length >= 3) {
+            for (w in dict.searchFuzzy(typed, 5)) {
+                if (result.size >= MAX_CANDIDATES) break
+                if (w.lowercase(Locale.ROOT) != typed && dict.getFrequency(w) >= FUZZY_SUGGESTION_MIN_FREQUENCY) {
+                    result.add(w)
                 }
             }
-            return dp[s1.length][s2.length]
         }
+
+        return result.take(MAX_CANDIDATES).toList()
+    }
+
+    override fun suggestNext(previousWord: String): List<String> = suggestNext(previousWord, activeLanguage)
+
+    fun suggestNext(previousWord: String, language: String): List<String> {
+        if (previousWord.isBlank()) return emptyList()
+        val dict = dictionaryFor(language)
+        if (!usable(dict)) return emptyList()
+        return dict.getBigramSuggestions(previousWord).take(3)
+    }
+
+    override fun suggestNextTrigram(word1: String, word2: String): List<String> =
+        suggestNextTrigram(word1, word2, activeLanguage)
+
+    fun suggestNextTrigram(word1: String, word2: String, language: String): List<String> {
+        if (word1.isBlank() || word2.isBlank()) return emptyList()
+        val dict = dictionaryFor(language)
+        if (!usable(dict)) return emptyList()
+        return dict.getTrigramSuggestions(word1, word2).take(3)
+    }
+
+    override fun autoCorrect(word: String): String? = autoCorrect(word, activeLanguage)
+
+    fun autoCorrect(word: String, language: String): String? {
+        if (word.isBlank()) return null
+        val typed = word.lowercase(Locale.ROOT)
+        val dict = dictionaryFor(language)
+        if (!usable(dict)) return null
+
+        // NEVER replace a word that is valid in the language or that the user has kept.
+        if (dict.contains(typed) || personal.knows(typed, language)) return null
+
+        return correctionOf(dict, typed)
+    }
+
+    override fun suggestReplacements(word: String): List<String> {
+        val typed = word.lowercase(Locale.ROOT)
+        val dict = dictionaryFor(activeLanguage)
+        if (!usable(dict)) return emptyList()
+        val out = LinkedHashSet<String>()
+        // 1. A typo fix or a missing accent ("tecldao" -> "teclado", "comodo" -> "cómodo").
+        correctionOf(dict, typed)?.let { out.add(it) }
+        // 2. Close words, most frequent first.
+        if (typed.length >= 3) {
+            for (w in dict.searchFuzzy(typed, 6)) {
+                if (dict.getFrequency(w) >= FUZZY_SUGGESTION_MIN_FREQUENCY) out.add(w)
+            }
+        }
+        out.removeAll { it.equals(word, ignoreCase = true) }
+        return out.take(MAX_CANDIDATES)
+    }
+
+    override fun learn(word: String, explicit: Boolean) {
+        val typed = word.trim()
+        if (typed.length < 2 || typed.any { !it.isLetter() && it != '\'' && it != '\u2019' }) return
+        // Dictionary words need no learning; only genuinely new words are worth keeping.
+        val dict = dictionaryFor(activeLanguage)
+        if (!usable(dict) || dict.contains(typed.lowercase(Locale.ROOT))) return
+        if (explicit) personal.keep(typed, activeLanguage) else personal.learn(typed, activeLanguage)
+    }
+
+    override val elidesApostrophe: Boolean
+        get() = LanguagePacks.of(activeLanguage).elidesApostrophe
+
+    override fun isKnownWord(word: String): Boolean {
+        val typed = word.lowercase(Locale.ROOT)
+        return dictionaryFor(activeLanguage).contains(typed) || personal.knows(typed, activeLanguage)
+    }
+
+    private companion object {
+        const val MAX_CANDIDATES = 3
+
+        /** Words whose correction is remembered: the one being typed and the last few, with room to spare. */
+        const val CORRECTIONS_KEPT = 64
+
+        /**
+         * Frequency scale is 1..255, derived from corpus rank by tools/build_dictionaries.py:
+         * freq = 255 * (1 - ln(rank) / ln(300000)). 48 is about rank 32,000 of the 60,000 shipped
+         * words: fuzzy replacements and suggestions come from that common half, never from the
+         * rare tail, so we do not "correct" into obscure words. Recalibrate if the build changes.
+         */
+        const val AUTOCORRECT_MIN_FREQUENCY = 48
+        const val FUZZY_SUGGESTION_MIN_FREQUENCY = 48
+
+        /** A valid word at least this frequent (about the top 3,000) is always kept first. */
+        const val STRONG_WORD_MIN_FREQUENCY = 100
+
+        /** Longer words offered after a complete valid word (e.g. "cuando" -> "cuándo") must be common. */
+        const val VALID_WORD_COMPLETION_MIN_FREQUENCY = 70
     }
 }

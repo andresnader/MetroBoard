@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enable_keyboard">1  activer le clavier</string>
+    <string name="select_keyboard">2  sélectionner le clavier</string>
+    <string name="select_system_ime">Changer de clavier système…</string>
+
+    <string name="tab_languages">Langues</string>
+    <string name="tab_typing">Saisie</string>
+    <string name="tab_layout">Disposition</string>
+    <string name="tab_appearance">Apparence</string>
+    <string name="tab_sound">Son</string>
+    <string name="tab_gestures">Gestes</string>
+    <string name="tab_privacy">Confidentialité</string>
+    <string name="tab_about">À propos</string>
+
+    <string name="language_title">langue du clavier</string>
+    <string name="layout_title">disposition des touches</string>
+    <string name="layout_auto_short">Auto</string>
+    <string name="input_method_title">méthode de saisie</string>
+
+    <string name="suggestions">Texte prédictif</string>
+    <string name="autocorrect">Correction orthographique automatique</string>
+    <string name="autocap">Majuscule initiale automatique</string>
+    <string name="double_space_period">Point rapide par double espace</string>
+    <string name="shift_word_casing">Changement de casse avec Maj</string>
+    <string name="shift_word_casing_summary">Appuyez sur Maj à la fin d\'un mot : initiale majuscule → MAJUSCULES → minuscules</string>
+    <string name="learn_words">Apprendre de nouveaux mots</string>
+    <string name="try_title">essayez-le</string>
+    <string name="test_hint">Écrivez ici pour tester le clavier…</string>
+
+    <string name="height_scale_title">hauteur du clavier</string>
+    <string name="height_small">Compact</string>
+    <string name="height_normal">Normal</string>
+    <string name="height_tall">Haut</string>
+    <string name="show_number_row">Rangée de chiffres en haut</string>
+    <string name="key_popup">Aperçu des touches (appui long)</string>
+    <string name="one_handed_title">mode une main</string>
+    <string name="one_handed_off">Désactivé</string>
+    <string name="one_handed_left">Gauche</string>
+    <string name="one_handed_right">Droite</string>
+
+    <string name="theme_title">thème du clavier</string>
+    <string name="theme_dark">Sombre</string>
+    <string name="theme_light">Clair</string>
+    <string name="theme_system">Système</string>
+    <string name="accent_color_title">couleur d\'accent Lumia</string>
+    <string name="tint_keys">Teinter les touches avec l\'accent</string>
+
+    <string name="sound">Son de frappe (clic sec WP8.1)</string>
+    <string name="sound_volume">Volume du son</string>
+    <string name="volume_low">Faible</string>
+    <string name="volume_medium">Moyen</string>
+    <string name="volume_high">Fort</string>
+    <string name="vibration">Vibration tactile (haptique)</string>
+    <string name="haptic_strength">Intensité de la vibration</string>
+    <string name="haptic_light">Légère</string>
+    <string name="haptic_medium">Moyenne</string>
+    <string name="haptic_strong">Forte</string>
+
+    <string name="wordflow">Saisie gestuelle (Word Flow)</string>
+    <string name="wordflow_summary">Faites glisser le doigt sur les touches pour écrire avec une traînée fluide</string>
+    <string name="swipe_delete_title">glisser pour effacer</string>
+    <string name="swipe_delete_summary">Glissez vers la gauche depuis la touche d\'effacement pour supprimer des mots entiers</string>
+    <string name="spacebar_cursor">Contrôle du curseur depuis la barre d\'espace</string>
+    <string name="spacebar_cursor_summary">Glissez horizontalement sur la barre d\'espace pour déplacer le curseur</string>
+    <string name="long_press_space">Appui long sur espace</string>
+    <string name="long_press_space_summary">Ouvre le sélecteur de langue et de clavier</string>
+
+    <string name="offline_indicator" formatted="false">100 % hors ligne · Sans autorisation Internet</string>
+    <string name="privacy_note">Aucune autorisation Internet n\'est demandée. Aucune télémétrie, analyse ni enregistrement des frappes. Dans les champs de mot de passe, l\'apprentissage est strictement désactivé.</string>
+    <string name="import_android_dict">importer du dictionnaire personnel d\'Android</string>
+    <string name="import_android_dict_done">%1$d mots importés du dictionnaire système</string>
+    <string name="clear_learned_words">Effacer le dictionnaire personnel</string>
+    <string name="export_settings">Exporter les réglages et les mots (JSON)</string>
+    <string name="import_settings">Importer les réglages et les mots (JSON)</string>
+    <string name="reset_settings">Rétablir les valeurs par défaut</string>
+    <string name="reset_confirm">Rétablir tous les réglages aux valeurs initiales de Windows Phone 8.1 ?</string>
+    <string name="reset_done">Réglages rétablis par défaut</string>
+    <string name="dictionary_cleared">Dictionnaire personnel effacé</string>
+    <string name="no_learned_words">Aucun mot appris pour le moment</string>
+    <string name="delete_word_title">Supprimer le mot</string>
+    <string name="delete_word_message">Supprimer « %1$s » du dictionnaire ?</string>
+    <string name="delete_word">Supprimer</string>
+    <string name="word_deleted">Mot supprimé</string>
+    <string name="backup_saved">Sauvegarde enregistrée</string>
+    <string name="backup_failed">Impossible d\'enregistrer la sauvegarde</string>
+    <string name="backup_imported">%1$d réglages et %2$d mots importés</string>
+    <string name="invalid_json">JSON invalide ou incompatible</string>
+    <string name="settings_unavailable">Ouvrez les réglages de langue et de clavier de l\'appareil.</string>
+
+    <string name="about_legal">Implémentation propre et indépendante inspirée du clavier Word Flow de Windows Phone 8.1. Sans code, polices, sons ni ressources propriétaires de Microsoft ni de Chiflow.</string>
+    <string name="about_licenses">Code : AGPL-3.0-or-later. Dictionnaires : validité des mots avec Hunspell/LibreOffice (es_EC GPL-3.0+, de_DE_frami GPL-3.0, fr MPL-2.0, en_US SCOWL) ; fréquences d\'OpenSubtitles 2018 via hermitdave/FrequencyWords (CC BY-SA 4.0) ; listes du mot suivant du Leipzig Corpora Collection via Helium314/aosp-dictionaries (CC BY 4.0). Détails dans ATTRIBUTION.md.</string>
+
+    <string name="state_on">Activé</string>
+    <string name="state_off">Désactivé</string>
+
+    <string name="suggestion_description">Insérer la suggestion : %1$s</string>
+    <string name="shift_lower">Maj : minuscules</string>
+    <string name="shift_auto">Maj : majuscule automatique</string>
+    <string name="shift_once">Maj : prochaine lettre en majuscule</string>
+    <string name="shift_locked">Maj : verrouillage des majuscules</string>
+    <string name="space">Espace. Appui long pour le sélecteur de langue</string>
+    <string name="backspace">Effacer</string>
+    <string name="punctuation">Point. Appui long pour plus de ponctuation</string>
+    <string name="emoji">Sélecteur d\'émoticônes et d\'emojis</string>
+    <string name="symbols">Chiffres et symboles</string>
+    <string name="letters">Retour aux lettres</string>
+    <string name="more_symbols">Plus de symboles</string>
+    <string name="enter">Entrée</string>
+    <string name="action_done">ok</string>
+    <string name="action_next">suiv.</string>
+    <string name="action_previous">préc.</string>
+    <string name="action_search">chercher</string>
+    <string name="action_go">aller</string>
+    <string name="action_send">envoyer</string>
+    <string name="clipboard">Presse-papiers</string>
+
+    <string name="version_label">version %1$s</string>
+    <string name="changelog_title">nouveautés</string>
+    <string-array name="changelog_0_5_0">
+        <item>Saisie par glissement : le mot apparaît bien plus tôt quand vous levez le doigt, avec exactement les mêmes suggestions qu’avant.</item>
+        <item>Le clic et la vibration arrivent quand le doigt touche la touche, pas quand il se lève.</item>
+        <item>Une touche tapée juste après un glissement s’écrit après le mot glissé, jamais avant.</item>
+        <item>Moins de travail à chaque touche : pas de redessin inutile, pas de seconde recherche après une faute de frappe, et les mots appris sont enregistrés en arrière-plan.</item>
+        <item>Avec deux pouces, les deux touches enfoncées s’allument.</item>
+    </string-array>
+    <string-array name="changelog_0_4_1">
+        <item>Maintenir Retour arrière supprime désormais doucement au début puis plus vite. Choisissez l’attente et la vitesse dans Réglages > Gestes.</item>
+        <item>Le délai d’appui long (accents, sélecteur de langue) est réglable.</item>
+        <item>Gérer le presse-papiers : modifiez, épinglez, supprimez et effacez ce qui est enregistré. Dans le clavier, maintenez un clip pour le modifier.</item>
+        <item>Diagnostic : si la frappe reste lente, activez « Enregistrer les temps de réponse » dans À propos, tapez une minute et copiez le rapport.</item>
+        <item>Moins d’attente de l’application (les majuscules sont calculées localement) et les dictionnaires utilisent un tiers de mémoire en moins.</item>
+    </string-array>
+    <string-array name="changelog_0_4_0">
+        <item>Correction d’un plantage en maintenant la barre d’espace pour changer de langue : le sélecteur est désormais un panneau dans le clavier.</item>
+        <item>Accents : maintenez une touche, glissez jusqu’à l’accent et relâchez. La fenêtre ne reste plus ouverte.</item>
+        <item>Éditeur du dictionnaire personnel : ajoutez, modifiez, supprimez et recherchez vos mots, par langue.</item>
+        <item>Aperçu en direct : le clavier change pendant que vous choisissez le thème, la couleur d’accent ou la teinte des touches.</item>
+        <item>Les champs e-mail et adresse web ont des touches @ et .com. Les noms ne sont jamais corrigés et la saisie par glissement reste hors des mots de passe.</item>
+        <item>Environ 30 000 mots par langue prédisent le mot suivant, avec des textes d’actualité et du web, pas seulement du chat.</item>
+        <item>La saisie par glissement utilise le mot précédent pour départager des formes qui conviennent aussi bien.</item>
+        <item>Ce que vous venez de copier s’affiche dans la barre de suggestions, prêt à coller.</item>
+        <item>Réponse bien plus vive à la frappe : moins d’attente de l’application et suggestions cherchées hors du fil principal.</item>
+    </string-array>
+    <string-array name="changelog_0_3_0">
+        <item>Presse-papiers en direct : ce que vous copiez apparaît en vignettes. Touchez-en une pour l\'écrire, épinglez-la pour la garder.</item>
+        <item>Nouvelle barre d\'outils à côté des suggestions : taille rapide du clavier et raccourci vers les réglages.</item>
+        <item>Le menu des réglages est maintenant circulaire : glissez après la dernière section et vous revenez à la première.</item>
+        <item>Les réglages et le clavier suivent la langue du téléphone (anglais, espagnol, français, allemand).</item>
+        <item>Word Flow refait : il examine tout le dictionnaire et n\'écrit rien quand il n\'est pas sûr.</item>
+        <item>60 000 mots par langue, chaque langue avec son propre dictionnaire.</item>
+        <item>La correction automatique ne change jamais un mot valide, et Retour arrière l\'annule.</item>
+        <item>Les 20 couleurs d\'accent officielles de Windows Phone et une icône de presse-papiers plate.</item>
+        <item>Corrigé : lettres répétées (ww, oo) qui sélectionnaient le mot, et touches perdues en écrivant avec deux pouces.</item>
+        <item>Sauvegarde des réglages et des mots dans un fichier de votre choix, sans autorisation de stockage.</item>
+    </string-array>
+    <string-array name="changelog_0_2_0">
+        <item>Saisie gestuelle (Word Flow) et glissement vers la gauche sur Retour arrière pour effacer des mots entiers.</item>
+        <item>Mode une main, thèmes clair et sombre, et prise en charge des claviers physiques.</item>
+        <item>Sélecteur de teinte de peau pour les emojis et import du dictionnaire personnel d\'Android.</item>
+    </string-array>
+    <string-array name="changelog_0_1_0">
+        <item>Première version : touches Metro plates, états de Maj, double espace pour le point et appui long pour les accents.</item>
+        <item>Dictionnaires hors ligne en quatre langues. Aucune autorisation Internet.</item>
+    </string-array>
+
+    <string name="clipboard_title">presse-papiers</string>
+    <string name="clipboard_empty">Rien n\'a encore été copié. Ce que vous copiez apparaîtra ici.</string>
+    <string name="clipboard_back">Retour au clavier</string>
+    <string name="clipboard_clear">Effacer</string>
+    <string name="clipboard_pin">Épingler</string>
+    <string name="clipboard_unpin">Désépingler</string>
+    <string name="clipboard_delete">Supprimer</string>
+    <string name="resize_title">taille</string>
+    <string name="open_settings">Ouvrir les réglages</string>
+    <string name="toolbar_open">Plus d\'outils</string>
+    <string name="toolbar_close">Fermer les outils</string>
+    <string name="clipboard_history">Historique du presse-papiers</string>
+    <string name="clipboard_history_summary">Le texte copié reste en mémoire pendant une heure ; seuls les éléments épinglés sont enregistrés, sur cet appareil. Ce que l\'application marque comme sensible n\'est jamais conservé. Il n\'est pas affiché dans les champs de mot de passe.</string>
+    <string name="clear_clipboard">Effacer l\'historique du presse-papiers</string>
+    <string name="clipboard_cleared">Historique du presse-papiers effacé</string>
+    <string name="personal_dictionary_title">Dictionnaire personnel</string>
+    <string name="dict_search_hint">Rechercher un mot</string>
+    <string name="dict_add_hint">Nouveau mot</string>
+    <string name="dict_add">Ajouter</string>
+    <string name="dict_edit_title">Modifier le mot</string>
+    <string name="dict_save">Enregistrer</string>
+    <string name="dict_invalid_word">Un mot comporte de 2 à 40 lettres, sans espace ni chiffre</string>
+    <string name="dict_pending">Pas encore suggéré</string>
+    <string name="dict_back">Retour</string>
+    <string name="dict_edit_hint">Modifier</string>
+    <string name="about_credit">Un développement d’Ameizin — Andrés Nader · info@ameizin.ec</string>
+    <string name="preview_suggestions">Bonjour|Salut|Coucou</string>
+    <string name="clip_suggestion_description">Coller ce que vous avez copié : %1$s</string>
+    <string name="diagnostics_title">diagnostic</string>
+    <string name="diagnostics_help">Si la frappe vous semble lente, activez ceci, tapez une minute et copiez le rapport. Il n’enregistre que des chiffres (le temps de réponse de chaque touche), jamais ce que vous tapez, en mémoire, jusqu’à ce que vous l’effaciez ou que le clavier redémarre.</string>
+    <string name="diagnostics_toggle">Enregistrer les temps de réponse</string>
+    <string name="diagnostics_copy">Copier le rapport</string>
+    <string name="diagnostics_clear">Effacer</string>
+    <string name="diagnostics_copied">Rapport copié</string>
+    <string name="diagnostics_cleared">Effacé</string>
+    <string name="long_press_delay_title">délai d’appui long</string>
+    <string name="delay_short">Court</string>
+    <string name="delay_normal">Normal</string>
+    <string name="delay_long">Long</string>
+    <string name="delay_very_long">Très long</string>
+    <string name="long_press_delay_summary">Combien de temps vous maintenez une touche avant que ses accents (ou le sélecteur de langue sur Espace) apparaissent.</string>
+    <string name="backspace_delay_title">retour arrière : attente avant répétition</string>
+    <string name="backspace_speed_title">retour arrière : vitesse de répétition</string>
+    <string name="speed_slow">Lente</string>
+    <string name="speed_fast">Rapide</string>
+    <string name="backspace_summary">Maintenir Retour arrière supprime un caractère à la fois, doucement au début puis plus vite. Une attente plus longue ou une vitesse plus lente supprime moins par accident.</string>
+    <string name="clipboard_manage">Gérer le presse-papiers</string>
+    <string name="clipboard_edit_title">Modifier le clip</string>
+    <string name="clipboard_clear_unpinned">Effacer les non épinglés</string>
+    <string name="clipboard_invalid">Un clip ne peut pas être vide ni dépasser 2 000 caractères</string>
+    <string name="clipboard_manage_hint">Touchez un clip pour le modifier. Les clips épinglés sont conservés au redémarrage du clavier ; les autres sont oubliés après une heure. Dans le clavier, maintenez un clip pour le modifier.</string>
+</resources>

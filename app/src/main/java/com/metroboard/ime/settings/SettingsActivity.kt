@@ -1,59 +1,112 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.settings
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.provider.Settings
 import android.text.InputType
-import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import com.metroboard.ime.R
-import com.metroboard.ime.ime.WordFlowImeService
+import com.metroboard.ime.clipboard.ClipboardHistories
+import com.metroboard.ime.dictionary.BackupFormat
+import com.metroboard.ime.dictionary.LocalPersonalDictionary
+import com.metroboard.ime.ime.EditorPolicy
+import com.metroboard.ime.keyboard.KeySpec
+import com.metroboard.ime.keyboard.KeyboardLayout
+import com.metroboard.ime.keyboard.KeyboardPage
+import com.metroboard.ime.keyboard.ShiftState
+import com.metroboard.ime.ui.KeyboardView
+import com.metroboard.ime.util.Diagnostics
 import com.metroboard.ime.util.KeyboardColors
 import com.metroboard.ime.util.dp
 
 class SettingsActivity : Activity() {
-    private lateinit var status: TextView
-    private lateinit var preferences: KeyboardPreferences
-    private val colorTileViews = mutableListOf<Pair<Int, View>>()
-    private val pivotTabViews = mutableListOf<TextView>()
-    private lateinit var lateralPager: PivotHorizontalScrollView
-    private lateinit var pivotHeaderScroll: HorizontalScrollView
-    private lateinit var accentColorLabel: TextView
-    private var currentPageIndex = 0
-    private var screenWidthPx = 1080
+    private companion object {
+        const val REQUEST_EXPORT = 4101
+        const val REQUEST_IMPORT = 4102
+        const val STATE_PAGE = "settings.page"
+        const val STATE_SCROLLS = "settings.scrolls"
+    }
 
-    private val PIVOT_TITLES = listOf(
-        R.string.pivot_general,
-        R.string.pivot_typing,
-        R.string.pivot_appearance,
-        R.string.pivot_backup,
-        R.string.pivot_try
+    private lateinit var preferences: KeyboardPreferences
+    private lateinit var personalDict: LocalPersonalDictionary
+    private val pageScrolls = mutableListOf<ScrollView>()
+    private lateinit var pivot: MetroPivot
+    private var currentPageIndex = 0
+
+    /** Pivot labels, in page order. Resources, so they follow the system language. */
+    private val sectionTitles = listOf(
+        R.string.tab_languages,
+        R.string.tab_typing,
+        R.string.tab_layout,
+        R.string.tab_appearance,
+        R.string.tab_sound,
+        R.string.tab_gestures,
+        R.string.tab_privacy,
+        R.string.tab_about,
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         preferences = KeyboardPreferences(this)
+        personalDict = LocalPersonalDictionary.shared(this)
+        currentPageIndex = (savedInstanceState?.getInt(STATE_PAGE) ?: 0).coerceIn(0, sectionTitles.size - 1)
+        buildUi(savedInstanceState?.getIntArray(STATE_SCROLLS))
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(STATE_PAGE, if (::pivot.isInitialized) pivot.currentPage else currentPageIndex)
+        outState.putIntArray(STATE_SCROLLS, pageScrolls.map { it.scrollY }.toIntArray())
+    }
+
+    /**
+     * Re-reads the preferences and rebuilds every page in place. Used instead of [recreate] so a change that
+     * restyles the whole screen (theme, accent, reset, import) keeps the user on the same pivot section and at
+     * the same scroll position.
+     */
+    private fun refreshUi() {
+        buildUi(pageScrolls.map { it.scrollY }.toIntArray())
+    }
+
+    private fun buildUi(scrolls: IntArray?) {
         KeyboardColors.accent = preferences.accentColor
-        screenWidthPx = resources.displayMetrics.widthPixels
+        val isSystemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        KeyboardColors.setTheme(preferences.theme, isSystemDark)
+
+        // The AppTheme window is dark-only; without this the bars and the window behind the content
+        // stay dark (and flash) while the page itself is light.
+        window.setBackgroundDrawable(ColorDrawable(KeyboardColors.background))
+        @Suppress("DEPRECATION")
+        run {
+            window.statusBarColor = KeyboardColors.background
+            window.navigationBarColor = KeyboardColors.background
+        }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(KeyboardColors.background)
-            // Android 15+ edge-to-edge
             setOnApplyWindowInsetsListener { view, insets ->
                 @Suppress("DEPRECATION")
                 view.setPadding(
@@ -64,552 +117,522 @@ class SettingsActivity : Activity() {
             }
         }
         setContentView(root)
+        syncSystemBarAppearance()
 
-        // 1. App Subtitle
-        val appTitle = TextView(this).apply {
-            setText(R.string.setup_subtitle)
-            textSize = 13f
-            setTextColor(KeyboardColors.muted)
+        // 1. App title and version; tapping the version goes to "what's new" on the last page
+        root.addView(createAppHeader())
+
+        // 2. The circular pivot: section labels on top, pages below
+        pageScrolls.clear()
+        root.addView(createPivot(), LinearLayout.LayoutParams(-1, 0, 1f))
+
+        restorePosition(root, scrolls)
+    }
+
+    private fun versionName(): String =
+        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty()
+
+    /** The app's name with its version underneath, like the headers of other Metro apps. */
+    private fun createAppHeader(): View {
+        val whatsNew = getString(R.string.changelog_title)
+        val line = "${getString(R.string.version_label, versionName())} · $whatsNew"
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(16), dp(24), 0)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            isClickable = true
+            contentDescription = "${getString(R.string.app_name)}, $line"
+            setOnClickListener { pivot.goTo(sectionTitles.size - 1) }
+            addView(TextView(this@SettingsActivity).apply {
+                text = getString(R.string.app_name)
+                textSize = MetroType.APP_TITLE
+                setTextColor(KeyboardColors.foreground)
+                typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            })
+            addView(TextView(this@SettingsActivity).apply {
+                text = android.text.SpannableString(line).apply {
+                    setSpan(
+                        android.text.style.ForegroundColorSpan(KeyboardColors.accent),
+                        line.length - whatsNew.length, line.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+                    )
+                }
+                textSize = MetroType.HELP
+                setTextColor(KeyboardColors.muted)
+                typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+            })
         }
-        root.addView(appTitle)
-
-        // 2. Windows Phone Panoramic Pivot Header
-        root.addView(createPivotHeader())
-
-        // 3. Lateral Sliding Pages
-        root.addView(createLateralPages(), LinearLayout.LayoutParams(-1, -1))
     }
 
-    private fun createPivotHeader(): View {
-        val container = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(24), dp(8), dp(24), dp(12))
-        }
-        pivotHeaderScroll = HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
-            overScrollMode = View.OVER_SCROLL_NEVER
-            addView(container)
-        }
-
-        pivotTabViews.clear()
-        PIVOT_TITLES.forEachIndexed { index, titleRes ->
-            val tabView = TextView(this).apply {
-                setText(titleRes)
-                setPadding(0, 0, dp(28), 0)
-                setOnClickListener { scrollToPage(index) }
+    /** Puts the pivot and each page's vertical scroll back once the new views have been laid out. */
+    private fun restorePosition(root: View, scrolls: IntArray?) {
+        root.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                if (pivot.width == 0) return
+                root.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                scrolls?.forEachIndexed { index, y -> pageScrolls.getOrNull(index)?.scrollTo(0, y) }
             }
-            pivotTabViews.add(tabView)
-            container.addView(tabView)
-        }
-        updatePivotHeaderStyles(0)
-        return pivotHeaderScroll
+        })
     }
 
-    private fun updatePivotHeaderStyles(activeIndex: Int) {
-        currentPageIndex = activeIndex
-        pivotTabViews.forEachIndexed { index, tabView ->
-            val isActive = index == activeIndex
-            tabView.textSize = if (isActive) 34f else 26f
-            tabView.setTextColor(if (isActive) Color.WHITE else KeyboardColors.muted)
-            tabView.typeface = Typeface.create("sans-serif-light", if (isActive) Typeface.BOLD else Typeface.NORMAL)
-        }
-        pivotTabViews.getOrNull(activeIndex)?.let { activeTab ->
-            pivotHeaderScroll.post {
-                val scrollTarget = (activeTab.left - dp(24)).coerceAtLeast(0)
-                pivotHeaderScroll.smoothScrollTo(scrollTarget, 0)
-            }
-        }
+    private fun createPivot(): View {
+        val pages = listOf(
+            createLanguagesPage(),
+            createTypingPage(),
+            createLayoutPage(),
+            createAppearancePage(),
+            createSoundHapticsPage(),
+            createGesturesPage(),
+            createPrivacyPage(),
+            createAboutPage(),
+        )
+        // Metro headers are lower case; the language's own rules (Turkish dotless i) decide how.
+        val locale = resources.configuration.locales[0]
+        val titles = sectionTitles.map { getString(it).lowercase(locale) }
+        pivot = MetroPivot(this, titles, pages) { currentPageIndex = it }
+        pivot.showPage(currentPageIndex)
+        return pivot
     }
 
-    private fun createLateralPages(): View {
-        val pagesContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
+    // Pages ---------------------------------------------------------------------------------------------
 
-        pagesContainer.addView(createGeneralPage())
-        pagesContainer.addView(createTypingPage())
-        pagesContainer.addView(createAppearancePage())
-        pagesContainer.addView(createBackupPage())
-        pagesContainer.addView(createTestingPage())
-
-        lateralPager = PivotHorizontalScrollView(this).apply {
-            pageCount = PIVOT_TITLES.size
-            addView(pagesContainer)
-            onPageSelected = { pageIndex ->
-                updatePivotHeaderStyles(pageIndex)
-            }
-        }
-        return lateralPager
-    }
-
-    private fun scrollToPage(index: Int) {
-        val safeIndex = index.coerceIn(0, PIVOT_TITLES.size - 1)
-        lateralPager.snapToPage(safeIndex)
-    }
-
-    private fun createGeneralPage(): View {
+    private fun page(build: LinearLayout.() -> Unit): View {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(24), dp(10), dp(24), dp(24))
         }
-        content.addView(label(R.string.setup_title, 36f))
-        content.addView(label(R.string.setup_instructions, 15f))
-        status = label(R.string.keyboard_disabled, 14f, preferences.accentColor)
-        content.addView(status)
+        content.build()
+        return makePageScrollView(content)
+    }
 
-        content.addView(action(R.string.enable_keyboard) {
+    private fun LinearLayout.title(text: CharSequence) = addView(metroLabel(text, MetroType.TITLE))
+    private fun LinearLayout.help(text: CharSequence) = addView(metroLabel(text, MetroType.HELP, KeyboardColors.muted))
+    private fun LinearLayout.toggle(titleRes: Int, checked: Boolean, onToggle: (Boolean) -> Unit) =
+        addView(metroToggle(getString(titleRes), checked, onToggle))
+    private fun LinearLayout.action(titleRes: Int, onClick: () -> Unit) =
+        addView(
+            metroButton(getString(titleRes), onClick),
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = dp(8) },
+        )
+    private fun LinearLayout.segmented(options: List<Pair<String, String>>, selected: String, onSelect: (String) -> Unit) =
+        addView(metroSegmented(options, selected, onSelect))
+
+    // 1. LANGUAGES
+    private fun createLanguagesPage() = page {
+        title(getString(R.string.language_title))
+        segmented(
+            listOf("es" to "Español", "en" to "English", "fr" to "Français", "de" to "Deutsch"),
+            preferences.language,
+        ) { preferences.language = it }
+
+        title(getString(R.string.layout_title))
+        segmented(
+            listOf("AUTO" to getString(R.string.layout_auto_short), "QWERTY" to "QWERTY", "AZERTY" to "AZERTY", "QWERTZ" to "QWERTZ"),
+            preferences.layoutOverride,
+        ) { preferences.layoutOverride = it }
+
+        title(getString(R.string.input_method_title))
+        action(R.string.enable_keyboard) {
             try { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) }
             catch (_: ActivityNotFoundException) {
-                Toast.makeText(this, R.string.settings_unavailable, Toast.LENGTH_LONG).show()
+                Toast.makeText(this@SettingsActivity, R.string.settings_unavailable, Toast.LENGTH_LONG).show()
             }
-        })
-        content.addView(action(R.string.select_keyboard) {
+        }
+        action(R.string.select_keyboard) {
             getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
-        })
-
-        content.addView(label(R.string.section_feedback, 22f))
-        content.addView(toggle(R.string.vibration, preferences.vibration) { preferences.vibration = it })
-        content.addView(toggle(R.string.sound, preferences.sound) { preferences.sound = it })
-        content.addView(toggle(R.string.wordflow, preferences.wordFlow) { preferences.wordFlow = it })
-        content.addView(label(R.string.wordflow_summary, 12f, KeyboardColors.muted))
-
-        return makePageScrollView(content)
-    }
-
-    private fun createTypingPage(): View {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(10), dp(24), dp(24))
         }
-
-        content.addView(label(R.string.language_title, 22f))
-        content.addView(createLanguageSelector())
-
-        content.addView(label(R.string.section_typing, 22f))
-        content.addView(toggle(R.string.suggestions, preferences.suggestions) { preferences.suggestions = it })
-        content.addView(toggle(R.string.autocorrect, preferences.autoCorrect) { preferences.autoCorrect = it })
-        content.addView(toggle(R.string.autocap, preferences.autoCapitalization) { preferences.autoCapitalization = it })
-        content.addView(toggle(R.string.double_space_period, preferences.doubleSpacePeriod) { preferences.doubleSpacePeriod = it })
-        content.addView(toggle(R.string.shift_word_casing, preferences.shiftWordCasing) { preferences.shiftWordCasing = it })
-        content.addView(label(R.string.shift_word_casing_summary, 12f, KeyboardColors.muted))
-
-        return makePageScrollView(content)
     }
 
+    // 2. TYPING
+    private fun createTypingPage() = page {
+        toggle(R.string.suggestions, preferences.suggestions) { preferences.suggestions = it }
+        toggle(R.string.autocorrect, preferences.autoCorrect) { preferences.autoCorrect = it }
+        toggle(R.string.learn_words, preferences.learnWords) { preferences.learnWords = it }
+        toggle(R.string.autocap, preferences.autoCapitalization) { preferences.autoCapitalization = it }
+        toggle(R.string.double_space_period, preferences.doubleSpacePeriod) { preferences.doubleSpacePeriod = it }
+        toggle(R.string.shift_word_casing, preferences.shiftWordCasing) { preferences.shiftWordCasing = it }
+        help(getString(R.string.shift_word_casing_summary))
+
+        action(R.string.personal_dictionary_title) { startActivity(Intent(this@SettingsActivity, PersonalDictionaryActivity::class.java)) }
+
+        title(getString(R.string.try_title))
+        addView(metroTextField(getString(R.string.test_hint)))
+    }
+
+    // 3. LAYOUT
+    private fun createLayoutPage() = page {
+        title(getString(R.string.one_handed_title))
+        segmented(
+            listOf(
+                "OFF" to getString(R.string.one_handed_off),
+                "LEFT" to getString(R.string.one_handed_left),
+                "RIGHT" to getString(R.string.one_handed_right),
+            ),
+            preferences.oneHandedMode,
+        ) { preferences.oneHandedMode = it }
+
+        title(getString(R.string.height_scale_title))
+        segmented(
+            listOf(
+                "COMPACT" to getString(R.string.height_small),
+                "NORMAL" to getString(R.string.height_normal),
+                "TALL" to getString(R.string.height_tall),
+            ),
+            preferences.heightMode,
+        ) { preferences.heightMode = it }
+
+        toggle(R.string.show_number_row, preferences.numberRow) { preferences.numberRow = it }
+        toggle(R.string.key_popup, preferences.keyPopup) { preferences.keyPopup = it }
+    }
+
+    // 4. APPEARANCE
+    /**
+     * The appearance controls with the real keyboard pinned underneath, so every change (theme, accent, key tint)
+     * shows on the keyboard as it is made. The preview is for looking only: it does not type.
+     */
     private fun createAppearancePage(): View {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(10), dp(24), dp(24))
-        }
+        val controls = page {
+            title(getString(R.string.theme_title))
+            segmented(
+                listOf(
+                    "DARK" to getString(R.string.theme_dark),
+                    "LIGHT" to getString(R.string.theme_light),
+                    "SYSTEM" to getString(R.string.theme_system),
+                ),
+                preferences.theme,
+            ) {
+                preferences.theme = it
+                refreshUi()
+            }
 
-        content.addView(toggle(R.string.show_number_row, preferences.numberRow) { preferences.numberRow = it })
+            val activeName = KeyboardColors.LUMIA_PALETTE.find { it.color == preferences.accentColor }?.name ?: ""
+            title(getString(R.string.accent_color_title) + if (activeName.isNotEmpty()) ": $activeName" else "")
+            addView(createColorPicker())
 
-        val activeName = KeyboardColors.LUMIA_PALETTE.find { it.color == preferences.accentColor }?.name ?: ""
-        accentColorLabel = label(R.string.accent_color_title, 22f).apply {
-            text = getString(R.string.accent_color_title) + if (activeName.isNotEmpty()) ": $activeName" else ""
-        }
-        content.addView(accentColorLabel)
-        content.addView(createColorPicker())
-        content.addView(label(R.string.height_scale_title, 22f))
-        content.addView(createHeightScaleSelector())
-
-        return makePageScrollView(content)
-    }
-
-    private fun createBackupPage(): View {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(10), dp(24), dp(24))
-        }
-
-        content.addView(label(R.string.section_tools, 22f))
-        content.addView(action(R.string.export_settings) { exportSettings() })
-        content.addView(action(R.string.import_settings) { showImportDialog() })
-        content.addView(action(R.string.reset_settings) { showResetDialog() })
-
-        return makePageScrollView(content)
-    }
-
-    private fun createTestingPage(): View {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(24), dp(10), dp(24), dp(24))
-        }
-
-        content.addView(label(R.string.try_title, 22f))
-        content.addView(testField(R.string.test_hint, InputType.TYPE_CLASS_TEXT or
-            InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE))
-        content.addView(testField(R.string.test_email, InputType.TYPE_CLASS_TEXT or
-            InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS))
-        content.addView(testField(R.string.test_password, InputType.TYPE_CLASS_TEXT or
-            InputType.TYPE_TEXT_VARIATION_PASSWORD))
-        content.addView(testField(R.string.test_number, InputType.TYPE_CLASS_NUMBER or
-            InputType.TYPE_NUMBER_FLAG_DECIMAL or InputType.TYPE_NUMBER_FLAG_SIGNED))
-        content.addView(label(R.string.privacy_note, 13f, KeyboardColors.muted))
-        content.addView(label(R.string.independent_note, 12f, KeyboardColors.muted))
-
-        return makePageScrollView(content)
-    }
-
-    private fun makePageScrollView(content: View): View {
-        return ScrollView(this).apply {
-            isFillViewport = true
-            layoutParams = LinearLayout.LayoutParams(screenWidthPx, -1)
-            addView(content)
-        }
-    }
-
-    private fun createLanguageSelector(): View {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(6), 0, dp(14))
-        }
-        val languages = listOf("es" to getString(R.string.lang_spanish), "en" to getString(R.string.lang_english))
-        val buttons = mutableListOf<Button>()
-
-        fun updateStyles(active: String) {
-            buttons.forEachIndexed { i, btn ->
-                val code = languages[i].first
-                val isSelected = code == active
-                btn.setTextColor(if (isSelected) Color.BLACK else Color.WHITE)
-                btn.setBackgroundColor(if (isSelected) Color.WHITE else KeyboardColors.key)
+            toggle(R.string.tint_keys, preferences.tintKeys) {
+                preferences.tintKeys = it
+                keyboardPreview?.let(::applyPreview)
             }
         }
-
-        languages.forEach { (code, name) ->
-            val btn = Button(this).apply {
-                text = name
-                textSize = 13f
-                isAllCaps = false
-                layoutParams = LinearLayout.LayoutParams(0, dp(46), 1f).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
-                }
-                setOnClickListener {
-                    preferences.language = code
-                    updateStyles(code)
-                }
-            }
-            buttons.add(btn)
-            row.addView(btn)
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(controls, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+            addView(createKeyboardPreview(), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         }
-        updateStyles(preferences.language)
-        return row
+    }
+
+    private var keyboardPreview: KeyboardView? = null
+
+    private fun createKeyboardPreview(): View {
+        val keyboard = KeyboardView(this, object : KeyboardView.Listener {
+            override fun onKey(key: KeySpec) = Unit
+            override fun onSuggestion(word: String) = Unit
+            override fun onSwitchKeyboard() = Unit
+            override fun onAlternativesOpened() = Unit
+            override fun onWordFlow(word: String, candidates: List<String>) = Unit
+            override fun onLanguageToggled() = Unit
+            override fun onSpacebarCursorMoved(step: Int) = Unit
+            override fun onSpacebarLongPressed() = Unit
+            override fun onClipboardPasteRequested() = Unit
+        })
+        // The Settings window already pads for the system bars; the keyboard's own inset padding would double it.
+        keyboard.setOnApplyWindowInsetsListener { view, insets ->
+            view.setPadding(dp(3), 0, dp(3), dp(4))
+            insets
+        }
+        keyboardPreview = keyboard
+        applyPreview(keyboard)
+        // The frame takes every touch, so the preview is for looking at, not typing on. (A transparent overlay View
+        // would be wrong here: a MATCH_PARENT View under a wrapping parent grows to the whole screen.)
+        return object : FrameLayout(this) {
+            override fun onInterceptTouchEvent(ev: android.view.MotionEvent) = true
+        }.apply {
+            isClickable = true
+            addView(keyboard, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+        }
+    }
+
+    private fun applyPreview(keyboard: KeyboardView) {
+        val policy = EditorPolicy.from(EditorInfo().apply { inputType = InputType.TYPE_CLASS_TEXT }, preferences)
+        keyboard.setLayout(
+            page = KeyboardPage.LETTERS,
+            policy = policy,
+            numberRow = preferences.numberRow,
+            heightScale = preferences.heightScale,
+            language = preferences.language,
+            wordFlow = preferences.wordFlow,
+            tintKeys = preferences.tintKeys,
+            layoutOverride = KeyboardLayout.resolve(preferences.layoutOverride, preferences.language),
+            theme = preferences.theme,
+            oneHandedMode = preferences.oneHandedMode,
+            spacebarCursor = preferences.spacebarCursor,
+            longPressSpace = preferences.longPressSpace,
+            keyPopups = preferences.keyPopup,
+        )
+        keyboard.render(ShiftState.LOWERCASE, false, getString(R.string.preview_suggestions).split("|"), "")
+    }
+
+    // 5. SOUND & HAPTICS
+    private fun createSoundHapticsPage() = page {
+        toggle(R.string.sound, preferences.sound) { preferences.sound = it }
+        title(getString(R.string.sound_volume))
+        val volumes = listOf(0.35f, 0.70f, 1.0f)
+        segmented(
+            listOf(
+                "0" to getString(R.string.volume_low),
+                "1" to getString(R.string.volume_medium),
+                "2" to getString(R.string.volume_high),
+            ),
+            volumes.indexOfFirst { kotlin.math.abs(preferences.soundVolume - it) < 0.15f }.toString(),
+        ) { preferences.soundVolume = volumes[it.toInt()] }
+
+        toggle(R.string.vibration, preferences.vibration) { preferences.vibration = it }
+        title(getString(R.string.haptic_strength))
+        segmented(
+            listOf(
+                "LIGHT" to getString(R.string.haptic_light),
+                "MEDIUM" to getString(R.string.haptic_medium),
+                "STRONG" to getString(R.string.haptic_strong),
+            ),
+            preferences.hapticStrength.uppercase(),
+        ) { preferences.hapticStrength = it }
+    }
+
+    // 6. GESTURES
+    private fun createGesturesPage() = page {
+        toggle(R.string.wordflow, preferences.wordFlow) { preferences.wordFlow = it }
+        help(getString(R.string.wordflow_summary))
+
+        title(getString(R.string.swipe_delete_title))
+        help(getString(R.string.swipe_delete_summary))
+
+        toggle(R.string.spacebar_cursor, preferences.spacebarCursor) { preferences.spacebarCursor = it }
+        help(getString(R.string.spacebar_cursor_summary))
+
+        toggle(R.string.long_press_space, preferences.longPressSpace) { preferences.longPressSpace = it }
+        help(getString(R.string.long_press_space_summary))
+
+        title(getString(R.string.long_press_delay_title))
+        segmented(
+            listOf(
+                "SHORT" to getString(R.string.delay_short), "NORMAL" to getString(R.string.delay_normal),
+                "LONG" to getString(R.string.delay_long), "VERY_LONG" to getString(R.string.delay_very_long),
+            ),
+            preferences.longPressDelay,
+        ) { preferences.longPressDelay = it }
+        help(getString(R.string.long_press_delay_summary))
+
+        title(getString(R.string.backspace_delay_title))
+        segmented(
+            listOf(
+                "SHORT" to getString(R.string.delay_short), "NORMAL" to getString(R.string.delay_normal),
+                "LONG" to getString(R.string.delay_long),
+            ),
+            preferences.backspaceDelay,
+        ) { preferences.backspaceDelay = it }
+        title(getString(R.string.backspace_speed_title))
+        segmented(
+            listOf(
+                "SLOW" to getString(R.string.speed_slow), "NORMAL" to getString(R.string.delay_normal),
+                "FAST" to getString(R.string.speed_fast),
+            ),
+            preferences.backspaceSpeed,
+        ) { preferences.backspaceSpeed = it }
+        help(getString(R.string.backspace_summary))
+    }
+
+    // 7. PRIVACY
+    private fun createPrivacyPage() = page {
+        addView(metroLabel(getString(R.string.offline_indicator), MetroType.BODY, preferences.accentColor))
+        help(getString(R.string.privacy_note))
+
+        toggle(R.string.clipboard_history, preferences.clipboardHistory) {
+            preferences.clipboardHistory = it
+            // Turning it off also forgets what was kept, pinned clips included: off must mean nothing is stored.
+            if (!it) ClipboardHistories.shared(this@SettingsActivity).clearAll()
+        }
+        help(getString(R.string.clipboard_history_summary))
+        action(R.string.clipboard_manage) { startActivity(Intent(this@SettingsActivity, ClipboardManagerActivity::class.java)) }
+        action(R.string.clear_clipboard) {
+            ClipboardHistories.shared(this@SettingsActivity).clearAll()
+            Toast.makeText(this@SettingsActivity, R.string.clipboard_cleared, Toast.LENGTH_SHORT).show()
+        }
+
+
+        action(R.string.import_android_dict) {
+            val count = personalDict.importFromSystemUserDictionary(this@SettingsActivity)
+            Toast.makeText(this@SettingsActivity, getString(R.string.import_android_dict_done, count), Toast.LENGTH_LONG).show()
+        }
+        action(R.string.personal_dictionary_title) { startActivity(Intent(this@SettingsActivity, PersonalDictionaryActivity::class.java)) }
+        action(R.string.clear_learned_words) {
+            personalDict.clear()
+            Toast.makeText(this@SettingsActivity, R.string.dictionary_cleared, Toast.LENGTH_SHORT).show()
+        }
+        action(R.string.export_settings) { exportSettings() }
+        action(R.string.import_settings) { showImportDialog() }
+        action(R.string.reset_settings) { showResetDialog() }
+    }
+
+    // 8. ABOUT
+    private fun createAboutPage() = page {
+        // Who made it. The address is tappable and opens the mail app.
+        addView(metroLabel(getString(R.string.about_credit), MetroType.BODY).apply {
+            android.text.util.Linkify.addLinks(this, android.text.util.Linkify.EMAIL_ADDRESSES)
+            setLinkTextColor(KeyboardColors.accent)
+        })
+        title(getString(R.string.changelog_title))
+        changelog(R.string.version_050, R.array.changelog_0_5_0)
+        changelog(R.string.version_041, R.array.changelog_0_4_1)
+        changelog(R.string.version_040, R.array.changelog_0_4_0)
+        changelog(R.string.version_030, R.array.changelog_0_3_0)
+        changelog(R.string.version_020, R.array.changelog_0_2_0)
+        changelog(R.string.version_010, R.array.changelog_0_1_0)
+
+        help(getString(R.string.about_legal))
+        help(getString(R.string.about_licenses))
+
+        // Support: lets a release build report why it feels slow on this particular phone, without adb.
+        title(getString(R.string.diagnostics_title))
+        help(getString(R.string.diagnostics_help))
+        toggle(R.string.diagnostics_toggle, preferences.diagnostics) {
+            preferences.diagnostics = it
+            Diagnostics.configure(this@SettingsActivity, it)
+        }
+        action(R.string.diagnostics_copy) {
+            val report = Diagnostics.log.report(versionName(), Diagnostics.deviceInfo())
+            getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("MetroBoard diagnostics", report))
+            Toast.makeText(this@SettingsActivity, R.string.diagnostics_copied, Toast.LENGTH_SHORT).show()
+        }
+        action(R.string.diagnostics_clear) {
+            Diagnostics.log.clear()
+            Toast.makeText(this@SettingsActivity, R.string.diagnostics_cleared, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** One version heading in the accent colour, then its notes as a plain list. */
+    private fun LinearLayout.changelog(versionRes: Int, notesRes: Int) {
+        addView(metroLabel(getString(versionRes), MetroType.BODY, KeyboardColors.accent))
+        resources.getStringArray(notesRes).forEach {
+            addView(metroLabel("–  $it", MetroType.LIST, KeyboardColors.foreground).apply { setPadding(0, dp(3), 0, dp(3)) })
+        }
     }
 
     private fun createColorPicker(): View {
-        val grid = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
+        val grid = GridLayout(this).apply {
+            columnCount = 5
             setPadding(0, dp(8), 0, dp(16))
         }
 
-        colorTileViews.clear()
-        val currentAccent = preferences.accentColor
-        val palette = KeyboardColors.LUMIA_PALETTE
-        val numColumns = 5
-
-        for (rowIdx in 0 until (palette.size + numColumns - 1) / numColumns) {
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(0, 0, 0, dp(8))
+        val tileWidth = (resources.displayMetrics.widthPixels - dp(48)) / 5
+        KeyboardColors.LUMIA_PALETTE.forEach { accent ->
+            val chosen = accent.color == preferences.accentColor
+            val tile = View(this).apply {
+                background = GradientDrawable().apply {
+                    setColor(accent.color)
+                    if (chosen) setStroke(dp(3), KeyboardColors.foreground)
+                    cornerRadius = 0f
+                }
+                contentDescription = accent.name
+                isSelected = chosen
+                setOnClickListener {
+                    preferences.accentColor = accent.color
+                    refreshUi()
                 }
             }
-
-            for (colIdx in 0 until numColumns) {
-                val itemIndex = rowIdx * numColumns + colIdx
-                if (itemIndex < palette.size) {
-                    val item = palette[itemIndex]
-                    val tile = View(this).apply {
-                        val size = dp(46)
-                        layoutParams = LinearLayout.LayoutParams(0, size, 1f).apply {
-                            setMargins(dp(3), 0, dp(3), 0)
-                        }
-                        background = createTileDrawable(item.color, item.color == currentAccent)
-                        contentDescription = item.name
-                        setOnClickListener {
-                            preferences.accentColor = item.color
-                            KeyboardColors.accent = item.color
-                            status.setTextColor(item.color)
-                            updateColorTileSelections(item.color)
-                            accentColorLabel.text = getString(R.string.accent_color_title) + ": " + item.name
-                        }
-                    }
-                    colorTileViews.add(item.color to tile)
-                    row.addView(tile)
-                } else {
-                    val spacer = View(this).apply {
-                        layoutParams = LinearLayout.LayoutParams(0, dp(46), 1f).apply {
-                            setMargins(dp(3), 0, dp(3), 0)
-                        }
-                    }
-                    row.addView(spacer)
-                }
-            }
-            grid.addView(row)
+            grid.addView(tile, GridLayout.LayoutParams().apply {
+                width = tileWidth - dp(6)
+                height = dp(46)
+                setMargins(dp(3), dp(3), dp(3), dp(3))
+            })
         }
         return grid
     }
 
-    private fun createTileDrawable(color: Int, isSelected: Boolean): GradientDrawable {
-        return GradientDrawable().apply {
-            setColor(color)
-            if (isSelected) {
-                setStroke(dp(3), Color.WHITE)
-            } else {
-                setStroke(dp(1), Color.rgb(60, 60, 60))
-            }
-        }
-    }
+    // Dialogs and backup -------------------------------------------------------------------------------
 
-    private fun updateColorTileSelections(selectedColor: Int) {
-        colorTileViews.forEach { (color, view) ->
-            view.background = createTileDrawable(color, color == selectedColor)
-        }
-    }
+    /** Dialogs follow the keyboard theme, not the system one, so they match the screen they sit on. */
+    private fun dialog() = AlertDialog.Builder(
+        this,
+        if (KeyboardColors.isDarkTheme) android.R.style.Theme_DeviceDefault_Dialog_Alert
+        else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert,
+    )
 
-    private fun createHeightScaleSelector(): View {
-        val row = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(6), 0, dp(14))
-        }
-        val currentScale = preferences.heightScale
-        val scales = listOf(
-            0.85f to getString(R.string.height_small),
-            1.00f to getString(R.string.height_normal),
-            1.15f to getString(R.string.height_tall)
-        )
-        val buttons = mutableListOf<Button>()
-
-        fun updateScaleButtonStyles(activeScale: Float) {
-            buttons.forEachIndexed { i, btn ->
-                val scaleValue = scales[i].first
-                val isActive = Math.abs(scaleValue - activeScale) < 0.05f
-                btn.setTextColor(if (isActive) Color.BLACK else Color.WHITE)
-                btn.setBackgroundColor(if (isActive) Color.WHITE else KeyboardColors.key)
-            }
-        }
-
-        scales.forEach { (scale, labelText) ->
-            val btn = Button(this).apply {
-                text = labelText
-                textSize = 12f
-                isAllCaps = false
-                layoutParams = LinearLayout.LayoutParams(0, dp(44), 1f).apply {
-                    setMargins(dp(2), 0, dp(2), 0)
-                }
-                setOnClickListener {
-                    preferences.heightScale = scale
-                    updateScaleButtonStyles(scale)
-                }
-            }
-            buttons.add(btn)
-            row.addView(btn)
-        }
-        updateScaleButtonStyles(currentScale)
-        return row
-    }
-
+    // Backup goes through the Storage Access Framework: the user picks the file, the app needs no
+    // storage permission and nothing is placed on the system clipboard.
     private fun exportSettings() {
-        val json = preferences.exportJson()
-        val clipboard = getSystemService(ClipboardManager::class.java)
-        clipboard?.setPrimaryClip(ClipData.newPlainText("wkb_settings", json))
-        Toast.makeText(this, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/json"
+            putExtra(Intent.EXTRA_TITLE, "metroboard-backup.json")
+        }
+        startActivityForResult(intent, REQUEST_EXPORT)
     }
 
     private fun showImportDialog() {
-        val input = EditText(this).apply {
-            hint = "{\n  \"settings\": {\n  ...\n  }\n}"
-            setHintTextColor(KeyboardColors.muted)
-            setTextColor(Color.WHITE)
-            setBackgroundColor(KeyboardColors.key)
-            minLines = 6
-            gravity = Gravity.TOP or Gravity.START
-            setPadding(dp(12), dp(12), dp(12), dp(12))
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/plain"))
         }
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.import_settings)
-            .setView(input)
-            .setPositiveButton(android.R.string.ok) { _, _ ->
-                val text = input.text.toString().trim()
-                if (text.isNotEmpty()) {
-                    try {
-                        preferences.importJson(text)
-                        Toast.makeText(this, R.string.settings_imported, Toast.LENGTH_SHORT).show()
-                        recreate()
-                    } catch (_: Exception) {
-                        Toast.makeText(this, R.string.invalid_json, Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        startActivityForResult(intent, REQUEST_IMPORT)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) return
+        when (requestCode) {
+            REQUEST_EXPORT -> writeBackup(uri)
+            REQUEST_IMPORT -> readBackup(uri)
+        }
+    }
+
+    private fun writeBackup(uri: android.net.Uri) {
+        try {
+            val json = BackupFormat.write(preferences.exportSettingsMap(), personalDict.allWords())
+            contentResolver.openOutputStream(uri, "wt")?.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+                ?: throw java.io.IOException("no output stream")
+            Toast.makeText(this, R.string.backup_saved, Toast.LENGTH_SHORT).show()
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.backup_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun readBackup(uri: android.net.Uri) {
+        try {
+            val text = contentResolver.openInputStream(uri)?.use { BackupFormat.readBounded(it) }
+                ?: throw java.io.IOException("no input stream")
+            val backup = BackupFormat.parse(text)
+            val settings = preferences.applySettings(backup.settings)
+            val words = personalDict.importWords(backup.words)
+            Toast.makeText(this, getString(R.string.backup_imported, settings, words), Toast.LENGTH_SHORT).show()
+            refreshUi()
+        } catch (_: Exception) {
+            // Deliberately generic: nothing from a rejected file is echoed back or logged.
+            Toast.makeText(this, R.string.invalid_json, Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showResetDialog() {
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        dialog()
             .setTitle(R.string.reset_settings)
-            .setMessage(R.string.reset_settings)
+            .setMessage(R.string.reset_confirm)
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 preferences.resetToDefaults()
-                KeyboardColors.accent = KeyboardPreferences.DEFAULT_ACCENT_COLOR
+                personalDict.clear()
+                refreshUi()
                 Toast.makeText(this, R.string.reset_done, Toast.LENGTH_SHORT).show()
-                recreate()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun label(resource: Int, size: Float, color: Int = Color.WHITE) = TextView(this).apply {
-        setText(resource)
-        textSize = size
-        setTextColor(color)
-        setPadding(0, dp(10), 0, dp(14))
-        typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-    }
-
-    private fun action(resource: Int, callback: () -> Unit) = Button(this).apply {
-        setText(resource)
-        isAllCaps = false
-        setTextColor(Color.WHITE)
-        background = KeyboardColors.keyBackground()
-        layoutParams = LinearLayout.LayoutParams(-1, dp(52)).apply { bottomMargin = dp(10) }
-        setOnClickListener { callback() }
-    }
-
-    private fun toggle(resource: Int, enabled: Boolean, callback: (Boolean) -> Unit) = Switch(this).apply {
-        setText(resource)
-        setTextColor(Color.WHITE)
-        isChecked = enabled
-        minHeight = dp(52)
-        setOnCheckedChangeListener { _, value -> callback(value) }
-    }
-
-    private fun testField(hintResource: Int, type: Int) = EditText(this).apply {
-        setHint(hintResource)
-        inputType = type
-        setTextColor(Color.WHITE)
-        setHintTextColor(KeyboardColors.muted)
-        minHeight = dp(64)
-        isSaveEnabled = false
-        importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
-        layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        val manager = getSystemService(InputMethodManager::class.java)
-        val id = ComponentName(this, WordFlowImeService::class.java)
-        val selected = ComponentName.unflattenFromString(
-            Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD).orEmpty()
-        ) == id
-        val enabled = manager?.enabledInputMethodList?.any {
-            it.packageName == packageName && it.serviceName == WordFlowImeService::class.java.name
-        } == true
-        status.setTextColor(preferences.accentColor)
-        status.setText(when {
-            selected -> R.string.keyboard_active
-            enabled -> R.string.keyboard_enabled
-            else -> R.string.keyboard_disabled
-        })
-    }
-}
-
-class PivotHorizontalScrollView(context: Context) : HorizontalScrollView(context) {
-    var onPageSelected: ((Int) -> Unit)? = null
-    var pageCount = 5
-    var currentPage = 0
-        private set
-
-    private var initialX = 0f
-    private var initialY = 0f
-
-    init {
-        isHorizontalScrollBarEnabled = false
-        overScrollMode = View.OVER_SCROLL_NEVER
-    }
-
-    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
-        val w = measuredWidth
-        if (w > 0) {
-            val container = getChildAt(0) as? LinearLayout
-            container?.let {
-                for (i in 0 until it.childCount) {
-                    val child = it.getChildAt(i)
-                    if (child.layoutParams.width != w) {
-                        child.layoutParams.width = w
-                        child.requestLayout()
-                    }
-                }
-            }
+    private fun makePageScrollView(content: View): View {
+        return ScrollView(this).apply {
+            pageScrolls += this
+            addView(content)
+            isVerticalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
         }
-    }
-
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                initialX = ev.x
-                initialY = ev.y
-            }
-            MotionEvent.ACTION_MOVE -> {
-                val dx = kotlin.math.abs(ev.x - initialX)
-                val dy = kotlin.math.abs(ev.y - initialY)
-                if (dx > dy && dx > 25) {
-                    parent?.requestDisallowInterceptTouchEvent(true)
-                    return true
-                }
-            }
-        }
-        return super.onInterceptTouchEvent(ev)
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    override fun onTouchEvent(ev: MotionEvent): Boolean {
-        when (ev.actionMasked) {
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                val deltaX = ev.x - initialX
-                val pageWidth = width.takeIf { it > 0 } ?: 1
-                val threshold = pageWidth / 6
-                val targetPage = when {
-                    deltaX < -threshold -> (currentPage + 1).coerceAtMost(pageCount - 1)
-                    deltaX > threshold -> (currentPage - 1).coerceAtLeast(0)
-                    else -> currentPage
-                }
-                snapToPage(targetPage)
-                return true
-            }
-        }
-        return super.onTouchEvent(ev)
-    }
-
-    fun snapToPage(page: Int, smooth: Boolean = true) {
-        currentPage = page.coerceIn(0, pageCount - 1)
-        if (width > 0) {
-            val targetX = currentPage * width
-            if (smooth) {
-                smoothScrollTo(targetX, 0)
-            } else {
-                scrollTo(targetX, 0)
-            }
-            onPageSelected?.invoke(currentPage)
-        } else {
-            post {
-                snapToPage(currentPage, smooth)
-            }
-        }
-    }
-
-    override fun requestChildRectangleOnScreen(
-        child: View,
-        rectangle: android.graphics.Rect,
-        immediate: Boolean
-    ): Boolean {
-        // Prevent child views (like EditText gaining focus) from disrupting page snapping!
-        return false
     }
 }

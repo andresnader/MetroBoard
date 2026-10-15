@@ -1,3 +1,11 @@
+/*
+ * MetroBoard - Open Source Android IME (Windows Phone / Word Flow inspired)
+ * Copyright (C) 2026 MetroBoard Contributors
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * See LICENSE and ATTRIBUTION.md for details.
+ */
+
 package com.metroboard.ime.keyboard
 
 import com.metroboard.ime.prediction.LocalSuggestionEngine
@@ -20,7 +28,7 @@ class EditorControllerTest {
             return value.substring(maxOf(start, end)).take(maxChars)
         }
         override fun hasSelection() = start != end
-        override fun shouldCapitalize() = start == 0 || value.take(start).endsWith(". ")
+        override fun shouldCapitalize() = start == 0 || Regex("[.?!] $").containsMatchIn(value.take(start))
         override fun commit(text: String): Boolean {
             val from = minOf(start, end)
             value = value.replaceRange(from, maxOf(start, end), text)
@@ -37,8 +45,91 @@ class EditorControllerTest {
         override fun beginBatch() { batches++ }
         override fun endBatch() { batches-- }
     }
-    private fun controller(editor: MemoryEditor, policy: EditingPolicy = EditingPolicy()) =
-        EditorController(editor, LocalSuggestionEngine()).also { it.start(policy) }
+    private fun controller(
+        editor: MemoryEditor,
+        policy: EditingPolicy = EditingPolicy(),
+        language: String = "es",
+    ) = EditorController(editor, LocalSuggestionEngine(activeLanguage = language)).also { it.start(policy) }
+
+    @Test fun pastedTextIsInsertedVerbatimEvenWithAutomaticCapital() {
+        val editor = MemoryEditor()
+        val controller = controller(editor)
+        assertTrue("the empty field starts in automatic capital", controller.shift.isUppercase)
+        controller.paste("Segundo texto copiado")
+        assertEquals("Segundo texto copiado", editor.value)
+    }
+
+    @Test fun pastedTextIsNotRecasedByCapsLockOrOneShotShift() {
+        val editor = MemoryEditor("x ")
+        val controller = controller(editor)
+        controller.tapShift(0)
+        controller.paste("mixed Case 123")
+        assertEquals("x mixed Case 123", editor.value)
+    }
+
+    // --- Word Flow: the other words a swipe could have meant stay in the bar -----------------------------
+
+    private fun swiped(initial: String = "hola ", cands: List<String> = listOf("tiene", "tienes", "tiende")) =
+        MemoryEditor(initial).let { editor ->
+            editor to controller(editor).also { it.commitWordFlow(cands.first(), cands) }
+        }
+
+    @Test fun swipeWritesTheBestWordAndOffersTheAlternatives() {
+        val (editor, controller) = swiped()
+        assertEquals("hola tiene ", editor.value)
+        assertEquals(listOf("tiene", "tienes", "tiende"), controller.suggestions())
+    }
+
+    @Test fun tappingAnAlternativeReplacesTheSwipedWordKeepingOneSpace() {
+        val (editor, controller) = swiped()
+        controller.chooseSuggestion("tienes")
+        assertEquals("hola tienes ", editor.value)
+    }
+
+    @Test fun theUserCanChangeTheirMindAgainAfterSwapping() {
+        val (editor, controller) = swiped()
+        controller.chooseSuggestion("tiende")
+        assertEquals("hola tiende ", editor.value)
+        assertEquals(listOf("tiene", "tienes", "tiende"), controller.suggestions())
+        controller.chooseSuggestion("tiene")
+        assertEquals("hola tiene ", editor.value)
+    }
+
+    @Test fun alternativesFollowTheCapitalisationOfTheSwipe() {
+        val editor = MemoryEditor("")
+        val controller = controller(editor)
+        assertTrue(controller.shift.isUppercase) // start of the field
+        controller.commitWordFlow("hola", listOf("hola", "hoja"))
+        assertEquals("Hola ", editor.value)
+        assertEquals(listOf("Hola", "Hoja"), controller.suggestions())
+        controller.chooseSuggestion("Hoja")
+        assertEquals("Hoja ", editor.value)
+    }
+
+    @Test fun anySubsequentEditDropsTheAlternatives() {
+        val (_, typed) = swiped(); typed.text("a")
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), typed.suggestions())
+        val (_, spaced) = swiped(); spaced.space(1_000)
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), spaced.suggestions())
+        val (_, deleted) = swiped(); deleted.backspace()
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), deleted.suggestions())
+        val (_, moved) = swiped(); moved.cursorMoved()
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), moved.suggestions())
+    }
+
+    @Test fun staleAlternativesAreNeverOfferedWhenTheTextChangedBehindOurBack() {
+        val (editor, controller) = swiped()
+        editor.value = "otro texto "; editor.start = editor.value.length; editor.end = editor.start // host app edited
+        assertNotEquals(listOf("tiene", "tienes", "tiende"), controller.suggestions())
+        controller.chooseSuggestion("tienes")
+        assertEquals("a stale tap must not touch the text", "otro texto ", editor.value)
+    }
+
+    @Test fun aSwipeWithNoAlternativesOffersNothingExtra() {
+        val (editor, controller) = swiped(cands = listOf("tiene"))
+        assertEquals("hola tiene ", editor.value)
+        assertFalse(controller.suggestions().contains("tienes"))
+    }
 
     @Test fun typingAtStartCapitalizesOnlyFirstLetter() {
         val editor = MemoryEditor()
@@ -63,14 +154,17 @@ class EditorControllerTest {
         controller.space(1000); controller.space(1500)
         assertEquals("hola  ", editor.value)
     }
-    @Test fun eachTerminalPunctuationCapitalizesNextLetter() {
+    @Test fun eachTerminalPunctuationFollowedByASpaceCapitalizesNextLetter() {
         for (punctuation in listOf(".", "!", "?")) {
             val editor = MemoryEditor("hola")
             val controller = controller(editor)
             controller.text(punctuation)
+            // Not yet: "hola.com" / "3.14" must stay lowercase; the space is what ends the sentence.
+            assertEquals(ShiftState.LOWERCASE, controller.shift.state)
+            controller.space(1000)
             assertEquals(ShiftState.AUTO_SHIFT, controller.shift.state)
             controller.text("a")
-            assertEquals("hola${punctuation}A", editor.value)
+            assertEquals("hola$punctuation A", editor.value)
         }
     }
     @Test fun capsLockAppliesUntilDisabled() {
@@ -122,7 +216,7 @@ class EditorControllerTest {
         val controller = controller(editor)
         assertTrue(controller.suggestions().contains("Hola"))
         controller.chooseSuggestion("Hola")
-        assertEquals("Hola", editor.value)
+        assertEquals("Hola ", editor.value) // a chosen suggestion adds its trailing space
         assertEquals(0, editor.batches)
     }
     @Test fun doesNotSuggestInMiddleOfWord() {
@@ -148,11 +242,18 @@ class EditorControllerTest {
     }
     @Test fun autoCorrectOnSpaceReplacesMisspelledWord() {
         val editor = MemoryEditor()
-        val controller = controller(editor)
+        val controller = controller(editor, language = "en")
         controller.text("t"); controller.text("e"); controller.text("h")
         assertEquals("Teh", editor.value)
         controller.space(1000)
         assertEquals("The ", editor.value)
+    }
+    @Test fun autoCorrectDoesNotApplyEnglishTyposInSpanish() {
+        val editor = MemoryEditor()
+        val controller = controller(editor, language = "es")
+        controller.text("t"); controller.text("e"); controller.text("h")
+        controller.space(1000)
+        assertEquals("Teh ", editor.value)
     }
     @Test fun nextWordSuggestionsAppearAfterSpace() {
         val editor = MemoryEditor("gracias ")
@@ -160,7 +261,7 @@ class EditorControllerTest {
         val suggestions = controller.suggestions()
         assertTrue(suggestions.contains("por"))
         controller.chooseSuggestion("por")
-        assertEquals("gracias por", editor.value)
+        assertEquals("gracias por ", editor.value) // a chosen suggestion adds its trailing space
     }
     @Test fun pressingShiftAtEndOfWordCapitalizesFirstLetter() {
         val editor = MemoryEditor("hola")
@@ -190,5 +291,26 @@ class EditorControllerTest {
         val controller = controller(editor)
         controller.commitWordFlow("gracias")
         assertEquals("Gracias ", editor.value)
+    }
+
+    @Test fun swipeToDeleteRemovesSingleWord() {
+        val editor = MemoryEditor("Hola mundo maravilloso")
+        val controller = controller(editor)
+        controller.deleteWords(1)
+        assertEquals("Hola mundo ", editor.value)
+    }
+
+    @Test fun swipeToDeleteRemovesMultipleWords() {
+        val editor = MemoryEditor("Hola mundo maravilloso")
+        val controller = controller(editor)
+        controller.deleteWords(2)
+        assertEquals("Hola ", editor.value)
+    }
+
+    @Test fun trigramContextPrioritizedAfterTwoWords() {
+        val editor = MemoryEditor("muchas gracias ")
+        val controller = controller(editor)
+        val suggestions = controller.suggestions()
+        assertTrue("Expected trigram prediction 'por' for 'muchas gracias ', got: $suggestions", suggestions.contains("por"))
     }
 }
