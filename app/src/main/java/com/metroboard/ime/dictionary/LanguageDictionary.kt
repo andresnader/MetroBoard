@@ -77,35 +77,67 @@ class LanguageDictionary(
 
     override fun getTopWords(limit: Int): List<String> = topWords.take(limit)
 
-    /** (first letter, last letter) -> words, most frequent first. Built once, on first use. */
-    private val endpointIndex: Map<Int, List<String>> by lazy {
-        val index = HashMap<Int, MutableList<String>>()
+    /** One (first letter, last letter) group of the endpoint index, most frequent first. */
+    private class EndpointPool(val words: Array<String>, val normalized: Array<String>, val frequencies: IntArray)
+
+    /**
+     * (first letter, last letter) -> words, most frequent first, with their normalised forms and frequencies stored next
+     * to them: the merge below used to look each frequency up again (a lower-cased copy and a map lookup) for every
+     * pool head on every word it returned. Built once, on first use; the normalised Strings are the trie's own.
+     */
+    private val endpointIndex: Map<Int, EndpointPool> by lazy {
+        val words = HashMap<Int, MutableList<String>>()
+        val entries = HashMap<Int, MutableList<DictionaryEntry>>()
         for (word in topWords) { // already sorted by frequency
-            val norm = CompactWordTrie.normalize(word)
-            if (norm.length < 2) continue
-            index.getOrPut(norm.first().code shl 16 or norm.last().code) { ArrayList() }.add(word)
+            // The entry getFrequency() reads; its normalised form equals CompactWordTrie.normalize(word).
+            val entry = trie.entryFor(word) ?: continue
+            if (entry.normalized.length < 2) continue
+            val key = entry.normalized.first().code shl 16 or entry.normalized.last().code
+            words.getOrPut(key) { ArrayList() }.add(word)
+            entries.getOrPut(key) { ArrayList() }.add(entry)
         }
-        index
+        words.mapValues { (key, group) ->
+            val found = entries.getValue(key)
+            EndpointPool(group.toTypedArray(), Array(found.size) { found[it].normalized }, IntArray(found.size) { found[it].frequency })
+        }
     }
 
-    override fun wordsByEndpoints(first: Set<Char>, last: Set<Char>, minFrequency: Int, limit: Int): List<String> {
-        val pools = ArrayList<List<String>>()
+    override fun wordsByEndpoints(first: Set<Char>, last: Set<Char>, minFrequency: Int, limit: Int): List<String> =
+        candidatesByEndpoints(first, last, minFrequency, limit).words.asList()
+
+    override fun candidatesByEndpoints(first: Set<Char>, last: Set<Char>, minFrequency: Int, limit: Int): EndpointCandidates {
+        val pools = ArrayList<EndpointPool>()
         for (f in first) for (l in last) endpointIndex[f.code shl 16 or l.code]?.let { pools += it }
-        // k-way merge by frequency so the limit keeps the best words of every pool.
+        // k-way merge by frequency so the limit keeps the best words of every pool (a tie goes to the earlier pool).
         val cursor = IntArray(pools.size)
-        val out = ArrayList<String>()
-        while (out.size < limit) {
+        val capacity = minOf(limit, pools.sumOf { it.words.size }).coerceAtLeast(0)
+        val words = arrayOfNulls<String>(capacity)
+        val normalized = arrayOfNulls<String>(capacity)
+        val frequencies = IntArray(capacity)
+        var size = 0
+        while (size < limit) {
             var bestPool = -1
             var bestFreq = -1
             for (p in pools.indices) {
-                val w = pools[p].getOrNull(cursor[p]) ?: continue
-                val f = trie.getFrequency(w)
+                val pool = pools[p]
+                if (cursor[p] >= pool.words.size) continue
+                val f = pool.frequencies[cursor[p]]
                 if (f > bestFreq) { bestFreq = f; bestPool = p }
             }
             if (bestPool < 0 || bestFreq < minFrequency) break
-            out += pools[bestPool][cursor[bestPool]++]
+            val pool = pools[bestPool]
+            val at = cursor[bestPool]++
+            words[size] = pool.words[at]
+            normalized[size] = pool.normalized[at]
+            frequencies[size] = bestFreq
+            size++
         }
-        return out
+        @Suppress("UNCHECKED_CAST")
+        return EndpointCandidates(
+            words.copyOf(size) as Array<String>,
+            normalized.copyOf(size) as Array<String>,
+            frequencies.copyOf(size),
+        )
     }
 
     override fun getBigramSuggestions(previousWord: String): List<String> {

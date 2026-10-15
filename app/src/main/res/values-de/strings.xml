@@ -117,6 +117,13 @@
 
     <string name="version_label">Version %1$s</string>
     <string name="changelog_title">Neuigkeiten</string>
+    <string-array name="changelog_0_5_0">
+        <item>Wischeingabe: Das Wort erscheint nach dem Loslassen viel früher, mit genau denselben Vorschlägen wie vorher.</item>
+        <item>Klick und Vibration kommen, wenn der Finger die Taste berührt, nicht erst beim Loslassen.</item>
+        <item>Eine Taste, die direkt nach dem Wischen gedrückt wird, erscheint nach dem gewischten Wort, nie davor.</item>
+        <item>Weniger Arbeit bei jeder Taste: kein unnötiges Neuzeichnen, keine zweite Suche nach einem Tippfehler, und gelernte Wörter werden im Hintergrund gespeichert.</item>
+        <item>Mit zwei Daumen leuchten beide gedrückten Tasten auf.</item>
+    </string-array>
     <string-array name="changelog_0_4_1">
         <item>Die gehaltene Rücktaste löscht jetzt anfangs sanft und dann schneller. Wartezeit und Geschwindigkeit stellen Sie unter Einstellungen > Gesten ein.</item>
         <item>Die Verzögerung beim langen Drücken (Akzente, Sprachauswahl) ist einstellbar.</item>

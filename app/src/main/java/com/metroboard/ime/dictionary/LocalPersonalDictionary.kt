@@ -51,7 +51,27 @@ class LocalPersonalDictionary(
             shared.getOrPut(storageDir.canonicalPath) { LocalPersonalDictionary(storageDir) }
 
         fun shared(context: Context): LocalPersonalDictionary = shared(context.filesDir)
+
+        /**
+         * The one thread that writes the dictionaries' files. The keyboard learns a word on the space after it, and that
+         * used to rewrite the file (and rename it into place) on the UI thread: a rename can stall for tens of
+         * milliseconds on a busy phone. One thread keeps the writes of a file in order.
+         */
+        private val writer = java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 30, java.util.concurrent.TimeUnit.SECONDS, java.util.concurrent.LinkedBlockingQueue(),
+        ) { task -> Thread(task, "metroboard-dictionary-io").apply { isDaemon = true } }.apply { allowCoreThreadTimeOut(true) }
+
+        /** Waits until every write queued so far is on disk. */
+        fun flushWrites() {
+            writer.submit {}.get()
+        }
+
+        /** Runs [task] on the writer thread, behind the writes already queued (tests use it to hold the writer). */
+        internal fun onWriterThread(task: Runnable) = writer.execute(task)
     }
+
+    /** A write is queued; it takes the words as they are when it runs, so later changes need no other one. */
+    private var writeQueued = false
 
     init {
         loadFromFile()
@@ -263,18 +283,30 @@ class LocalPersonalDictionary(
         return File(storageDir, "personal_dictionary.json")
     }
 
+    /** Queues writing the file on the writer thread; every caller holds this object's lock. */
     private fun saveToFile() {
+        if (getFile() == null || writeQueued) return
+        writeQueued = true
+        writer.execute { writeFile() }
+    }
+
+    private fun writeFile() {
         val file = getFile() ?: return
+        // A copy of the words taken under the lock (quick, in memory); the JSON and the disk happen outside it.
+        val snapshot = synchronized(this) {
+            writeQueued = false
+            wordMap.mapValues { (_, words) -> words.values.map { it.word to it.frequency } }
+        }
         try {
             val root = JSONObject()
             root.put("version", 1)
             val langObj = JSONObject()
-            for ((lang, map) in wordMap) {
+            for ((lang, words) in snapshot) {
                 val array = JSONArray()
-                for (item in map.values) {
+                for ((word, frequency) in words) {
                     val obj = JSONObject()
-                    obj.put("word", item.word)
-                    obj.put("frequency", item.frequency)
+                    obj.put("word", word)
+                    obj.put("frequency", frequency)
                     array.put(obj)
                 }
                 langObj.put(lang, array)
@@ -293,6 +325,7 @@ class LocalPersonalDictionary(
 
     private fun loadFromFile() {
         val file = getFile() ?: return
+        flushWrites() // another instance may still be writing this file
         if (!file.exists()) return
         try {
             val text = file.readText(Charsets.UTF_8)

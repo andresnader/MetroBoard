@@ -199,7 +199,7 @@ class EditorController(
     private fun inUrlOrEmailToken(): Boolean {
         val token = editor.beforeCursor(80).takeLastWhile { !it.isWhitespace() }
         return token.any { it == '@' || it == '/' || it == ':' || it == '_' || it == '\\' } ||
-            Regex("\\p{L}\\.\\p{L}").containsMatchIn(token)
+            LETTER_DOT_LETTER.containsMatchIn(token)
     }
 
     private fun learnIfAllowed(word: String, explicit: Boolean = false) {
@@ -441,7 +441,7 @@ class EditorController(
         if (policy.sensitive) return 1
         val before = editor.beforeCursor(GRAPHEME_WINDOW)
         if (before.isEmpty()) return 1
-        val boundaries = java.text.BreakIterator.getCharacterInstance()
+        val boundaries = graphemes
         boundaries.setText(before)
         val end = boundaries.last()
         val start = boundaries.previous() // (preceding(last()) returns DONE on some runtimes)
@@ -449,9 +449,16 @@ class EditorController(
         return before.codePointCount(start, end).coerceAtLeast(1)
     }
 
+    /** Reused for every Backspace (a held one repeats it many times a second); this class lives on the UI thread. */
+    private val graphemes by lazy(LazyThreadSafetyMode.NONE) { java.text.BreakIterator.getCharacterInstance() }
+
     private companion object {
         /** Longest grapheme cluster we expect (a ZWJ family is 8 code points / 11 UTF-16 units). */
         const val GRAPHEME_WINDOW = 32
+
+        // Compiled once: they used to be compiled again on every space and on every suggestion-bar update.
+        val LETTER_DOT_LETTER = Regex("\\p{L}\\.\\p{L}")
+        val WHITESPACE = Regex("\\s+")
     }
 
     private fun isSingleWord(text: String): Boolean =
@@ -470,7 +477,7 @@ class EditorController(
         if (editor.hasSelection() || editor.afterCursor(1).firstOrNull()?.isLetter() == true) return null
         val context = editor.beforeCursor(99)
         if (context.isEmpty() || !context.last().isWhitespace()) return null
-        val tokens = context.trimEnd().split(Regex("\\s+"))
+        val tokens = context.trimEnd().split(WHITESPACE)
             .filter { it.isNotEmpty() && it.all { ch -> ch.isLetter() || (!engine.elidesApostrophe && (ch == '\'' || ch == '\u2019')) } }
         if (tokens.size >= 2) {
             val w1 = tokens[tokens.size - 2]

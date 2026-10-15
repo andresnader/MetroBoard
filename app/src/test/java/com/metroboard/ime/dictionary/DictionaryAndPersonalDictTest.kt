@@ -156,8 +156,26 @@ class DictionaryAndPersonalDictTest {
         val dir = tempFolder.newFolder("atomic")
         val dict = LocalPersonalDictionary(dir)
         repeat(3) { dict.learn("Ameizin", "es") }
+        LocalPersonalDictionary.flushWrites() // the file is written off the caller's thread
         assertEquals(listOf("personal_dictionary.json"), dir.list()!!.sorted())
         assertEquals(listOf("Ameizin"), LocalPersonalDictionary(dir).wordsWithPrefix("ame", "es"))
+    }
+
+    @Test(timeout = 10_000)
+    fun learningAWordDoesNotWaitForTheDisk() {
+        val dir = tempFolder.newFolder("async")
+        val dict = LocalPersonalDictionary(dir)
+        val writerHeld = java.util.concurrent.CountDownLatch(1)
+        LocalPersonalDictionary.onWriterThread { writerHeld.await() } // the disk is "busy"
+        try {
+            repeat(2) { dict.learn("Chévere", "es") } // returns at once: nothing is written on this thread
+            assertTrue(dict.knows("Chévere", "es"))
+            assertFalse(java.io.File(dir, "personal_dictionary.json").exists())
+        } finally {
+            writerHeld.countDown()
+        }
+        LocalPersonalDictionary.flushWrites()
+        assertEquals(listOf("Chévere"), LocalPersonalDictionary(dir).wordsWithPrefix("chév", "es"))
     }
 
     @Test
@@ -167,6 +185,7 @@ class DictionaryAndPersonalDictTest {
         val dict = LocalPersonalDictionary(dir)
         assertTrue(dict.getAllWords("es").isEmpty())
         repeat(2) { dict.learn("Quimeraz", "es") }
+        LocalPersonalDictionary.flushWrites()
         org.json.JSONObject(java.io.File(dir, "personal_dictionary.json").readText()) // parses again
         assertEquals(listOf("Quimeraz"), LocalPersonalDictionary(dir).wordsWithPrefix("quim", "es"))
     }

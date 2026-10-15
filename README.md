@@ -230,7 +230,8 @@ Lista completa y contexto en [docs/0.3/qa-report.md](docs/0.3/qa-report.md). Las
 | v0.3 | **Calidad de escritura**: multitáctil, idiomas aislados, diccionarios reales, autocorrección conservadora y reversible, Word Flow sobre todo el léxico, copia de seguridad validada |
 | v0.4 | **Más rápido y más inteligente** (2026-10-12): respuesta al escribir (p95 37 → 4 ms en el emulador), siguiente palabra real (~30.000 por idioma), Word Flow con contexto, editor del diccionario personal, tipos de campo (correo, URL, nombres), lo copiado en la barra, vista previa en vivo y firma de release. Detalle en [CHANGELOG](CHANGELOG.md) y [docs/0.4](docs/0.4/README.md) |
 | v0.4.1 | **Respuesta al reporte de pruebas** (2026-10-12): borrado mantenido escalonado y ajustable, retardo de pulsación larga ajustable, gestionar y editar el portapapeles, diagnóstico de tiempos para APK de release, un tercio menos de memoria. Hallazgos en [docs/0.4](docs/0.4/README.md) |
-| v0.5 | Cinemática y grabador de trazos reales, imágenes en el portapapeles, importar diccionarios, validación en hardware y accesibilidad |
+| v0.5.0 | **Más rápido al deslizar y al tocar** (2026-10-14): Word Flow 15 veces más rápido con el mismo resultado (JVM: 9,2 → 0,6 ms, 11 → 0,2 MB por trazo), clic y vibración al tocar, menos trabajo por tecla, teclas tras un trazo en orden, dos pulgares iluminados. Detalle en [docs/0.5](docs/0.5/README.md) |
+| siguiente | Cinemática y grabador de trazos reales, imágenes en el portapapeles, importar diccionarios, validación en hardware y accesibilidad |
 
 Las fuentes y decisiones están en [corpus-analysis.md](docs/corpus-analysis.md).
 La integración IME sigue la [guía oficial Android](https://developer.android.com/develop/ui/views/touch-and-input/creating-input-method)

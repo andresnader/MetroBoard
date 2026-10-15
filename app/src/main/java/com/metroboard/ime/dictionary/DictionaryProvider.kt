@@ -17,6 +17,11 @@ data class DictionaryEntry(
     val language: String
 )
 
+/** Shape-writing candidates as parallel arrays (word, normalised form, frequency), most frequent first. */
+class EndpointCandidates(val words: Array<String>, val normalized: Array<String>, val frequencies: IntArray) {
+    val size: Int get() = words.size
+}
+
 interface DictionaryProvider {
     val language: String
     val defaultLayout: String
@@ -36,6 +41,20 @@ interface DictionaryProvider {
      */
     fun wordsByEndpoints(first: Set<Char>, last: Set<Char>, minFrequency: Int = 0, limit: Int = 4000): List<String> =
         emptyList()
+
+    /**
+     * [wordsByEndpoints] with each word's [CompactWordTrie.normalize]d form and its frequency, same words in the same
+     * order. The shape writer looks at thousands of candidates per swipe; working both out again for each one (a
+     * lower-cased copy and a map lookup) cost more than some of the geometry.
+     */
+    fun candidatesByEndpoints(first: Set<Char>, last: Set<Char>, minFrequency: Int = 0, limit: Int = 4000): EndpointCandidates {
+        val words = wordsByEndpoints(first, last, minFrequency, limit)
+        return EndpointCandidates(
+            words.toTypedArray(),
+            Array(words.size) { CompactWordTrie.normalize(words[it]) },
+            IntArray(words.size) { getFrequency(words[it]) },
+        )
+    }
     fun getBigramSuggestions(previousWord: String): List<String>
     fun getTrigramSuggestions(word1: String, word2: String): List<String> = emptyList()
     fun autoCorrect(word: String): String?
@@ -181,6 +200,9 @@ class CompactWordTrie {
     fun getFrequency(word: String): Int {
         return exactWordMap[word.lowercase(Locale.ROOT)]?.frequency ?: 0
     }
+
+    /** The entry [getFrequency] reads for [word], or null; its `normalized` String is shared, not a new copy. */
+    fun entryFor(word: String): DictionaryEntry? = exactWordMap[word.lowercase(Locale.ROOT)]
 
     fun wordsWithPrefix(prefix: String, limit: Int = 5): List<String> {
         if (prefix.isBlank()) return emptyList()

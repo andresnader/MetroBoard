@@ -20,6 +20,7 @@ import android.graphics.Typeface
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.text.TextUtils
 import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
@@ -48,6 +49,11 @@ import com.metroboard.ime.util.dp
 @SuppressLint("ViewConstructor")
 class KeyboardView(context: Context, private val listener: Listener) : LinearLayout(context) {
     interface Listener {
+        /**
+         * A finger touched [key] (or an accent was picked, or Backspace repeated): the moment for the click and the
+         * vibration. Whether the key is typed is known later, when the finger lifts: [onKey].
+         */
+        fun onKeyPressed(key: KeySpec) = Unit
         fun onKey(key: KeySpec)
         fun onSuggestion(word: String)
         fun onSwitchKeyboard()
@@ -85,6 +91,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     private var toolbarOpen = false
     private var panel: View? = null
     private var heightMode = "NORMAL"
+    /** What the current key grid was built from (see [setLayout]); null before the first build. */
+    private var builtFrom: List<Any?>? = null
     /** Height of the key area as laid out by [setLayout]; the panels that replace the keys use it. */
     private var keyAreaHeight = 0
     private var currentOneHandedMode = "OFF"
@@ -114,19 +122,12 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     // Touch State Machine
     private val touchListener = object : TouchInputListener {
         override fun onKeyTapped(key: KeySpec) {
-            if (!LatencyProbe.enabled) {
-                listener.onKey(key)
+            if (decodesFinished < decodesAwaited) {
+                // The word of the swipe just made is still being worked out: this key goes after it, not before.
+                heldTaps += key to lastTouchEventTime
                 return
             }
-            // How long the touch waited before we handled it (a busy main thread shows up here) and how long handling
-            // the key took. Goes to the diagnostics report; debug builds also log it: `adb logcat -s MB_LAT`.
-            val start = SystemClock.uptimeMillis()
-            listener.onKey(key)
-            val end = SystemClock.uptimeMillis()
-            Diagnostics.log.recordKey(start - lastTouchEventTime, end - start)
-            if (LatencyProbe.logToLogcat) {
-                Log.d("MB_LAT", "key='${key.label}' queued=${start - lastTouchEventTime}ms handled=${end - start}ms")
-            }
+            deliverTap(key, lastTouchEventTime)
         }
 
         override fun onKeyLongPressed(key: KeySpec, anchorX: Float, anchorY: Float) {
@@ -135,11 +136,16 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             val values = if (uppercase) key.alternatives.map { it.uppercase(java.util.Locale.ROOT) }
                 else key.alternatives
             alternatives.show(anchorButton, values) { alt ->
-                listener.onKey(KeySpec(alt))
+                val picked = KeySpec(alt)
+                listener.onKeyPressed(picked)
+                listener.onKey(picked)
             }
         }
 
         override fun onSwipeStarted(startPoint: GesturePoint) {
+            // The trail shows the gesture now; the key it started on must not stay lit under it.
+            pressedKeys.clear()
+            showPressedKeys()
             trailPoints.clear()
             trailPoints.add(startPoint)
             invalidate()
@@ -194,9 +200,61 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     private val repeatRunnable = object : Runnable {
         override fun run() {
             repeatingKey?.let {
+                listener.onKeyPressed(it)
                 listener.onKey(it)
                 mainHandler.postDelayed(this, GestureTimings.backspaceIntervalMs(repeatCount++, backspaceSpeed))
             }
+        }
+    }
+
+    /** The key under each finger that is down (pointer id -> key), drawn pressed; two thumbs show two keys. */
+    private val pressedKeys = HashMap<Int, KeySpec>()
+
+    private fun showPressedKeys() {
+        for ((spec, button) in keys) {
+            val down = pressedKeys.containsValue(spec)
+            if (button.isPressed != down) button.isPressed = down
+        }
+    }
+
+    /** Click and vibration when a finger lands on a key; a blank spacer key gives none. */
+    private fun pressFeedback(key: KeySpec?) {
+        if (key == null || (key.action == KeyAction.TEXT && key.label.isEmpty())) return
+        listener.onKeyPressed(key)
+    }
+
+    // Swipes are decoded on another thread and their word is typed when the result arrives. A key tapped meanwhile
+    // (a comma right after the word, say) waits for it instead of landing first; never longer than heldTapTimeoutMs.
+    internal var heldTapTimeoutMs = HELD_TAP_TIMEOUT_MS // tests make it longer or shorter
+    private var decodesAwaited = 0
+    private var decodesFinished = 0
+    private val heldTaps = ArrayList<Pair<KeySpec, Long>>()
+    private val releaseHeldTapsRunnable = Runnable {
+        decodesFinished = decodesAwaited // too slow: type the keys now; a late word still comes, after them
+        releaseHeldTaps()
+    }
+
+    private fun releaseHeldTaps() {
+        mainHandler.removeCallbacks(releaseHeldTapsRunnable)
+        if (heldTaps.isEmpty()) return
+        val taps = ArrayList(heldTaps)
+        heldTaps.clear()
+        for ((key, touchTime) in taps) deliverTap(key, touchTime)
+    }
+
+    private fun deliverTap(key: KeySpec, touchTime: Long) {
+        if (!LatencyProbe.enabled) {
+            listener.onKey(key)
+            return
+        }
+        // How long the touch waited before we handled it (a busy main thread shows up here) and how long handling
+        // the key took. Goes to the diagnostics report; debug builds also log it: `adb logcat -s MB_LAT`.
+        val start = SystemClock.uptimeMillis()
+        listener.onKey(key)
+        val end = SystemClock.uptimeMillis()
+        Diagnostics.log.recordKey(start - touchTime, end - start)
+        if (LatencyProbe.logToLogcat) {
+            Log.d("MB_LAT", "key='${key.label}' queued=${start - touchTime}ms handled=${end - start}ms")
         }
     }
 
@@ -505,6 +563,19 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         currentTheme = theme
 
         val isSystemDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        // Everything the key grid is built from. The same request again (each field focus asks twice, from onStartInput
+        // and onStartInputView) keeps the keys already built instead of throwing ~35 views away and making them anew.
+        val buildRequest = listOf<Any?>(
+            page, policy.kind, policy.decimal, policy.signed, numberRow, heightScale, language, currentLayoutType, theme,
+            isSystemDark, tintKeys, oneHandedMode, KeyboardColors.accent, resources.configuration.orientation,
+        )
+        if (buildRequest == builtFrom && keys.isNotEmpty()) {
+            closeEmoji()
+            alternatives.dismiss()
+            return
+        }
+        builtFrom = buildRequest
+        chipShownAt.fill(null) // colours may have changed: the next render applies the chip look again
         KeyboardColors.setTheme(theme, isSystemDark)
         setBackgroundColor(KeyboardColors.background)
         suggestionBar.setBackgroundColor(KeyboardColors.background)
@@ -620,7 +691,10 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
                 activeDownPointerId = pointerId
                 mainHandler.removeCallbacks(longPressTimerRunnable)
                 mainHandler.removeCallbacks(repeatRunnable)
-                highlightKey(key, true)
+                pressedKeys.clear()
+                key?.let { pressedKeys[pointerId] = it }
+                showPressedKeys()
+                pressFeedback(key)
                 stateMachine.onDown(pointerId, x, y, time, key)
 
                 if (key?.action == KeyAction.DELETE) {
@@ -636,13 +710,26 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             MotionEvent.ACTION_POINTER_DOWN -> {
                 mainHandler.removeCallbacks(longPressTimerRunnable)
                 mainHandler.removeCallbacks(repeatRunnable)
-                highlightKey(key, true)
+                key?.let { pressedKeys[pointerId] = it }
+                showPressedKeys()
+                pressFeedback(key)
                 stateMachine.onPointerDown(pointerId, x, y, time, key)
                 scheduleFlushPendingTaps()
                 return true
             }
 
             MotionEvent.ACTION_MOVE -> {
+                // During a swipe Android hands over several touch samples per frame in one event: feed them all, oldest
+                // first, so the trail and the shape follow the finger instead of joining one point per frame. Before
+                // the swipe is recognised only the latest sample is used, as always, so taps are classified as before.
+                if (stateMachine.isSwiping && ev.pointerCount == 1) {
+                    val pid = ev.getPointerId(0)
+                    for (h in 0 until ev.historySize) {
+                        val hx = ev.getHistoricalX(0, h)
+                        val hy = ev.getHistoricalY(0, h)
+                        stateMachine.onMove(pid, hx, hy, ev.getHistoricalEventTime(h), findKeyAt(hx, hy))
+                    }
+                }
                 for (i in 0 until ev.pointerCount) {
                     val pid = ev.getPointerId(i)
                     val px = ev.getX(i)
@@ -654,7 +741,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
             }
 
             MotionEvent.ACTION_POINTER_UP -> {
-                highlightKey(key, false)
+                pressedKeys.remove(pointerId) // the other finger's key stays lit
+                showPressedKeys()
                 stateMachine.onPointerUp(pointerId, x, y, time, key)
                 scheduleFlushPendingTaps()
                 return true
@@ -664,7 +752,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
                 mainHandler.removeCallbacks(longPressTimerRunnable)
                 mainHandler.removeCallbacks(repeatRunnable)
                 repeatingKey = null
-                highlightKey(null, false)
+                pressedKeys.clear()
+                showPressedKeys()
                 stateMachine.onUp(pointerId, x, y, time, key)
                 return true
             }
@@ -673,7 +762,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
                 mainHandler.removeCallbacks(longPressTimerRunnable)
                 mainHandler.removeCallbacks(repeatRunnable)
                 repeatingKey = null
-                highlightKey(null, false)
+                pressedKeys.clear()
+                showPressedKeys()
                 stateMachine.onCancel()
                 return true
             }
@@ -711,7 +801,8 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         mainHandler.removeCallbacks(longPressTimerRunnable)
         mainHandler.removeCallbacks(repeatRunnable)
         repeatingKey = null
-        highlightKey(null, false)
+        pressedKeys.clear()
+        showPressedKeys()
         endStateMachine()
     }
 
@@ -753,6 +844,10 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         1, 1, 30, java.util.concurrent.TimeUnit.SECONDS, java.util.concurrent.LinkedBlockingQueue(),
     ) { r -> Thread(r, "metroboard-wordflow").apply { isDaemon = true } }.apply { allowCoreThreadTimeOut(true) }
 
+    /** Turns a finished swipe (normalised path, language, key centres, previous word) into words. Tests replace it. */
+    internal var decodeSwipe: (List<GesturePoint>, String, Map<Char, KeyCenter>, String?) -> List<String> =
+        { path, language, centers, previous -> decoder.decode(path, language, centers, previous) }
+
     /** Decoding scans the whole lexicon, so it runs off the UI thread and the result is posted back. */
     private fun decodeShapeAsync(path: List<GesturePoint>, previousWord: String?) {
         if (path.size < 3) return
@@ -761,10 +856,18 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         val normalized = path.map { pt ->
             GesturePoint(((pt.x - geo.left) / geo.width).coerceIn(-0.1f, 1.1f), ((pt.y - geo.top) / geo.height).coerceIn(-0.1f, 1.1f), pt.timeMillis)
         }
+        val ticket = ++decodesAwaited
+        mainHandler.removeCallbacks(releaseHeldTapsRunnable)
+        mainHandler.postDelayed(releaseHeldTapsRunnable, heldTapTimeoutMs)
+        val decode = decodeSwipe
         shapeExecutor.execute {
-            val candidates = decoder.decode(normalized, language, geo.centers, previousWord)
-            if (candidates.isNotEmpty()) {
-                mainHandler.post { if (isAttachedToWindow && language == currentLanguage) listener.onWordFlow(candidates.first(), candidates) }
+            val candidates = decode(normalized, language, geo.centers, previousWord)
+            mainHandler.post {
+                if (ticket > decodesFinished) decodesFinished = ticket
+                if (candidates.isNotEmpty() && isAttachedToWindow && language == currentLanguage) {
+                    listener.onWordFlow(candidates.first(), candidates)
+                }
+                if (decodesFinished >= decodesAwaited) releaseHeldTaps() // now the keys tapped after the swipe
             }
         }
     }
@@ -802,16 +905,6 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         return keys.firstOrNull { it.first == spec }?.second
     }
 
-    private fun highlightKey(activeKey: KeySpec?, pressed: Boolean) {
-        keys.forEach { (spec, button) ->
-            if (spec == activeKey && pressed) {
-                button.isPressed = true
-            } else if (button.isPressed) {
-                button.isPressed = false
-            }
-        }
-    }
-
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
         // Word Flow Glowing Gesture Trail
@@ -833,6 +926,9 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
     /** True while the centre slot of the suggestion bar shows what was just copied instead of a word. */
     private var clipChipShown = false
 
+    /** Per suggestion slot, whether the chip look is applied (null: unknown, apply on the next render). */
+    private val chipShownAt = arrayOfNulls<Boolean>(3)
+
     /**
      * [clipSuggestion]: a short preview of what was just copied. It takes the centre slot only when there are no
      * words to suggest (an empty field), so it never gets in the way of the prediction.
@@ -845,25 +941,34 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         clipSuggestion: String? = null,
     ) {
         uppercase = state != ShiftState.LOWERCASE || forceUppercase
+        // This runs after every key. Only what changed is touched: setText rebuilds a label's layout even when the
+        // text is the same, and a new Shift background is a new drawable each time.
         keys.forEach { (spec, key) ->
             if (spec.action == KeyAction.TEXT && spec.label.any(Char::isLetter)) {
-                key.text = if (uppercase) spec.label.uppercase(java.util.Locale.ROOT) else spec.label
-                key.contentDescription = key.text
+                val label = if (uppercase) spec.label.uppercase(java.util.Locale.ROOT) else spec.label
+                if (!TextUtils.equals(key.text, label)) {
+                    key.text = label
+                    key.contentDescription = label
+                }
             }
             if (spec.action == KeyAction.SHIFT) {
-                key.shiftState = if (forceUppercase) ShiftState.CAPS_LOCK else state
+                val shown = if (forceUppercase) ShiftState.CAPS_LOCK else state
                 val active = uppercase
-                key.background = KeyboardColors.keyBackground(active)
-                key.setTextColor(if (active) (if (KeyboardColors.isDarkTheme) Color.BLACK else Color.WHITE) else KeyboardColors.foreground)
-                key.contentDescription = context.getString(when (key.shiftState) {
-                    ShiftState.LOWERCASE -> R.string.shift_lower
-                    ShiftState.AUTO_SHIFT -> R.string.shift_auto
-                    ShiftState.ONE_SHOT_SHIFT -> R.string.shift_once
-                    ShiftState.CAPS_LOCK -> R.string.shift_locked
-                })
+                if (key.shiftState != shown || key.shownActive != active) {
+                    key.shiftState = shown
+                    key.shownActive = active
+                    key.background = KeyboardColors.keyBackground(active)
+                    key.setTextColor(if (active) (if (KeyboardColors.isDarkTheme) Color.BLACK else Color.WHITE) else KeyboardColors.foreground)
+                    key.contentDescription = context.getString(when (shown) {
+                        ShiftState.LOWERCASE -> R.string.shift_lower
+                        ShiftState.AUTO_SHIFT -> R.string.shift_auto
+                        ShiftState.ONE_SHOT_SHIFT -> R.string.shift_once
+                        ShiftState.CAPS_LOCK -> R.string.shift_locked
+                    })
+                }
             }
             if (spec.action == KeyAction.ENTER) {
-                key.text = enterLabel
+                if (!TextUtils.equals(key.text, enterLabel)) key.text = enterLabel
                 key.textSize = 13f
                 key.contentDescription = enterLabel.ifEmpty { context.getString(R.string.enter) }
             }
@@ -879,23 +984,30 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         suggestionButtons.forEachIndexed { index, view ->
             val value = slots.getOrNull(index).orEmpty()
             val chip = showChip && index == 1
-            view.text = value
-            view.isEnabled = value.isNotEmpty()
-            view.contentDescription = when {
-                value.isEmpty() -> null
-                chip -> context.getString(R.string.clip_suggestion_description, value)
-                else -> context.getString(R.string.suggestion_description, value)
-            }
-            view.textSize = if (chip) 15f else 18f // the preview is longer than a word and shares the centre slot
-            if (chip) {
-                val icon = context.getDrawable(R.drawable.ic_clipboard)?.mutate()?.apply {
-                    setTint(KeyboardColors.accent)
-                    setBounds(0, 0, context.dp(16), context.dp(16))
+            if (!TextUtils.equals(view.text, value) || chipShownAt[index] != chip) {
+                view.text = value
+                view.contentDescription = when {
+                    value.isEmpty() -> null
+                    chip -> context.getString(R.string.clip_suggestion_description, value)
+                    else -> context.getString(R.string.suggestion_description, value)
                 }
-                view.setCompoundDrawablesRelative(icon, null, null, null)
-                view.compoundDrawablePadding = context.dp(6)
-            } else {
-                view.setCompoundDrawablesRelative(null, null, null, null)
+            }
+            view.isEnabled = value.isNotEmpty()
+            view.textSize = if (chip) 15f else 18f // the preview is longer than a word and shares the centre slot
+            // Setting the compound drawables always asks for a layout pass of the whole keyboard window: only when the
+            // chip comes or goes, not after every key.
+            if (chipShownAt[index] != chip) {
+                chipShownAt[index] = chip
+                if (chip) {
+                    val icon = context.getDrawable(R.drawable.ic_clipboard)?.mutate()?.apply {
+                        setTint(KeyboardColors.accent)
+                        setBounds(0, 0, context.dp(16), context.dp(16))
+                    }
+                    view.setCompoundDrawablesRelative(icon, null, null, null)
+                    view.compoundDrawablePadding = context.dp(6)
+                } else {
+                    view.setCompoundDrawablesRelative(null, null, null, null)
+                }
             }
             view.importantForAccessibility = if (value.isEmpty()) View.IMPORTANT_FOR_ACCESSIBILITY_NO
                 else View.IMPORTANT_FOR_ACCESSIBILITY_YES
@@ -918,9 +1030,9 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
         if (emojiKeyboard != null) return
         val ek = EmojiKeyboardView(
             context = context,
-            onEmojiSelected = { emoji -> listener.onKey(KeySpec(emoji, KeyAction.TEXT)) },
+            onEmojiSelected = { emoji -> KeySpec(emoji, KeyAction.TEXT).let { listener.onKeyPressed(it); listener.onKey(it) } },
             onCloseEmoji = { closeEmoji() },
-            onBackspace = { listener.onKey(KeySpec("", KeyAction.DELETE)) }
+            onBackspace = { KeySpec("", KeyAction.DELETE).let { listener.onKeyPressed(it); listener.onKey(it) } }
         )
         emojiKeyboard = ek
         keyboardRowContainer.visibility = View.GONE
@@ -949,9 +1061,21 @@ class KeyboardView(context: Context, private val listener: Listener) : LinearLay
 
     override fun onDetachedFromWindow() {
         mainHandler.removeCallbacksAndMessages(null)
+        // The field is gone with the keyboard: keys held behind a swipe are not typed, and nothing waits any more.
+        heldTaps.clear()
+        decodesFinished = decodesAwaited
+        pressedKeys.clear()
         alternatives.dismiss()
         closeEmoji()
         super.onDetachedFromWindow()
+    }
+
+    private companion object {
+        /**
+         * The longest a key tapped right after a swipe waits for the swipe's word (decoding takes a few milliseconds;
+         * this only matters if the phone stalls). Past it the key is typed, and the late word follows it.
+         */
+        const val HELD_TAP_TIMEOUT_MS = 250L
     }
 
     private fun description(spec: KeySpec): String = when (spec.action) {

@@ -117,6 +117,13 @@
 
     <string name="version_label">versión %1$s</string>
     <string name="changelog_title">novedades</string>
+    <string-array name="changelog_0_5_0">
+        <item>Deslizar: la palabra aparece mucho antes al levantar el dedo, con exactamente las mismas sugerencias que antes.</item>
+        <item>El clic y la vibración llegan al tocar la tecla, no al soltarla.</item>
+        <item>Una tecla pulsada justo después de deslizar se escribe después de la palabra, nunca antes.</item>
+        <item>Menos trabajo en cada tecla: sin redibujar de más, sin repetir la búsqueda tras una errata, y las palabras aprendidas se guardan en segundo plano.</item>
+        <item>Con dos pulgares se iluminan las dos teclas pulsadas.</item>
+    </string-array>
     <string-array name="changelog_0_4_1">
         <item>Mantener Retroceso ahora borra con suavidad al principio y luego más rápido. Elige la espera y la velocidad en Ajustes > Gestos.</item>
         <item>El retardo de pulsación larga (acentos, selector de idioma) es ajustable.</item>

@@ -73,7 +73,8 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
     private val lookupThread = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
         Thread(task, "metroboard-suggest").apply { isDaemon = true }
     }
-    private var lookupGeneration = 0
+    /** Bumped on the UI thread for every new question; the lookup thread reads it to skip questions already outdated. */
+    @Volatile private var lookupGeneration = 0
     private var candidates: List<String> = emptyList()
 
     override fun onCreate() {
@@ -217,18 +218,27 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         newSelEnd: Int, candidatesStart: Int, candidatesEnd: Int
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd)
+        // The app confirming our own commit changes nothing the keyboard shows (onKey has just drawn it), and drawing
+        // again cost a second suggestion lookup per keystroke. Only a cursor moved by someone else needs a new picture.
         if (editor.selectionChanged(newSelStart, newSelEnd)) {
             keyboard?.dismissPopups()
             controller.cursorMoved()
+            render()
         }
-        render()
+    }
+
+    /**
+     * The click and the vibration belong to the finger touching the key, as on every keyboard: waiting for the finger
+     * to lift (when the key is typed) delayed them by the whole press, and put a call into the system's vibrator
+     * service in front of the character.
+     */
+    override fun onKeyPressed(key: KeySpec) {
+        LatencyProbe.time("haptics") { keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) } }
+        LatencyProbe.time("sound") { sound.play(preferences.sound, key.action, preferences.soundVolume) }
     }
 
     override fun onKey(key: KeySpec) {
         val now = SystemClock.uptimeMillis()
-        LatencyProbe.time("haptics") { keyboard?.let { haptics.play(it, preferences.vibration, preferences.hapticStrength) } }
-        LatencyProbe.time("sound") { sound.play(preferences.sound, key.action, preferences.soundVolume) }
-
         LatencyProbe.time("edit") {
             when (key.action) {
                 KeyAction.TEXT -> if (key.label.isNotEmpty()) controller.text(key.label)
@@ -471,6 +481,9 @@ class WordFlowImeService : InputMethodService(), KeyboardView.Listener {
         // Shift state and the Enter label are drawn now; the words stay as they were until the new ones are ready.
         draw()
         lookupThread.execute {
+            // A newer keystroke has asked again in the meantime: this answer would be thrown away, so skip the search.
+            // Without this, fast typing over a slow (misspelt) word queued searches and the bar fell further behind.
+            if (generation != lookupGeneration) return@execute
             val words = controller.lookUp(query)
             ui.post {
                 if (generation == lookupGeneration) {

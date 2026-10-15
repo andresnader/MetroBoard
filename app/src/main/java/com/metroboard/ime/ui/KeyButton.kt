@@ -25,6 +25,9 @@ class KeyButton @JvmOverloads constructor(context: Context, val action: KeyActio
     private val iconPath = Path()
     var shiftState = ShiftState.LOWERCASE
         set(value) { field = value; invalidate() }
+
+    /** The Shift look KeyboardView.render applied last (null: none yet), so an unchanged one is not rebuilt per key. */
+    internal var shownActive: Boolean? = null
     var onRepeat: (() -> Unit)? = null
     private var repeating = false
     private val repeat = object : Runnable {

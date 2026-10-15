@@ -131,6 +131,7 @@
     <string name="clipboard">Clipboard</string>
 
     <!-- Versions are names, not prose: the same in every language. -->
+    <string name="version_050" translatable="false">0.5.0 · 2026-10-14</string>
     <string name="version_041" translatable="false">0.4.1 · 2026-10-12</string>
     <string name="version_040" translatable="false">0.4.0 · 2026-10-12</string>
     <string name="version_030" translatable="false">0.3.0 · 2026-10-11</string>
@@ -139,6 +140,13 @@
 
     <string name="version_label">version %1$s</string>
     <string name="changelog_title">what\'s new</string>
+    <string-array name="changelog_0_5_0">
+        <item>Swiping: the word appears much sooner after you lift your finger, with exactly the same suggestions as before.</item>
+        <item>The click and the vibration come when your finger touches the key, not when it lifts.</item>
+        <item>A key tapped right after a swipe is typed after the swiped word, never before it.</item>
+        <item>Less work for every key: no needless redraws, no second search after a typo, and learned words are saved in the background.</item>
+        <item>With two thumbs, both pressed keys light up.</item>
+    </string-array>
     <string-array name="changelog_0_4_1">
         <item>Holding Backspace now deletes gently at first and then faster. Choose the wait and the speed in Settings > Gestures.</item>
         <item>The long-press delay (accents, language picker) is adjustable.</item>

@@ -12,6 +12,57 @@ y este proyecto se adhiere a [Semantic Versioning](https://semver.org/spec/v2.0.
 
 ---
 
+## [0.5.0] - 2026-10-14 — Más rápido al deslizar y al tocar
+
+Revisión de una propuesta de optimización externa (escrita sin ver el código) contra el código real: qué ya existía, qué se hizo, qué
+no conviene y cómo se midió, en [`docs/0.5/README.md`](docs/0.5/README.md).
+
+### Performance
+- **Word Flow: la palabra sale mucho antes al levantar el dedo, con el mismo resultado.** Descodificar un trazo (español, 400 trazos
+  sintéticos, JVM de un portátil) bajó de 9,2 ms de media (p95 24, máx. 38) y **11 MB** de memoria asignada a **0,6 ms** (p95 1,3) y
+  **0,2 MB**; de 14 a 0–1 recolecciones de basura cada 400 trazos. En el emulador (ART) tarda ahora unos 6 ms de media (p95 10–14 ms).
+  La clasificación es **idéntica al último bit**: `WordFlowDecoderEquivalenceTest` compara 2.095 trazos (4 idiomas, limpios y con
+  ruido, palabras aprendidas, palabra anterior y garabatos) con la implementación anterior. Cómo: `hypot` exacto sin su coste
+  (≈ 571.000 llamadas por trazo a 14 ns cada una), «letras en orden» con máscaras de bits, DTW sin reservar memoria que se abandona
+  en cuanto la palabra ya no puede entrar entre las tres mejores, y frecuencias guardadas en el índice de candidatas.
+- **El clic y la vibración al tocar la tecla**, no al soltarla, como en cualquier teclado. Además ya no van delante de cada letra
+  (en Android 13 y anteriores la vibración es una llamada síncrona al sistema).
+- **Menos trabajo por tecla en el hilo de la interfaz** (emulador, 110 pulsaciones, dos tandas alternadas por versión): dibujar el
+  teclado tras cada tecla, mediana 1,9 → 0,4 ms (total 288–344 → 108–128 ms); procesar la tecla, mediana 3 → 2 ms. Porque:
+  - la barra de sugerencias ya no pide una pasada de *layout* de todo el teclado en cada pulsación y solo se reescribe lo que cambia;
+  - se dibujaba y se buscaban sugerencias dos veces por tecla (también al confirmar la app nuestro propio texto);
+  - las búsquedas ya viejas en cola no se ejecutan: tecleando rápido sobre una palabra mal escrita la barra no se queda atrás;
+  - el espacio tras una errata reutiliza la corrección que ya calculó el hilo de sugerencias en lugar de repetir la búsqueda difusa;
+  - aprender una palabra ya no escribe el diccionario personal en disco desde el hilo de la interfaz.
+- **Al enfocar un campo** el teclado ya no se reconstruye dos veces (`onStartInput` y `onStartInputView`): si nada cambió, se reutilizan
+  las teclas.
+
+### Fixed
+- **Una tecla pulsada justo después de un trazo podía escribirse antes que la palabra** (desliza «hola», toca «,» enseguida →
+  «,hola»). Ahora espera a la palabra, como mucho 250 ms.
+- **Con dos pulgares solo se iluminaba una tecla**, y al soltar un dedo se apagaba la del otro.
+
+### Changed
+- Una vez reconocido el trazo, Word Flow usa todas las muestras táctiles que Android agrupa en cada evento: la estela y la forma siguen
+  al dedo. Antes de reconocerlo se clasifica exactamente igual que en 0.4.1 (no se reabre lo corregido en 0.3 con dos pulgares).
+- El diccionario personal se guarda en segundo plano, milisegundos después del cambio.
+
+### Investigated, not changed (de la propuesta revisada)
+- *Shadow buffer* del texto con `beginBatchEdit`: existe desde 0.4.0 y es más completo; la versión propuesta no compilaría (función
+  `inline` pública con un miembro privado) y dejaba la copia desactualizada al mover el cursor sin seleccionar.
+- Sustituir la DTW por una comparación punto a punto con peso vertical: tolera peor la velocidad del trazo e invalida la calibración;
+  la DTW exacta acelerada da lo mismo, más rápido.
+- Filtro pasa-bajos y detección de esquinas en el remuestreo: añaden retardo y deforman el trazo, y nada los usaría.
+- Empezar el trazo a 14 dp con un umbral de velocidad: reabriría los trazos falsos al teclear rápido con dos pulgares.
+- `versionCode 5` para 0.5.0: ya lo usa 0.4.1 (Google Play no acepta repetirlo). Es 6.
+- Las cifras de la propuesta («~45 ms → <3 ms», «~45 ms de latencia háptica», «8–16 ms») no salían de ninguna medición; las de arriba sí.
+
+### Sin medir todavía
+- Todo lo anterior en un teléfono real. El informe de diagnóstico (Ajustes ▸ Acerca de) separa la espera, el proceso, los bloqueos y la
+  memoria: es la forma de confirmarlo.
+
+---
+
 ## [0.4.1] - 2026-10-12 — Respuesta al reporte de pruebas en WhatsApp
 
 Reporte `reporte_t_cnico_e_incidencias_teclado_android.md` (APK de la 0.4.0). Qué se encontró, qué se arregló y qué **no** se puede

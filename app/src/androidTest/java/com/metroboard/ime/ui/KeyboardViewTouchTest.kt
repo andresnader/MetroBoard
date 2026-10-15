@@ -46,12 +46,19 @@ class KeyboardViewTouchTest {
     private class Pointer(val id: Int, var x: Float, var y: Float)
     private val pointers = mutableListOf<Pointer>()
 
+    /** "press:x" (finger down, click and vibration), "key:x" (typed), "word:x" (swipe committed), in order. */
+    private val events = mutableListOf<String>()
+
     private val listener = object : KeyboardView.Listener {
-        override fun onKey(key: KeySpec) { if (key.action == KeyAction.TEXT) typed += key.label }
+        override fun onKeyPressed(key: KeySpec) { events += "press:${key.label}" }
+        override fun onKey(key: KeySpec) {
+            events += "key:${key.label}"
+            if (key.action == KeyAction.TEXT) typed += key.label
+        }
         override fun onSuggestion(word: String) {}
         override fun onSwitchKeyboard() {}
         override fun onAlternativesOpened() {}
-        override fun onWordFlow(word: String, candidates: List<String>) { wordFlowCommits++ }
+        override fun onWordFlow(word: String, candidates: List<String>) { events += "word:$word"; wordFlowCommits++ }
         override fun onLanguageToggled() {}
         override fun onSpacebarCursorMoved(step: Int) {}
         override fun onSpacebarLongPressed() {}
@@ -62,7 +69,7 @@ class KeyboardViewTouchTest {
 
     @Before
     fun setUp() {
-        typed.clear(); wordFlowCommits = 0; pointers.clear()
+        typed.clear(); events.clear(); wordFlowCommits = 0; pointers.clear()
         // The view must be attached to a real window: KeyboardView ignores buttons that are not shown.
         host = inst.startActivitySync(
             Intent(inst.targetContext, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -92,13 +99,17 @@ class KeyboardViewTouchTest {
 
     // ---- helpers -------------------------------------------------------
 
-    private fun keyCenter(label: String): Pair<Float, Float> {
+    private fun keyButton(label: String): KeyButton {
         fun find(v: View): KeyButton? {
             if (v is KeyButton && v.text?.toString().equals(label, ignoreCase = true)) return v
             if (v is ViewGroup) for (i in 0 until v.childCount) find(v.getChildAt(i))?.let { return it }
             return null
         }
-        val key = requireNotNull(find(view)) { "key '$label' not found in layout" }
+        return requireNotNull(find(view)) { "key '$label' not found in layout" }
+    }
+
+    private fun keyCenter(label: String): Pair<Float, Float> {
+        val key = keyButton(label)
         var x = key.width / 2f
         var y = key.height / 2f
         var cur: View = key
@@ -284,5 +295,134 @@ class KeyboardViewTouchTest {
             assertEquals("seed $seed: keys typed vs pressed (first difference shown by the lists)", intended, typed)
             assertEquals("seed $seed: fast tapping must never turn into a shape-written word", 0, wordFlowCommits)
         }
+    }
+
+    // ---- 0.5: feedback at touch-down, two-thumb highlight, swipes and taps in order, cheaper redraws ----------------
+
+    @Test
+    fun theClickComesWhenTheFingerLandsAndTheKeyWhenItLifts() {
+        down(0, "h")
+        assertEquals(listOf("press:h"), events)
+        up(0, 40)
+        assertEquals(listOf("press:h", "key:h"), events)
+    }
+
+    @Test
+    fun twoThumbsShowBothKeysPressedUntilEachLifts() {
+        down(0, "a")
+        down(1, "l", 20)
+        inst.runOnMainSync {
+            assertTrue("left thumb's key lit", keyButton("a").isPressed)
+            assertTrue("right thumb's key lit", keyButton("l").isPressed)
+        }
+        up(0, 20)
+        inst.runOnMainSync {
+            assertTrue("the key of the thumb still down stays lit", keyButton("l").isPressed)
+            assertTrue(!keyButton("a").isPressed)
+        }
+        up(1, 20)
+        inst.runOnMainSync { assertTrue(!keyButton("l").isPressed) }
+        assertEquals(listOf("a", "l"), typed)
+    }
+
+    private fun swipe(vararg keys: String) {
+        down(0, keys.first())
+        for (k in keys.drop(1)) moveTo(0, k, 25)
+        up(0, 25)
+    }
+
+    private fun waitUntil(condition: () -> Boolean) {
+        repeat(80) { if (!condition()) { inst.waitForIdleSync(); Thread.sleep(25) } }
+    }
+
+    private fun typedAndSwiped() = events.filter { it.startsWith("key:") || it.startsWith("word:") }
+
+    @Test
+    fun aKeyTappedRightAfterASwipeIsTypedAfterTheSwipedWord() {
+        val decodeMayFinish = java.util.concurrent.CountDownLatch(1)
+        view.heldTapTimeoutMs = 10_000
+        view.decodeSwipe = { _, _, _, _ -> decodeMayFinish.await(); listOf("hola") }
+        swipe("h", "o", "l", "a")
+        clock += 30
+        down(0, "m"); up(0, 40) // the next key, while the word is still being worked out
+        inst.waitForIdleSync()
+        assertTrue("the key must wait for the word", typedAndSwiped().isEmpty())
+        assertTrue("its click is not delayed", events.contains("press:m"))
+        decodeMayFinish.countDown()
+        waitUntil { typedAndSwiped().size == 2 }
+        assertEquals(listOf("word:hola", "key:m"), typedAndSwiped())
+    }
+
+    @Test
+    fun aSlowDecodeNeverHoldsAKeyForLong() {
+        val decodeMayFinish = java.util.concurrent.CountDownLatch(1)
+        view.heldTapTimeoutMs = 100
+        view.decodeSwipe = { _, _, _, _ -> decodeMayFinish.await(); listOf("hola") }
+        swipe("h", "o", "l", "a")
+        clock += 30
+        down(0, "m"); up(0, 40)
+        Thread.sleep(300)
+        inst.waitForIdleSync()
+        assertEquals("past the bound the key is typed", listOf("key:m"), typedAndSwiped())
+        decodeMayFinish.countDown()
+        waitUntil { typedAndSwiped().size == 2 }
+        assertEquals("the late word still arrives", listOf("key:m", "word:hola"), typedAndSwiped())
+    }
+
+    @Test
+    fun aSwipeKeepsTheTouchSamplesAndroidBatchesIntoOneEvent() {
+        var decodedPoints = -1
+        val decoded = java.util.concurrent.CountDownLatch(1)
+        view.decodeSwipe = { path, _, _, _ -> decodedPoints = path.size; decoded.countDown(); emptyList() }
+        down(0, "m")
+        for (k in listOf("e", "n", "s")) moveTo(0, k, 25) // recognised as a swipe by now
+        // Five more events towards "a", each carrying three earlier samples (as a 240 Hz screen delivers them per frame).
+        val (sx, sy) = keyCenter("s")
+        val (ax, ay) = keyCenter("a")
+        repeat(5) { e ->
+            val samples = (1..4).map { s -> val f = (e * 4 + s) / 20f; (sx + (ax - sx) * f) to (sy + (ay - sy) * f) }
+            sendMoveWithHistory(samples, stepMs = 4)
+        }
+        up(0, 10)
+        assertTrue(decoded.await(5, java.util.concurrent.TimeUnit.SECONDS))
+        assertEquals("down + 3 moves + 5 events x (3 historical + 1)", 1 + 3 + 5 * 4, decodedPoints)
+    }
+
+    private fun sendMoveWithHistory(samples: List<Pair<Float, Float>>, stepMs: Long) {
+        val props = arrayOf(MotionEvent.PointerProperties().apply { id = 0; toolType = MotionEvent.TOOL_TYPE_FINGER })
+        fun at(x: Float, y: Float) = arrayOf(MotionEvent.PointerCoords().apply { this.x = x; this.y = y; pressure = 1f; size = 1f })
+        clock += stepMs
+        val (fx, fy) = samples.first()
+        val ev = MotionEvent.obtain(downTime, clock, MotionEvent.ACTION_MOVE, 1, props, at(fx, fy), 0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0)
+        for ((x, y) in samples.drop(1)) { clock += stepMs; ev.addBatch(clock, at(x, y), 0) } // earlier samples become history
+        inst.runOnMainSync { view.dispatchTouchEvent(ev) }
+        ev.recycle()
+        pointers.first { it.id == 0 }.apply { x = samples.last().first; y = samples.last().second }
+    }
+
+    @Test
+    fun drawingTheSameStateAgainAsksForNoLayoutPass() {
+        val render = Runnable {
+            view.render(com.metroboard.ime.keyboard.ShiftState.LOWERCASE, false, listOf("hola", "hoy", "hora"), "")
+        }
+        inst.runOnMainSync(render)
+        inst.waitForIdleSync() // the first one changes the words and may lay out
+        var requested = true
+        inst.runOnMainSync { render.run(); requested = view.isLayoutRequested }
+        assertTrue("an unchanged suggestion bar must not lay the keyboard out again", !requested)
+    }
+
+    @Test
+    fun theSameLayoutAskedTwiceKeepsItsKeys() {
+        val before = keyButton("q")
+        inst.runOnMainSync {
+            view.setLayout(page = KeyboardPage.LETTERS, policy = EditorPolicy.from(EditorInfo(), false), language = "es", wordFlow = true)
+        }
+        assertTrue("same request: the keys are reused", before === keyButton("q"))
+        inst.runOnMainSync {
+            view.setLayout(page = KeyboardPage.LETTERS, policy = EditorPolicy.from(EditorInfo(), false), language = "en", wordFlow = true)
+        }
+        inst.waitForIdleSync()
+        assertTrue("another language: built again", before !== keyButton("q"))
     }
 }

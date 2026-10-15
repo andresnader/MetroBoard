@@ -34,6 +34,30 @@ class LocalSuggestionEngine(
 
     private fun usable(dict: DictionaryProvider) = !(waitForRealDictionary && dict.isSample)
 
+    /** One remembered answer of [DictionaryProvider.autoCorrect]; [word] is null when there was no correction. */
+    private class Correction(val word: String?)
+
+    // The dictionary's correction of the last words looked up. The suggestion thread works it out while a word is
+    // being typed (step 2 of suggest), and the space that ends the word asks the very same question on the UI thread,
+    // where the fuzzy search behind it used to run again. Only answers of the same dictionary object are reused.
+    private val corrections = object : LinkedHashMap<String, Correction>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Correction>?) = size > CORRECTIONS_KEPT
+    }
+    private var correctionsFrom: DictionaryProvider? = null
+
+    /** dict.autoCorrect([typed], AUTOCORRECT_MIN_FREQUENCY), remembered. [typed] is lower case. */
+    private fun correctionOf(dict: DictionaryProvider, typed: String): String? {
+        synchronized(corrections) {
+            if (correctionsFrom === dict) corrections[typed]?.let { return it.word }
+        }
+        val found = dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY) // slow part, outside the lock
+        synchronized(corrections) {
+            if (correctionsFrom !== dict) { corrections.clear(); correctionsFrom = dict }
+            corrections[typed] = Correction(found)
+        }
+        return found
+    }
+
     override fun setLanguage(language: String) {
         activeLanguage = language
     }
@@ -60,7 +84,7 @@ class LocalSuggestionEngine(
         if (strongValid) result.add(typed)
 
         // 2. Curated typo / contraction fix of the ACTIVE language (es: tambien -> también).
-        if (!valid) dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY)?.let { if (it != typed) result.add(it) }
+        if (!valid) correctionOf(dict, typed)?.let { if (it != typed) result.add(it) }
 
         // 3. Words the user has kept (language-scoped, used at least twice).
         personal.wordsWithPrefix(typed, language)
@@ -128,7 +152,7 @@ class LocalSuggestionEngine(
         // NEVER replace a word that is valid in the language or that the user has kept.
         if (dict.contains(typed) || personal.knows(typed, language)) return null
 
-        return dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY)
+        return correctionOf(dict, typed)
     }
 
     override fun suggestReplacements(word: String): List<String> {
@@ -137,7 +161,7 @@ class LocalSuggestionEngine(
         if (!usable(dict)) return emptyList()
         val out = LinkedHashSet<String>()
         // 1. A typo fix or a missing accent ("tecldao" -> "teclado", "comodo" -> "cómodo").
-        dict.autoCorrect(typed, AUTOCORRECT_MIN_FREQUENCY)?.let { out.add(it) }
+        correctionOf(dict, typed)?.let { out.add(it) }
         // 2. Close words, most frequent first.
         if (typed.length >= 3) {
             for (w in dict.searchFuzzy(typed, 6)) {
@@ -167,6 +191,9 @@ class LocalSuggestionEngine(
 
     private companion object {
         const val MAX_CANDIDATES = 3
+
+        /** Words whose correction is remembered: the one being typed and the last few, with room to spare. */
+        const val CORRECTIONS_KEPT = 64
 
         /**
          * Frequency scale is 1..255, derived from corpus rank by tools/build_dictionaries.py:

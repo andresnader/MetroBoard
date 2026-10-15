@@ -117,6 +117,13 @@
 
     <string name="version_label">version %1$s</string>
     <string name="changelog_title">nouveautés</string>
+    <string-array name="changelog_0_5_0">
+        <item>Saisie par glissement : le mot apparaît bien plus tôt quand vous levez le doigt, avec exactement les mêmes suggestions qu’avant.</item>
+        <item>Le clic et la vibration arrivent quand le doigt touche la touche, pas quand il se lève.</item>
+        <item>Une touche tapée juste après un glissement s’écrit après le mot glissé, jamais avant.</item>
+        <item>Moins de travail à chaque touche : pas de redessin inutile, pas de seconde recherche après une faute de frappe, et les mots appris sont enregistrés en arrière-plan.</item>
+        <item>Avec deux pouces, les deux touches enfoncées s’allument.</item>
+    </string-array>
     <string-array name="changelog_0_4_1">
         <item>Maintenir Retour arrière supprime désormais doucement au début puis plus vite. Choisissez l’attente et la vitesse dans Réglages > Gestes.</item>
         <item>Le délai d’appui long (accents, sélecteur de langue) est réglable.</item>
